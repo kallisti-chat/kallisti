@@ -64,6 +64,10 @@ type Service struct {
 	// ServerPassword: guests may need the Mumble server's password (Murmur:
 	// unknown, so true). The login page leaves out its field otherwise.
 	ServerPassword bool
+	// NoRegistration: no new accounts, by any way (create, fediverse
+	// signup, a guest account kept with a password or a link). Guest
+	// accounts and logins stay.
+	NoRegistration bool
 	// Revoke closes the open connections whose account ID and session
 	// (SessionKey) match, when sessions end. Nil: none.
 	Revoke func(match func(accountID int64, session string) bool)
@@ -158,7 +162,7 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case r.URL.Path == "/api/server" && r.Method == http.MethodGet:
-		writeJSON(w, http.StatusOK, map[string]bool{"password": a.ServerPassword})
+		writeJSON(w, http.StatusOK, map[string]bool{"password": a.ServerPassword, "registration": !a.NoRegistration})
 	case r.URL.Path == "/api/challenge" && r.Method == http.MethodGet:
 		a.challenge(w)
 	case r.URL.Path == "/api/accounts" && r.Method == http.MethodPost:
@@ -255,7 +259,21 @@ func (a *Service) DeleteExpiredSessions() error {
 	return nil
 }
 
+// registrationClosed answers the request if the server takes no new
+// accounts.
+func (a *Service) registrationClosed(w http.ResponseWriter) bool {
+	if a.NoRegistration {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": registrationClosedText})
+	}
+	return a.NoRegistration
+}
+
+const registrationClosedText = "this server does not take new accounts"
+
 func (a *Service) create(w http.ResponseWriter, r *http.Request) {
+	if a.registrationClosed(w) {
+		return
+	}
 	if !a.allow(r) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
 		return
@@ -456,6 +474,10 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 	acc, ok := a.AccountFor(r)
 	if !ok {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
+		return
+	}
+	// A guest's first password keeps the account: a new account.
+	if acc.Temporary && a.registrationClosed(w) {
 		return
 	}
 	if !a.allow(r) {

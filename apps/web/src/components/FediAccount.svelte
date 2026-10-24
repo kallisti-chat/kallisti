@@ -7,7 +7,8 @@
 
   // The settings' fediverse account: link one (a login on the instance),
   // show its handle on the profile, unlink it (not the last way to log in).
-  let { account }: { account: AccountActions } = $props();
+  // canKeep false: a guest who may not keep the account (a link would).
+  let { account, canKeep = true }: { account: AccountActions; canKeep?: boolean } = $props();
 
   let enabled = $state(false);
   $effect(() => {
@@ -52,7 +53,7 @@
       <p class="hint">It is your only way to log in: set a password above to unlink it.</p>
     {/if}
   </div>
-{:else if enabled}
+{:else if enabled && canKeep}
   <form class="account" onsubmit={link}>
     <span class="label">Fediverse account</span>
     <p class="hint">Log in with your Mastodon, Pleroma, GoToSocial or other fediverse account too.</p>

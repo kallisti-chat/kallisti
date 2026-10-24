@@ -123,6 +123,14 @@
     return () => navigator.mediaDevices.removeEventListener("devicechange", loadDevices);
   });
 
+  // A guest keeps the account with a password, where the server takes new
+  // accounts.
+  let registration = $state(true);
+  $effect(() => {
+    if (account?.temporary) void account.registration().then((on) => (registration = on));
+  });
+  const canKeep = $derived(!account?.temporary || registration);
+
   let oldPassword = $state("");
   let newPassword = $state("");
   let passwordNote = $state<string | null>(null); // what changed (errors: passwordSave)
@@ -465,6 +473,7 @@
     </p>
   {/if}
   {#if account}
+    {#if canKeep}
     <form class="account" onsubmit={changePassword}>
       {#if account.temporary}
         <span class="label">Keep this account</span>
@@ -499,11 +508,12 @@
         </div>
       {/if}
     </form>
-    <FediAccount {account} />
+    {/if}
+    <FediAccount {account} {canKeep} />
     <div class="account">
       <span class="label">Log out</span>
       {#if account.temporary}
-        <p class="hint">Logging out ends this guest account (set a password above to keep it).</p>
+        <p class="hint">Logging out ends this guest account{canKeep ? " (set a password above to keep it)" : ""}.</p>
       {:else}
         <p class="hint">"Everywhere" also logs out your other browsers and devices, for example after you used a shared computer.</p>
       {/if}

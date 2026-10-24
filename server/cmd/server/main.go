@@ -98,6 +98,7 @@ func run() error {
 		AllowedOrigins:    cfg.AllowedOrigins,
 		TrustForwardedFor: cfg.TrustForwardedFor,
 		ServerPassword:    cfg.Builtin == nil || cfg.Builtin.Password != "",
+		NoRegistration:    cfg.NoRegistration,
 	}
 	accounts.Fedi = fediLogin(cfg)
 	// Before the built-in server listens: Mumble messages may bring images.

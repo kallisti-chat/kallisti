@@ -499,6 +499,41 @@ func TestStalledBodiesTimeOut(t *testing.T) {
 	}
 }
 
+func TestNoRegistration(t *testing.T) {
+	a, srv := setup(t)
+	a.GuestAccounts = true
+	post(t, srv, "/api/accounts", map[string]string{"name": "early", "password": "longpassword"}, nil)
+	a.NoRegistration = true
+	if resp, v := post(t, srv, "/api/accounts", map[string]string{"name": "late", "password": "longpassword"}, nil); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("create: %d %v", resp.StatusCode, v)
+	}
+	if resp, _ := post(t, srv, "/api/login", map[string]string{"name": "early", "password": "longpassword"}, nil); resp.StatusCode != http.StatusOK {
+		t.Fatalf("login: %d", resp.StatusCode)
+	}
+	// Guests still join, but cannot keep the account.
+	resp, _ := post(t, srv, "/api/guest", map[string]string{"name": "visitor"}, nil)
+	c := sessionCookie(resp)
+	if resp.StatusCode != http.StatusCreated || c == nil {
+		t.Fatalf("guest: %d", resp.StatusCode)
+	}
+	if resp, _ := post(t, srv, "/api/password", map[string]string{"new": "a good password"}, c); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("keep guest account: %d", resp.StatusCode)
+	}
+	if acc, _ := a.AccountFor(requestWith(c)); !acc.Temporary {
+		t.Fatal("the guest account was kept")
+	}
+	get, err := http.Get(srv.URL + "/api/server")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer get.Body.Close()
+	var v map[string]any
+	json.NewDecoder(get.Body).Decode(&v)
+	if v["registration"] != false {
+		t.Fatalf("server: %v", v)
+	}
+}
+
 func TestServerSaysIfGuestsNeedAServerPassword(t *testing.T) {
 	for _, needed := range []bool{false, true} {
 		a, srv := setup(t)

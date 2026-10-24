@@ -427,6 +427,8 @@ func (a *Service) fediCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		back("", "")
+	case errors.Is(err, store.ErrNotFound) && a.NoRegistration:
+		back("error", "closed")
 	case errors.Is(err, store.ErrNotFound):
 		now := a.Now()
 		token := a.Fedi.signups.put(fediSignup{id: id, name: fedi.SuggestName(remote.Username), avatar: remote.Avatar}, now, now.Add(signupLifetime))
@@ -472,6 +474,9 @@ func (a *Service) remoteAccount(ctx context.Context, flow fediFlow, code string)
 
 // fediLink links the remote account to the account; the result for home.
 func (a *Service) fediLink(acc store.Account, id store.FediIdentity) (string, string) {
+	if acc.Temporary && a.NoRegistration { // a link keeps a guest account
+		return "error", "closed"
+	}
 	err := a.Store.LinkFedi(acc.ID, id, a.Now())
 	if errors.Is(err, store.ErrFediTaken) {
 		return "error", "taken"
@@ -502,6 +507,9 @@ func (a *Service) fediReauth(acc store.Account, session string, id store.FediIde
 // fediSignup makes the account for a remote account without one, with the
 // chosen name: the same checks as other new accounts (name, browser check).
 func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
+	if a.registrationClosed(w) {
+		return
+	}
 	if !a.allow(r) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
 		return

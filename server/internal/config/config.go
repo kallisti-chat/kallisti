@@ -42,6 +42,9 @@ type Config struct {
 	// FEDI_LOGIN=0: no logins with fediverse accounts. They also need a
 	// public address (an ALLOWED_ORIGINS entry other than *).
 	NoFediLogin bool
+	// REGISTRATION=0: no new accounts (guests cannot keep theirs either).
+	// Existing accounts log in as before.
+	NoRegistration bool
 	// FEDI_INSECURE_DEV_INSTANCES=1, for development and tests only:
 	// fediverse instances may be on local addresses and plain HTTP (no
 	// protection against requests into the local network).
@@ -209,6 +212,7 @@ func Parse(getenv func(string) string) (Config, error) {
 	c.TrustForwardedFor = getenv("TRUST_FORWARDED_FOR") == "1"
 	c.NoLinkPreviews = getenv("LINK_PREVIEWS") == "0"
 	c.NoFediLogin = getenv("FEDI_LOGIN") == "0"
+	c.NoRegistration = getenv("REGISTRATION") == "0"
 	c.FediInsecureDev = getenv("FEDI_INSECURE_DEV_INSTANCES") == "1"
 	c.NoMediaPreviews = getenv("MEDIA_PREVIEWS") == "0"
 	c.FFmpegPath = getenv("FFMPEG_PATH")

@@ -45,6 +45,14 @@ describe("fediverse account API", () => {
     expect(await createAccountsApi("http://srv", fakeFetch(404, {}, [])).fediEnabled()).toBe(false);
   });
 
+  it("knows whether the server takes new accounts", async () => {
+    expect(await createAccountsApi("http://srv", fakeFetch(200, { password: false, registration: false }, [])).registration()).toBe(false);
+    expect(await createAccountsApi("http://srv", fakeFetch(200, { password: false, registration: true }, [])).registration()).toBe(true);
+    // An older server says nothing: open, as before.
+    expect(await createAccountsApi("http://srv", fakeFetch(200, { password: false }, [])).registration()).toBe(true);
+    expect(fediResult("?fedi=error&reason=closed")).toEqual({ kind: "error", text: "This server does not take new accounts." });
+  });
+
   it("starts a login or a link", async () => {
     const calls: Call[] = [];
     const api = createAccountsApi("http://srv", fakeFetch(200, { url: "https://social.example/oauth/authorize?x" }, calls));

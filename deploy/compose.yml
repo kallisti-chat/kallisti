@@ -29,6 +29,7 @@ services:
       TEXT_CHANNELS: "general"
       SERVER_NAME: "${SERVER_NAME:-Kallisti}"
       MUMBLE_WELCOME: "${MUMBLE_WELCOME:-}"
+      REGISTRATION: "${REGISTRATION:-}" # 0: no new accounts (see docs/configuration.md)
       # The Mumble admin (log in as SuperUser with a Mumble client). Unset:
       # keep the password from an earlier start.
       MUMBLED_SUPERUSER_PASSWORD: "${SUPERUSER_PASSWORD:-}"

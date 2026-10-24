@@ -11,6 +11,7 @@ const REASONS: Record<string, string> = {
   unreachable: "Could not check the login with the fediverse server. Please try again.",
   taken: "This fediverse account is linked to another account already.",
   other: "That is not the fediverse account linked to your account.",
+  closed: "This server does not take new accounts.",
 };
 const FAILED = "The fediverse login did not work. Please try again.";
 

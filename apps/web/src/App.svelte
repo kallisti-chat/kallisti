@@ -178,6 +178,7 @@
       return account?.fedi ?? null;
     },
     fediEnabled: () => api.fediEnabled(),
+    registration: () => api.registration(),
     fediLink: async (instance, password) => {
       location.assign(await api.fediStart(instance, password)); // back with ?fedi=linked
     },

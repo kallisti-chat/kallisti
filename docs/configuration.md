@@ -48,6 +48,13 @@ brackets.
   HTTPS. A linked fediverse account logs in to its Kallisti account, so
   the admins of its instance could too: users should link accounts only
   on instances they trust.
+- `REGISTRATION=0`: no new accounts. The web app has no "Create account"
+  tab, and the server refuses new accounts by any way: the form, a
+  fediverse login without an account here, and a guest account kept with
+  a password or a fediverse link. Existing accounts log in as before, and
+  guests still join (with `MUMBLE_PASSWORD`, they need it). Mumble clients
+  are not affected: they can still register themselves on the built-in
+  server (a server password keeps strangers out).
 - `FEDI_INSECURE_DEV_INSTANCES=1`: development and tests only. Fediverse
   instances may also be local addresses and plain HTTP (for a fake test
   instance, see `server/cmd/fakefedi`). Never on a public server: users

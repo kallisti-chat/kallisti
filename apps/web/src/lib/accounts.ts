@@ -26,7 +26,7 @@ export type SessionStore = { get: () => string | null; set: (token: string | nul
 
 export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, session?: SessionStore) => {
   type Answer = { name?: string; mumble?: boolean; temporary?: boolean; token?: string } & Partial<Challenge> &
-    Partial<StreamKey> & { key?: string; url?: string; handle?: string; password?: boolean; fedi?: FediLink };
+    Partial<StreamKey> & { key?: string; url?: string; handle?: string; password?: boolean; registration?: boolean; fedi?: FediLink };
   const call = async (path: string, body?: unknown, method = body === undefined ? "GET" : "POST"): Promise<Answer> => {
     const token = session?.get();
     const headers: Record<string, string> = {
@@ -102,6 +102,8 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     // Fediverse logins (see lib/fedi): on for this server?
     // Guests may need the server's password (also when the server does not say).
     serverPassword: async () => (await call("/api/server").catch(() => ({}) as Answer & { password?: boolean })).password !== false,
+    // New accounts: false only when the server says so.
+    registration: async () => (await call("/api/server").catch(() => ({}) as Answer)).registration !== false,
     fediEnabled: async () => (await call("/api/fedi").catch(() => ({}) as Answer & { enabled?: boolean })).enabled === true,
     // The instance's page to go to, for a login (or a link: with the
     // account's password, "" for one without).
@@ -175,6 +177,8 @@ export type AccountActions = {
   // instance (with the account's password; "" without one).
   fedi: FediLink | null;
   fediEnabled: () => Promise<boolean>;
+  // false: the server takes no new accounts (a guest cannot keep theirs).
+  registration: () => Promise<boolean>;
   fediLink: (instance: string, password: string) => Promise<void>;
   fediUnlink: () => Promise<void>;
   fediPublic: (on: boolean) => Promise<void>;

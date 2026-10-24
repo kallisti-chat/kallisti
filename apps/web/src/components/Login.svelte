@@ -126,6 +126,17 @@
     if (desktop?.kind !== "mumble") void api.serverPassword().then((ask) => (askServerPassword = ask));
   });
 
+  // New accounts: the server's switch (closed: no Create account tab).
+  let registration = $state(true);
+  $effect(() => {
+    if (desktop?.kind !== "mumble")
+      void api.registration().then((on) => {
+        registration = on;
+        if (!on && mode === "create") mode = "login";
+      });
+  });
+  const modes = $derived(registration ? MODES : MODES.filter(([value]) => value !== "create"));
+
   // Fediverse logins: the server's switch; the instance from last time.
   let fediOn = $state(false);
   $effect(() => {
@@ -257,7 +268,7 @@
       {@render serverLine()}
       {#if !mumbleOnly}
       <div class="tabs" role="group" aria-label="How to join">
-        {#each MODES as [value, label] (value)}
+        {#each modes as [value, label] (value)}
           <button
             type="button"
             aria-pressed={mode === value}
@@ -313,7 +324,9 @@
           Or use your fediverse account
           <input bind:value={instance} placeholder="mastodon.social or @you@mastodon.social" autocomplete="url" aria-describedby="fedi-hint" />
         </label>
-        <p class="hint" id="fedi-hint">Mastodon, Pleroma, Akkoma, GoToSocial and others. New here? You choose a name next.</p>
+        <p class="hint" id="fedi-hint">
+          Mastodon, Pleroma, Akkoma, GoToSocial and others.{registration ? " New here? You choose a name next." : ""}
+        </p>
         <button class="secondary" type="submit" disabled={busy || !instance.trim()}>Log in with the fediverse</button>
       </form>
     {/if}
