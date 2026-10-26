@@ -291,3 +291,4 @@
 - [x] [Polls: custom emoji, no pings, emoji picker](issues/polls-followups.md)
 - [x] [Fixes from the Astra review of files and polls](issues/astra-review-files-polls.md)
 - [x] [A lost connection: quiet for the first 10 seconds](issues/quiet-reconnect.md)
+- [x] [Turn off new accounts](issues/disable-registration.md)
