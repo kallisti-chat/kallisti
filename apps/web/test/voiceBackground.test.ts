@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { keepRunningHidden } from "../src/lib/voice/background";
+import { keepVoiceRunning } from "../src/lib/voice/background";
 
 const fakeDoc = () => {
   const listeners = new Set<() => void>();
@@ -35,21 +35,53 @@ const fakeCtx = (state: string) => {
   return ctx;
 };
 
-describe("keepRunningHidden", () => {
-  it("resumes a context WebKit interrupted when the page went to the background", () => {
+describe("keepVoiceRunning", () => {
+  it("resumes an interruption while the window is visible", () => {
     const doc = fakeDoc();
     const ctx = fakeCtx("running");
-    keepRunningHidden(doc, ctx);
-    ctx.set("interrupted"); // comes just before the page counts as hidden
-    expect(ctx.resume).not.toHaveBeenCalled();
-    doc.hide();
+    keepVoiceRunning(doc, ctx);
+    ctx.set("interrupted");
     expect(ctx.resume).toHaveBeenCalledOnce();
+    expect(ctx.state).toBe("running");
+  });
+
+  it("recovers a context already interrupted when voice reconnects", () => {
+    const ctx = fakeCtx("interrupted");
+    keepVoiceRunning(fakeDoc(), ctx);
+    expect(ctx.resume).toHaveBeenCalledOnce();
+    expect(ctx.state).toBe("running");
+  });
+
+  it("retries on returning to the window after a failed background resume", async () => {
+    const doc = fakeDoc();
+    const ctx = fakeCtx("running");
+    keepVoiceRunning(doc, ctx);
+    doc.hide();
+    ctx.resume.mockRejectedValueOnce(new Error("audio unavailable"));
+    ctx.set("interrupted");
+    await Promise.resolve();
+    doc.show();
+    expect(ctx.resume).toHaveBeenCalledTimes(2);
+    expect(ctx.state).toBe("running");
+  });
+
+  it("retries when the page becomes hidden if the first attempt did not resume it", async () => {
+    const doc = fakeDoc();
+    const ctx = fakeCtx("running");
+    keepVoiceRunning(doc, ctx);
+    ctx.resume.mockResolvedValueOnce(undefined);
+    ctx.set("interrupted");
+    await Promise.resolve();
+    expect(ctx.state).toBe("interrupted");
+    doc.hide();
+    expect(ctx.resume).toHaveBeenCalledTimes(2);
+    expect(ctx.state).toBe("running");
   });
 
   it("resumes a context interrupted while the page is hidden", () => {
     const doc = fakeDoc();
     const ctx = fakeCtx("running");
-    keepRunningHidden(doc, ctx);
+    keepVoiceRunning(doc, ctx);
     doc.hide();
     ctx.set("interrupted");
     expect(ctx.resume).toHaveBeenCalledOnce();
@@ -59,7 +91,7 @@ describe("keepRunningHidden", () => {
     const doc = fakeDoc();
     for (const state of ["running", "suspended", "closed"]) {
       const ctx = fakeCtx(state);
-      const stop = keepRunningHidden(doc, ctx);
+      const stop = keepVoiceRunning(doc, ctx);
       doc.hide();
       doc.show();
       expect(ctx.resume).not.toHaveBeenCalled();
@@ -70,7 +102,7 @@ describe("keepRunningHidden", () => {
   it("stops listening when stopped", () => {
     const doc = fakeDoc();
     const ctx = fakeCtx("running");
-    const stop = keepRunningHidden(doc, ctx);
+    const stop = keepVoiceRunning(doc, ctx);
     stop();
     expect(doc.listeners.size).toBe(0);
     expect(ctx.listeners.size).toBe(0);
