@@ -1,10 +1,8 @@
-// The iOS app (WKWebView): WebKit interrupts the audio context when the
-// app goes to the background (another app, the screen locked), and voice
-// stops: the microphone stays open, but nothing takes its sound or plays.
-// The app has the audio background mode: a context resumed once the page
-// counts as hidden runs on. Elsewhere contexts are not "interrupted" here.
-// Only while in voice (Client.svelte): a running context keeps the app
-// awake.
+// WebKit can interrupt an audio context without disconnecting voice.
+// Recover whether the window is visible or hidden, including a context
+// kept across a reconnect. On iOS a background transition may need another
+// attempt once the page counts as hidden. Only while in voice
+// (Client.svelte): a running context keeps the app awake.
 
 type Doc = {
   visibilityState: DocumentVisibilityState;
@@ -19,14 +17,17 @@ type Ctx = {
 };
 
 // Returns stop. An audio restart: stop, then again with the new context.
-export const keepRunningHidden = (doc: Doc, ctx: Ctx): (() => void) => {
+export const keepVoiceRunning = (doc: Doc, ctx: Ctx): (() => void) => {
   const check = () => {
-    if (doc.visibilityState === "hidden" && ctx.state === "interrupted") ctx.resume().catch(() => {});
+    // Leave suspended contexts to the click handler: they may be waiting
+    // for user activation, or the Linux app's worklet startup hold.
+    if (ctx.state === "interrupted") ctx.resume().catch(() => {});
   };
-  // The interruption comes just before the page counts as hidden; later
-  // ones (a phone call) while it is hidden.
+  // Retry on either visibility transition if the previous attempt could
+  // not resume audio. No timer loop while the OS still owns the device.
   doc.addEventListener("visibilitychange", check);
   ctx.addEventListener("statechange", check);
+  check();
   return () => {
     doc.removeEventListener("visibilitychange", check);
     ctx.removeEventListener("statechange", check);

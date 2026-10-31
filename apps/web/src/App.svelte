@@ -38,6 +38,7 @@
   import { inviteOf } from "./lib/invites";
   import type { RailBadge } from "./lib/title";
   import { voiceSupported } from "./lib/voice/support";
+  import { audioNeedsResume } from "./lib/voice";
   import { loadCaptureWorklet, startAfter } from "./lib/voice/worklet";
   import { closeVoiceOutput } from "./lib/voice/output";
   import { swapContext } from "./lib/voice/restart";
@@ -573,7 +574,7 @@
   // Linux app: it holds the context itself for a while (see startAfter).
   let audioState = $state<AudioContextState | null>(null);
   const wakeSound = () => {
-    if (audioState === "suspended") void audio?.resume().catch(() => {});
+    if (audioNeedsResume(audioState)) void audio?.resume().catch(() => {});
   };
   // Made in a click where possible: browsers allow audio only after a
   // user gesture.

@@ -36,9 +36,10 @@ export const micWanted = (s: {
   closeWhenMuted: boolean;
 }): boolean => (s.inVoice && !(s.selfMute && s.closeWhenMuted)) || s.settingsOpen;
 
-// Browsers may start the audio context suspended until the user clicks or
-// types (after a refresh: no gesture yet). In voice, a hint asks for one.
-export const soundHint = (state: string | null, inVoice: boolean) => inVoice && state === "suspended";
+// Browsers may wait for a gesture at startup, or after an interruption.
+// Use the same states for the hint and the click/key recovery path.
+export const audioNeedsResume = (state: string | null) => state === "suspended" || state === "interrupted";
+export const soundHint = (state: string | null, inVoice: boolean) => inVoice && audioNeedsResume(state);
 
 // One voice channel across servers (several servers in one client): the
 // one that joined voice last (in now, not in before) stays, the others

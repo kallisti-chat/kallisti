@@ -116,7 +116,7 @@
   import { gainOf, userAudioFor } from "../lib/userAudio";
   import { loadSelfState, micWanted, saveSelfState, soundHint } from "../lib/voice";
   import { documentPage, restartOnJoin, watchOutputDevices } from "../lib/voice/restart";
-  import { keepRunningHidden } from "../lib/voice/background";
+  import { keepVoiceRunning } from "../lib/voice/background";
   import { listenOnlySessions } from "../lib/listenOnly";
   import ChannelDialog from "./ChannelDialog.svelte";
   import StreamPreview from "./StreamPreview.svelte";
@@ -1570,11 +1570,11 @@
     if (restartOnJoin({ inVoice: voiceOn, lobby, target: id })) onRestartAudio?.();
     connection.send(joinChannel(me.session, id));
   };
-  // The iOS app: voice goes on in the background (see voice/background);
-  // again with each new audio context.
+  // Recover interrupted voice in visible and hidden windows; again with
+  // each new audio context (see voice/background).
   $effect(() => {
     const ctx = connection.audio;
-    if (voiceOn && ctx) return keepRunningHidden(document, ctx);
+    if (voiceOn && ctx) return keepVoiceRunning(document, ctx);
   });
   // In voice: a new output device restarts audio (Chrome would resample
   // the old context, and music crackles), once the page shows. The
