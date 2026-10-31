@@ -208,7 +208,7 @@
     mayDelete?: (m: DisplayMessage) => boolean;
     onEdit?: (id: number, text: string, remove: string[]) => void; // remove: keys of files to take off
     onDelete?: (id: number) => void;
-    // "bob is typing…" under the message box; onTyping: we type.
+    // "bob is typing…" beside the message box; onTyping: we type.
     typing?: string;
     onTyping?: () => void;
     // Stored messages: add (on) or remove our reaction; myId: our Mumble
@@ -951,6 +951,7 @@
 <main
   class="chat"
   class:dragging
+  class:hasTyping={!!typing}
   ondragenter={(e) => {
     if (onUpload && e.dataTransfer?.types.includes("Files")) dragDepth++;
   }}
@@ -2261,7 +2262,7 @@
     flex-shrink: 0;
     padding: 0 16px;
   }
-  /* Always there (also empty): the layout does not jump. */
+  /* On phones, reserve a row below the input so typing does not shift it. */
   .typing {
     height: 24px;
     margin: 0;
@@ -2890,6 +2891,34 @@
   input::placeholder,
   .composer textarea::placeholder {
     color: var(--text-faint);
+  }
+  @media (min-width: 701px) {
+    /* Match the user panel's 48px height and 8px bottom inset. Typing floats
+       above it; without a typist, history runs right up to the composer. */
+    .send {
+      padding-bottom: 8px;
+    }
+    .scroller {
+      /* Scrollable end padding keeps the newest message clear of typing
+         without reserving a blank strip when reading older messages. */
+      padding-bottom: 32px;
+    }
+    .chat.hasTyping .scroller {
+      mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), transparent calc(100% - 24px));
+    }
+    .typing {
+      position: absolute;
+      right: 16px;
+      bottom: 100%;
+      left: 16px;
+      pointer-events: none;
+    }
+    .chat.hasTyping .present {
+      bottom: calc(100% + 28px);
+    }
+    .composer {
+      padding-block: 2px;
+    }
   }
   /* Phones: touch targets of at least 44 px; a narrower search field,
      wider while typing, with its suggestions as wide as the header. */
