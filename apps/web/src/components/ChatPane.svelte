@@ -2028,6 +2028,7 @@
   }
   .scroller {
     flex: 1;
+    overflow-x: hidden; /* never sideways: a phone would pan the whole list */
     overflow-y: auto;
     padding-bottom: 16px;
   }
@@ -2135,15 +2136,20 @@
   .body {
     min-width: 0;
   }
+  /* A long name (name@host) wraps: the time to the next line, the name
+     itself if it is wider than the line. */
   .meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 8px;
+    gap: 0 8px;
   }
   .author {
+    min-width: 0;
     font-size: 16px;
     font-weight: 600;
     color: var(--text);
+    overflow-wrap: anywhere;
   }
   .app-tag {
     align-self: center;
@@ -2161,6 +2167,7 @@
     font-weight: 700;
   }
   .meta time {
+    white-space: nowrap;
     font-size: 12px;
     color: var(--text-faint);
   }
@@ -2704,8 +2711,13 @@
     cursor: pointer;
   }
   .quote strong {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--text);
-    flex: none;
   }
   .line.flash {
     background: rgb(88 101 242 / 0.2);

@@ -343,3 +343,4 @@
 - [x] [Add a server with the linked fediverse account](issues/add-server-via-fediverse.md)
 - [x] [Names with one character](issues/one-character-names.md)
 - [x] [Older messages load while scrolling up](issues/infinite-scroll-history.md)
+- [x] [Long names break the chat on phones](issues/long-names-on-phones.md)
