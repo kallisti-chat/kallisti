@@ -342,3 +342,4 @@
 - [x] [Server settings in categories](issues/server-settings-categories.md)
 - [x] [Add a server with the linked fediverse account](issues/add-server-via-fediverse.md)
 - [x] [Names with one character](issues/one-character-names.md)
+- [x] [Older messages load while scrolling up](issues/infinite-scroll-history.md)

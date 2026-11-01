@@ -28,4 +28,3 @@
 - [ ] [Log in with a QR code](issues/qr-login.md)
   - [ ] [QR login: the apps' scanner](issues/qr-login-apps.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
-- [ ] [Older messages load while scrolling up](issues/infinite-scroll-history.md)

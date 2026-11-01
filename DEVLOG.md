@@ -2578,3 +2578,11 @@ An account named after its fediverse home (Lars@shitposter.world) could not add 
 ## Names with one character
 
 Account names have 1 to 32 characters now (were 2 to 32), for web accounts and Mumble registrations alike (names.Check); names from other servers already allowed one character before the "@". A fediverse login suggests a one-character remote name as it is.
+
+## Older messages load while scrolling up
+
+"Load older messages" is gone from sight: a page loads by itself when the reader comes within 1.5 screens of the top (lib/scroll's nearTop), so it is mostly there before the reader; again after a page that leaves the reader that close (tall screens, short pages). Pages have 50 messages (were 30; 50 of 2000 characters are far below the 8 MB frame limit). The top line says "Loading older messages…"; the button stays for the keyboard, shown only with the focus.
+
+- Checked headless with 300 seeded messages: 50 at first, five pages while scrolling up, the position kept (a wheel of 700 px and a page of 1300 px above: the view moved by exactly the page), the channel's start at the end.
+- Review fixes: the reload check runs after the scroll effect (else it saw the list before its scroll to the bottom and loaded a page at every first open); one waiting page per channel (with one slot, a thread pane and the main pane near the top took it from each other in a loop of requests); a page that gets no answer, or an error like the last one, ends after 10 s, so scrolling asks again (the button used to be the retry).
+- Not checked: iOS Safari has no CSS scroll anchoring; the kept position is set by hand, which may stop a fling there.
