@@ -64,7 +64,7 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
-  import { awayFromBottom, newSince, nextScrollTop } from "../lib/scroll";
+  import { awayFromBottom, nearTop, newSince, nextScrollTop } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
@@ -335,6 +335,7 @@
     }
     atBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= 80;
     away = awayFromBottom(list);
+    loadNearTop();
     if (!away) [leftAt, sentAway] = [null, false];
     else leftAt ??= messages.at(-1)?.at ?? 0;
   };
@@ -353,6 +354,12 @@
     observer.observe(list);
     return () => observer.disconnect();
   });
+  // Older messages load while the reader comes near the top (see nearTop);
+  // not while a jump to a message pages on its own (wanted: below, read
+  // only after setup).
+  function loadNearTop() {
+    if (list && more && onLoadOlder && !loadingOlder && wanted === null && nearTop(list)) onLoadOlder();
+  }
   let shown = { target: "", firstAt: 0 };
   $effect.pre(() => {
     void [messages.length, target];
@@ -371,6 +378,12 @@
       before = null;
       trackBottom();
     });
+  });
+  // Again when a page ends without new messages (an error, a lost answer).
+  // After the scroll effect: it sees the list where it is shown.
+  $effect(() => {
+    void [more, loadingOlder];
+    untrack(loadNearTop);
   });
 
   let filePicker: HTMLInputElement | undefined = $state();
@@ -1106,10 +1119,9 @@
     }}
   >
     {#if more}
+      <!-- The button: for the keyboard (shown when it has the focus). -->
       <div class="older">
-        <button onclick={onLoadOlder} disabled={loadingOlder}>
-          {loadingOlder ? "Loading…" : "Load older messages"}
-        </button>
+        {#if loadingOlder}Loading older messages…{:else}<button onclick={onLoadOlder}>Load older messages</button>{/if}
       </div>
     {:else if intro}
       <div class="intro">{@render intro()}</div>
@@ -2003,20 +2015,20 @@
     background: var(--bg-sidebar);
     color: var(--text-muted);
   }
+  /* The same height loading or not: nothing below moves. */
   .older {
-    display: flex;
-    justify-content: center;
+    height: 52px;
     padding: 16px;
-  }
-  .older button {
-    padding: 6px 14px;
-    border-radius: 6px;
-    background: var(--bg-input);
+    text-align: center;
     color: var(--text-muted);
     font-size: 14px;
   }
-  .older button:hover {
-    color: var(--text);
+  .older button {
+    padding: 0;
+    color: var(--text-muted);
+  }
+  .older button:not(:focus-visible) {
+    opacity: 0;
   }
   .messages {
     list-style: none;

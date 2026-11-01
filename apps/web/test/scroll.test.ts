@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awayFromBottom, newSince, nextScrollTop } from "../src/lib/scroll";
+import { awayFromBottom, nearTop, newSince, nextScrollTop } from "../src/lib/scroll";
 
 // A 500 px high view.
 const before = { scrollHeight: 2000, scrollTop: 1500, clientHeight: 500 };
@@ -44,5 +44,17 @@ describe("jump to present", () => {
   it("counts messages newer than the newest one when the reader left the bottom", () => {
     expect(newSince([1, 2, 3, 4], 2)).toBe(2);
     expect(newSince([1, 2], null)).toBe(0);
+  });
+});
+
+describe("older messages while scrolling up", () => {
+  const at = (scrollTop: number) => ({ scrollHeight: 5000, scrollTop, clientHeight: 600 });
+  it("load within one and a half screens of the top", () => {
+    expect(nearTop(at(0))).toBe(true);
+    expect(nearTop(at(899))).toBe(true);
+    expect(nearTop(at(900))).toBe(false);
+  });
+  it("not in a hidden list", () => {
+    expect(nearTop({ scrollHeight: 0, scrollTop: 0, clientHeight: 0 })).toBe(false);
   });
 });

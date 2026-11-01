@@ -26,3 +26,8 @@ export const awayFromBottom = (s: ScrollState) => s.scrollHeight - s.scrollTop -
 // Messages that came after the reader left the bottom (at: the newest
 // message's time then; null: still at the bottom).
 export const newSince = (times: readonly number[], at: number | null) => (at === null ? 0 : times.filter((t) => t > at).length);
+
+// Close enough to the top to load older messages: within one and a half
+// screens (the next page is there before the reader). A hidden list has
+// no screen.
+export const nearTop = (s: ScrollState) => s.scrollTop < s.clientHeight * 1.5;
