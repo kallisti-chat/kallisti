@@ -2574,3 +2574,7 @@ An account named after its fediverse home (Lars@shitposter.world) could not add 
 - Review fixes (Claude, Astra): the token was no longer taken once under parallel requests (a look, then a take whose result was dropped; also on the old path); a yes counted for any login waiting in the browser (another login could replace the one shown: now the question has a key, and the yes names it); Allow works after 0.6 s only (the opener decides when the popup shows: no double click lands on it); a fresh sign-up knew no fediverse server until a reload; a home on another port could not ask. Left out: a reload of the popup during the question loses it (close it and start again).
 - /api/me names the linked account's server (the stored API host, which may differ from the handle's domain). Linked local accounts get "Continue as @handle instead" below the usual button.
 - Checked headless (two local servers, the fake instance, Chromium without media devices): sign-up on A, "+" with only the fediverse way, the question on B, B in the rail as Lars@127.0.0.1:18099. Two local-only workarounds in the test: the CSP lets pages reach other servers over HTTPS only (bypassed), and a scheme-less host means HTTPS (the fake instance is plain HTTP).
+
+## Names with one character
+
+Account names have 1 to 32 characters now (were 2 to 32), for web accounts and Mumble registrations alike (names.Check); names from other servers already allowed one character before the "@". A fediverse login suggests a one-character remote name as it is.
