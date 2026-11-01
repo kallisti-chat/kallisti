@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awayFromBottom, nearTop, newSince, nextScrollTop } from "../src/lib/scroll";
+import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../src/lib/scroll";
 
 // A 500 px high view.
 const before = { scrollHeight: 2000, scrollTop: 1500, clientHeight: 500 };
@@ -56,5 +56,21 @@ describe("older messages while scrolling up", () => {
   });
   it("not in a hidden list", () => {
     expect(nearTop({ scrollHeight: 0, scrollTop: 0, clientHeight: 0 })).toBe(false);
+  });
+});
+
+describe("an update that only adds older messages", () => {
+  const m = (at: number) => ({ at });
+  const [a, b, c] = [m(1), m(2), m(3)];
+  it("is one with older messages in front of the same newest", () => {
+    expect(olderOnly([b, c], [a, b, c])).toBe(true);
+    expect(olderOnly([b, c], [m(1), m(2), m(3)])).toBe(true); // new objects
+  });
+  it("is not a new message, an edit, a first load or a switch", () => {
+    expect(olderOnly([a, b], [a, b, c])).toBe(false);
+    expect(olderOnly([a, b], [a, m(2)])).toBe(false);
+    expect(olderOnly([], [a, b])).toBe(false);
+    expect(olderOnly([b, c], [a, b, m(4)])).toBe(false);
+    expect(olderOnly([a, b], [a, b])).toBe(false);
   });
 });

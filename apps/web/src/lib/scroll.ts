@@ -31,3 +31,8 @@ export const newSince = (times: readonly number[], at: number | null) => (at ===
 // screens (the next page is there before the reader). A hidden list has
 // no screen.
 export const nearTop = (s: ScrollState) => s.scrollTop < s.clientHeight * 1.5;
+
+// The update only adds older messages in front (a page of history): the
+// same newest message, an older first one.
+export const olderOnly = (shown: readonly { at: number }[], next: readonly { at: number }[]) =>
+  shown.length > 0 && next.length > shown.length && next.at(-1)!.at === shown.at(-1)!.at && next[0]!.at < shown[0]!.at;

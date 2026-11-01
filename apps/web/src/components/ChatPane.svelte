@@ -64,7 +64,7 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
-  import { awayFromBottom, nearTop, newSince, nextScrollTop } from "../lib/scroll";
+  import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
@@ -77,7 +77,7 @@
     topic = "",
     kind,
     stored = false,
-    messages,
+    messages: incoming,
     welcomeText,
     membersOpen,
     onToggleMembers,
@@ -282,6 +282,49 @@
     onClose?: () => void;
   } = $props();
 
+  // The messages shown. A page of older ones waits while a touch moves the
+  // list (a finger on it, or its fling: a scroll in the last MOVING_MS):
+  // iOS keeps a fling going from the old position and drops the one set
+  // for the page, so the reader lands at the top and every page loads
+  // after it (iOS 27 claims CSS scroll anchoring, but this stays). A
+  // wheel, a mouse or keys: at once.
+  const MOVING_MS = 150;
+  let byTouch = false;
+  let messages = $state.raw(untrack(() => incoming));
+  let touching = false;
+  let lastScroll = 0;
+  let waiting: ReturnType<typeof setTimeout> | undefined;
+  const moving = () => byTouch && (touching || performance.now() - lastScroll < MOVING_MS);
+  const showIncoming = () => {
+    clearTimeout(waiting);
+    waiting = undefined;
+    if (!moving()) messages = incoming;
+    else waiting = setTimeout(showIncoming, MOVING_MS);
+  };
+  // Before the DOM update (as the prop was): a switch shows the new
+  // chat's messages with its new target.
+  $effect.pre(() => {
+    const next = incoming;
+    untrack(() => {
+      if (olderOnly(messages, next)) return showIncoming();
+      clearTimeout(waiting);
+      waiting = undefined;
+      messages = next;
+    });
+  });
+  $effect(() => () => clearTimeout(waiting));
+  // A touch ends on the window too (its message may be gone meanwhile:
+  // an edit, a delete).
+  $effect(() => {
+    const end = () => (touching = false);
+    window.addEventListener("touchend", end, true);
+    window.addEventListener("touchcancel", end, true);
+    return () => {
+      window.removeEventListener("touchend", end, true);
+      window.removeEventListener("touchcancel", end, true);
+    };
+  });
+
   let draft = $state("");
   let list: HTMLElement | undefined = $state();
   // "Today at" must turn into "Yesterday at" after midnight.
@@ -358,7 +401,7 @@
   // not while a jump to a message pages on its own (wanted: below, read
   // only after setup).
   function loadNearTop() {
-    if (list && more && onLoadOlder && !loadingOlder && wanted === null && nearTop(list)) onLoadOlder();
+    if (list && more && onLoadOlder && !loadingOlder && wanted === null && messages === incoming && nearTop(list)) onLoadOlder();
   }
   let shown = { target: "", firstAt: 0 };
   $effect.pre(() => {
@@ -953,7 +996,7 @@
     const id = wanted;
     if (id === null) return;
     const loaded = messages.some((m) => idOf(m) === id);
-    const step = jumpStep({ loaded, more: more && !!onLoadOlder, loading: loadingOlder, pages: jumpPages });
+    const step = jumpStep({ loaded, more: more && !!onLoadOlder, loading: loadingOlder || messages !== incoming, pages: jumpPages });
     if (step === "load") {
       jumpPages++;
       onLoadOlder?.();
@@ -1098,8 +1141,12 @@
     class="scroller"
     inert={lost}
     bind:this={list}
-    onscroll={trackBottom}
+    onscroll={() => ((lastScroll = performance.now()), trackBottom())}
+    ontouchstart={() => (touching = byTouch = true)}
+    onwheel={() => (byTouch = false)}
+    onmousedown={() => (byTouch = false)}
     onkeydown={(e) => {
+      byTouch = false;
       if ((e.key === "Enter" || e.key === " ") && toggleSpoiler(e.target as Element)) e.preventDefault();
     }}
     onclick={(e) => {
