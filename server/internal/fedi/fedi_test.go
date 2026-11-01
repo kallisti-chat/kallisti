@@ -69,7 +69,7 @@ func TestSuggestName(t *testing.T) {
 		"alice":                                  "alice",
 		"Alice_99":                               "Alice_99",
 		"al ice!":                                "alice",
-		"a":                                      "",
+		"a":                                      "a",
 		"!!":                                     "",
 		"superuser":                              "",
 		"averyveryveryveryveryverylongusername1": "averyveryveryveryveryverylonguse",

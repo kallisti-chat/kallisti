@@ -23,8 +23,8 @@ var allowed = regexp.MustCompile(`^[-=\p{L}\p{N}_\[\]{}()|.]+$`)
 func Check(name string) string {
 	n := utf8.RuneCountInString(name)
 	switch {
-	case n < 2 || n > 32:
-		return "the name needs 2 to 32 characters"
+	case n < 1 || n > 32:
+		return "the name needs 1 to 32 characters"
 	case !allowed.MatchString(name):
 		return "use letters, digits and - = _ [ ] { } ( ) | . only (no spaces or @)"
 	case Key(name) == "superuser":
