@@ -2594,3 +2594,7 @@ A name like minazukimidnight@diclonius.princess.wedding made the message header 
 ## Realistic test channels
 
 For tests in a realistic setting (the user's wish), `server/cmd/seedchat` fills a stopped server's database through the store package: a category "Community" with off-topic, gaming, music, photos and dev-talk, 220 to 340 messages each over 30 days (more in the evening, few at night, in bursts), about twenty people (two guests, two with other servers' names), replies, mentions, reactions, pictures (one or several; the server makes previews at its next start), six polls with votes, nine threads with 10 to 40 messages, pins, code and links. The seeded people have Mumble ids from 900001 on, so nothing belongs to a real account; existing channels are left alone. Run on test.kallisti.chat (photos from picsum.photos, two generated GIFs; the database copied to backups/before-seed-20261102.db first).
+
+## The iOS web app moved as a whole
+
+In the installed web app (not in a Safari tab), a swipe past the end of the chat list moved the whole app: the header off the top, a gap below the message box (the user's recording). iOS passed the swipe on to the page, and the page bounced. Reproduced in the iOS 27 simulator with the app added to the home screen. Now the page never bounces (overscroll-behavior: none on html and body) and the chat list keeps its end to itself (overscroll-behavior-y: contain); the list still bounces inside. Checked in the simulator and by the user on test.kallisti.chat.
