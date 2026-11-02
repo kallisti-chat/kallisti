@@ -86,6 +86,12 @@ body,
   margin: 0;
   height: 100%;
 }
+/* The page itself never bounces: in the iOS web app a swipe past the end
+   of a list moved the whole app (header off screen, a gap below). */
+html,
+body {
+  overscroll-behavior: none;
+}
 
 button {
   font: inherit;
