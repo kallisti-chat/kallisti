@@ -2030,6 +2030,7 @@
     flex: 1;
     overflow-x: hidden; /* never sideways: a phone would pan the whole list */
     overflow-y: auto;
+    overscroll-behavior-y: contain; /* its end does not move the page */
     padding-bottom: 16px;
   }
   .intro {
