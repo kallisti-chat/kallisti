@@ -2590,3 +2590,7 @@ Account names have 1 to 32 characters now (were 2 to 32), for web accounts and M
 ## Long names on phones
 
 A name like minazukimidnight@diclonius.princess.wedding made the message header wider than a phone (a flex row without wrapping, a name without break points): the time went off screen and the whole list panned sideways (the user's screenshots). Now the header wraps (the time to the next line, the name breaks if it is wider than the line), the time stays on one line, a reply's name is cut with an ellipsis, and the list never scrolls sideways. Reproduced and checked in the iOS 27 simulator.
+
+## Realistic test channels
+
+For tests in a realistic setting (the user's wish), `server/cmd/seedchat` fills a stopped server's database through the store package: a category "Community" with off-topic, gaming, music, photos and dev-talk, 220 to 340 messages each over 30 days (more in the evening, few at night, in bursts), about twenty people (two guests, two with other servers' names), replies, mentions, reactions, pictures (one or several; the server makes previews at its next start), six polls with votes, nine threads with 10 to 40 messages, pins, code and links. The seeded people have Mumble ids from 900001 on, so nothing belongs to a real account; existing channels are left alone. Run on test.kallisti.chat (photos from picsum.photos, two generated GIFs; the database copied to backups/before-seed-20261102.db first).
