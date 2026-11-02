@@ -34,7 +34,7 @@ const (
 	MaxTextLength = 2000 // characters, like Discord
 	maxNonce      = 64   // bytes of a send's nonce
 	// Small pages: a page goes out as one frame on the voice connection.
-	pageSize   = 30
+	pageSize   = 50
 	outboxSize = 64
 	// Requests per connection: a steady rate with a short burst.
 	perSecond = 5

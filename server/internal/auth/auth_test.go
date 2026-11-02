@@ -121,7 +121,7 @@ func TestValidation(t *testing.T) {
 	_, srv := setup(t)
 	post(t, srv, "/api/accounts", map[string]string{"name": "carol", "password": "longpassword"}, nil)
 	cases := []map[string]string{
-		{"name": "x", "password": "longpassword"},                     // too short
+		{"name": "", "password": "longpassword"},                      // empty
 		{"name": strings.Repeat("n", 33), "password": "longpassword"}, // too long
 		{"name": "bad\nname", "password": "longpassword"},             // control character
 		{"name": "superuser", "password": "longpassword"},             // Murmur's admin

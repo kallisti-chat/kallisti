@@ -64,7 +64,7 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
-  import { awayFromBottom, newSince, nextScrollTop } from "../lib/scroll";
+  import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
@@ -77,7 +77,7 @@
     topic = "",
     kind,
     stored = false,
-    messages,
+    messages: incoming,
     welcomeText,
     membersOpen,
     onToggleMembers,
@@ -282,6 +282,49 @@
     onClose?: () => void;
   } = $props();
 
+  // The messages shown. A page of older ones waits while a touch moves the
+  // list (a finger on it, or its fling: a scroll in the last MOVING_MS):
+  // iOS keeps a fling going from the old position and drops the one set
+  // for the page, so the reader lands at the top and every page loads
+  // after it (iOS 27 claims CSS scroll anchoring, but this stays). A
+  // wheel, a mouse or keys: at once.
+  const MOVING_MS = 150;
+  let byTouch = false;
+  let messages = $state.raw(untrack(() => incoming));
+  let touching = false;
+  let lastScroll = 0;
+  let waiting: ReturnType<typeof setTimeout> | undefined;
+  const moving = () => byTouch && (touching || performance.now() - lastScroll < MOVING_MS);
+  const showIncoming = () => {
+    clearTimeout(waiting);
+    waiting = undefined;
+    if (!moving()) messages = incoming;
+    else waiting = setTimeout(showIncoming, MOVING_MS);
+  };
+  // Before the DOM update (as the prop was): a switch shows the new
+  // chat's messages with its new target.
+  $effect.pre(() => {
+    const next = incoming;
+    untrack(() => {
+      if (olderOnly(messages, next)) return showIncoming();
+      clearTimeout(waiting);
+      waiting = undefined;
+      messages = next;
+    });
+  });
+  $effect(() => () => clearTimeout(waiting));
+  // A touch ends on the window too (its message may be gone meanwhile:
+  // an edit, a delete).
+  $effect(() => {
+    const end = () => (touching = false);
+    window.addEventListener("touchend", end, true);
+    window.addEventListener("touchcancel", end, true);
+    return () => {
+      window.removeEventListener("touchend", end, true);
+      window.removeEventListener("touchcancel", end, true);
+    };
+  });
+
   let draft = $state("");
   let list: HTMLElement | undefined = $state();
   // "Today at" must turn into "Yesterday at" after midnight.
@@ -335,6 +378,7 @@
     }
     atBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= 80;
     away = awayFromBottom(list);
+    loadNearTop();
     if (!away) [leftAt, sentAway] = [null, false];
     else leftAt ??= messages.at(-1)?.at ?? 0;
   };
@@ -353,6 +397,12 @@
     observer.observe(list);
     return () => observer.disconnect();
   });
+  // Older messages load while the reader comes near the top (see nearTop);
+  // not while a jump to a message pages on its own (wanted: below, read
+  // only after setup).
+  function loadNearTop() {
+    if (list && more && onLoadOlder && !loadingOlder && wanted === null && messages === incoming && nearTop(list)) onLoadOlder();
+  }
   let shown = { target: "", firstAt: 0 };
   $effect.pre(() => {
     void [messages.length, target];
@@ -371,6 +421,12 @@
       before = null;
       trackBottom();
     });
+  });
+  // Again when a page ends without new messages (an error, a lost answer).
+  // After the scroll effect: it sees the list where it is shown.
+  $effect(() => {
+    void [more, loadingOlder];
+    untrack(loadNearTop);
   });
 
   let filePicker: HTMLInputElement | undefined = $state();
@@ -940,7 +996,7 @@
     const id = wanted;
     if (id === null) return;
     const loaded = messages.some((m) => idOf(m) === id);
-    const step = jumpStep({ loaded, more: more && !!onLoadOlder, loading: loadingOlder, pages: jumpPages });
+    const step = jumpStep({ loaded, more: more && !!onLoadOlder, loading: loadingOlder || messages !== incoming, pages: jumpPages });
     if (step === "load") {
       jumpPages++;
       onLoadOlder?.();
@@ -1085,8 +1141,12 @@
     class="scroller"
     inert={lost}
     bind:this={list}
-    onscroll={trackBottom}
+    onscroll={() => ((lastScroll = performance.now()), trackBottom())}
+    ontouchstart={() => (touching = byTouch = true)}
+    onwheel={() => (byTouch = false)}
+    onmousedown={() => (byTouch = false)}
     onkeydown={(e) => {
+      byTouch = false;
       if ((e.key === "Enter" || e.key === " ") && toggleSpoiler(e.target as Element)) e.preventDefault();
     }}
     onclick={(e) => {
@@ -1106,10 +1166,9 @@
     }}
   >
     {#if more}
+      <!-- The button: for the keyboard (shown when it has the focus). -->
       <div class="older">
-        <button onclick={onLoadOlder} disabled={loadingOlder}>
-          {loadingOlder ? "Loading…" : "Load older messages"}
-        </button>
+        {#if loadingOlder}Loading older messages…{:else}<button onclick={onLoadOlder}>Load older messages</button>{/if}
       </div>
     {:else if intro}
       <div class="intro">{@render intro()}</div>
@@ -1969,7 +2028,9 @@
   }
   .scroller {
     flex: 1;
+    overflow-x: hidden; /* never sideways: a phone would pan the whole list */
     overflow-y: auto;
+    overscroll-behavior-y: contain; /* its end does not move the page */
     padding-bottom: 16px;
   }
   .intro {
@@ -2003,20 +2064,20 @@
     background: var(--bg-sidebar);
     color: var(--text-muted);
   }
+  /* The same height loading or not: nothing below moves. */
   .older {
-    display: flex;
-    justify-content: center;
+    height: 52px;
     padding: 16px;
-  }
-  .older button {
-    padding: 6px 14px;
-    border-radius: 6px;
-    background: var(--bg-input);
+    text-align: center;
     color: var(--text-muted);
     font-size: 14px;
   }
-  .older button:hover {
-    color: var(--text);
+  .older button {
+    padding: 0;
+    color: var(--text-muted);
+  }
+  .older button:not(:focus-visible) {
+    opacity: 0;
   }
   .messages {
     list-style: none;
@@ -2076,15 +2137,20 @@
   .body {
     min-width: 0;
   }
+  /* A long name (name@host) wraps: the time to the next line, the name
+     itself if it is wider than the line. */
   .meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 8px;
+    gap: 0 8px;
   }
   .author {
+    min-width: 0;
     font-size: 16px;
     font-weight: 600;
     color: var(--text);
+    overflow-wrap: anywhere;
   }
   .app-tag {
     align-self: center;
@@ -2102,6 +2168,7 @@
     font-weight: 700;
   }
   .meta time {
+    white-space: nowrap;
     font-size: 12px;
     color: var(--text-faint);
   }
@@ -2645,8 +2712,13 @@
     cursor: pointer;
   }
   .quote strong {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     color: var(--text);
-    flex: none;
   }
   .line.flash {
     background: rgb(88 101 242 / 0.2);

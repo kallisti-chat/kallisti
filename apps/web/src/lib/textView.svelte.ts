@@ -9,6 +9,7 @@ import { autoSeen, pageAnswered, unreadTextIds } from "./textChannels";
 // thread; null: none).
 // `me` is our name, for mentions. `visible`: the tab is visible.
 const MARK_DELAY_MS = 2000;
+const PAGE_WAIT_MS = 10_000;
 
 // blocked: users whose messages do not count as mentions.
 export const createTextView = (
@@ -22,8 +23,15 @@ export const createTextView = (
   const requested = new Set<number>();
   const open = () => currentIds().filter((id) => id !== null);
   let seen = $state<Record<number, number>>({});
-  // The page of older messages asked for, until its answer (or an error).
-  let page = $state<{ channel: number; before: number } | null>(null);
+  // The pages of older messages asked for (by channel: the oldest id
+  // then), until their answers, an error, or PAGE_WAIT_MS (a lost answer,
+  // an error like the last one: scrolling asks again).
+  let pages = $state<Record<number, number>>({});
+  const endPage = (channel: number, before: number) => {
+    if (pages[channel] !== before) return;
+    const { [channel]: _, ...rest } = pages;
+    pages = rest;
+  };
 
   // In one effect with the load, so the order is fixed: after a resync the
   // history is gone and the open channel loads again.
@@ -47,12 +55,12 @@ export const createTextView = (
     if (!lastError) return;
     untrack(() => {
       requested.clear();
-      page = null;
+      pages = {};
     });
   });
 
   $effect(() => {
-    if (page && pageAnswered(text, page)) page = null;
+    for (const [channel, before] of Object.entries(pages)) if (pageAnswered(text, { channel: Number(channel), before })) endPage(Number(channel), before);
   });
 
   // New messages in the open chats count as seen, while the tab is visible
@@ -103,7 +111,7 @@ export const createTextView = (
     get mentions() {
       return mentions;
     },
-    loadingOlder: (id: number | null) => page !== null && page.channel === id,
+    loadingOlder: (id: number | null) => id !== null && id in pages,
     // Read up to the newest message, as opening the chat would.
     markRead: (id: number) => {
       const newest = Math.max(text.messages[id]?.at(-1)?.id ?? 0, text.summary[id]?.latest ?? 0);
@@ -113,8 +121,9 @@ export const createTextView = (
     },
     loadOlder: (id: number | null) => {
       const oldest = id === null ? undefined : text.messages[id]?.[0];
-      if (id === null || !oldest || page?.channel === id) return;
-      page = { channel: id, before: oldest.id };
+      if (id === null || !oldest || id in pages) return;
+      pages = { ...pages, [id]: oldest.id };
+      setTimeout(() => endPage(id, oldest.id), PAGE_WAIT_MS);
       connection().requestHistory(id, oldest.id);
     },
   };

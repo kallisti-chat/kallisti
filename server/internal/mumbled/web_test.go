@@ -147,7 +147,7 @@ func TestARejectArrivesDespiteExtraBytes(t *testing.T) {
 	// One write with Version, Authenticate (an invalid name) and more.
 	v1 := uint32(1<<16 | 5<<8)
 	hello := append(mumble.MessageFrame(mumble.TypeVersion, &pb.Version{VersionV1: &v1}),
-		mumble.MessageFrame(mumble.TypeAuthenticate, &pb.Authenticate{Username: proto.String("x")})...)
+		mumble.MessageFrame(mumble.TypeAuthenticate, &pb.Authenticate{Username: proto.String("two words")})...)
 	hello = append(hello, mumble.MessageFrame(mumble.TypePing, &pb.Ping{})...)
 	go a.Write(hello)
 	c := startClientReader(t, a)

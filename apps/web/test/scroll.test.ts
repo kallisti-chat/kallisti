@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awayFromBottom, newSince, nextScrollTop } from "../src/lib/scroll";
+import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../src/lib/scroll";
 
 // A 500 px high view.
 const before = { scrollHeight: 2000, scrollTop: 1500, clientHeight: 500 };
@@ -44,5 +44,33 @@ describe("jump to present", () => {
   it("counts messages newer than the newest one when the reader left the bottom", () => {
     expect(newSince([1, 2, 3, 4], 2)).toBe(2);
     expect(newSince([1, 2], null)).toBe(0);
+  });
+});
+
+describe("older messages while scrolling up", () => {
+  const at = (scrollTop: number) => ({ scrollHeight: 5000, scrollTop, clientHeight: 600 });
+  it("load within one and a half screens of the top", () => {
+    expect(nearTop(at(0))).toBe(true);
+    expect(nearTop(at(899))).toBe(true);
+    expect(nearTop(at(900))).toBe(false);
+  });
+  it("not in a hidden list", () => {
+    expect(nearTop({ scrollHeight: 0, scrollTop: 0, clientHeight: 0 })).toBe(false);
+  });
+});
+
+describe("an update that only adds older messages", () => {
+  const m = (at: number) => ({ at });
+  const [a, b, c] = [m(1), m(2), m(3)];
+  it("is one with older messages in front of the same newest", () => {
+    expect(olderOnly([b, c], [a, b, c])).toBe(true);
+    expect(olderOnly([b, c], [m(1), m(2), m(3)])).toBe(true); // new objects
+  });
+  it("is not a new message, an edit, a first load or a switch", () => {
+    expect(olderOnly([a, b], [a, b, c])).toBe(false);
+    expect(olderOnly([a, b], [a, m(2)])).toBe(false);
+    expect(olderOnly([], [a, b])).toBe(false);
+    expect(olderOnly([b, c], [a, b, m(4)])).toBe(false);
+    expect(olderOnly([a, b], [a, b])).toBe(false);
   });
 });
