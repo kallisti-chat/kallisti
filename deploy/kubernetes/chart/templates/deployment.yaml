@@ -94,6 +94,11 @@ spec:
           volumeMounts:
             - name: app-data
               mountPath: /data
+            # Optional: split uploads from app data. Uncomment this mount,
+            # the uploads volume below and the PVC example in storage.yaml.
+            # Copy existing uploads while stopped before enabling this mount.
+            # - name: uploads
+            #   mountPath: /data/uploads
             - name: app-tmp
               mountPath: /tmp
         - name: caddy
@@ -160,6 +165,10 @@ spec:
         - name: app-data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-app
+        # Optional: separate uploads PVC (see storage.yaml and the chart README).
+        # - name: uploads
+        #   persistentVolumeClaim:
+        #     claimName: {{ .Release.Name }}-uploads
         - name: app-tmp
           emptyDir: {}
         - name: caddy-data

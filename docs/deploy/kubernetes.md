@@ -10,6 +10,8 @@ The app and copier run with no capabilities. Caddy receives only `NET_BIND_SERVI
 
 ## Release checks
 
+Uploads can optionally use a separate PVC mounted at `/data/uploads`; see the [commented chart examples and migration steps](../../deploy/kubernetes/README.md#optional-separate-uploads-pvc). With this customization, check permissions and backups for all three claims, and verify uploads on the uploads claim instead of the app claim. The default storage layout remains unchanged.
+
 After configuring real images, capacities, resources, the app's Secret, any namespace-local image-pull Secrets for private registries, and a tested off-cluster backup, run `helm lint` and `helm template` as shown in the chart README. Check your provider supports mixed-protocol LoadBalancer Services on one IP, and confirm DNS resolves to the allocated IP. Once an operator explicitly installs the chart, check:
 
 ```sh
