@@ -268,7 +268,7 @@ export type ServerEvent =
   | { type: "notice"; message: string }
   | { type: "search-results"; text: string; messages: TextMessage[]; threads?: Thread[] }
   // A session of our account (also this one) read a chat up to a message.
-  | { type: "read"; channel: number; message: number }
+  | { type: "read"; channel: number; message: number; back?: true }
   // about "manage": the answer to a channel or role change; slow: a post
   // refused by slow mode, and when the wait ends.
   // returned: a refused send's text, for the composer of its chat.
@@ -359,6 +359,9 @@ export type TextState = {
   // From ready (registered users): read marks, and the newest message and
   // unread mentions per channel at that time.
   reads: Readonly<Record<number, number>>;
+  // Marks that went back (mark unread, also in another session): the last
+  // one per channel, n counts them (the view's own seen marks follow).
+  backs: Readonly<Record<number, { message: number; n: number }>>;
   summary: Readonly<Record<number, { latest: number; mentions: number }>>;
   // Errors about channel and role changes show as a notice (n counts them), not in
   // the chat.
@@ -434,6 +437,7 @@ export const initialTextState: TextState = {
   recording: null,
   recordings: null,
   reads: {},
+  backs: {},
   summary: {},
   voiceChannels: {},
   messages: {},
@@ -804,7 +808,7 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         ? { type: "search-results", text: v.text, messages: v.messages, ...(isThreads(v.threads) ? { threads: v.threads } : {}) }
         : null;
     case "read":
-      return isNum(v.channel) && isNum(v.message) ? { type: "read", channel: v.channel, message: v.message } : null;
+      return isNum(v.channel) && isNum(v.message) ? { type: "read", channel: v.channel, message: v.message, ...(v.back === true && { back: true as const }) } : null;
     case "error": {
       if (!isStr(v.message)) return null;
       const error = { type: "error" as const, message: v.message, ...(isStr(v.nonce) ? { nonce: v.nonce } : {}) };
@@ -1090,7 +1094,13 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
     case "search-results":
       return { ...state, search: { text: event.text, messages: event.messages }, threads: withThreads(state.threads, event.threads ?? []) };
     case "read":
-      return { ...state, reads: { ...state.reads, [event.channel]: Math.max(state.reads[event.channel] ?? 0, event.message) } };
+      return event.back
+        ? {
+            ...state,
+            reads: { ...state.reads, [event.channel]: event.message },
+            backs: { ...state.backs, [event.channel]: { message: event.message, n: (state.backs[event.channel]?.n ?? 0) + 1 } },
+          }
+        : { ...state, reads: { ...state.reads, [event.channel]: Math.max(state.reads[event.channel] ?? 0, event.message) } };
     case "preview":
       return { ...state, previews: { ...state.previews, [event.message]: event.preview } };
     case "reactions": {
@@ -1352,6 +1362,9 @@ export const typingRequest = (channel: number) => JSON.stringify({ type: "typing
 export const resyncRequest = JSON.stringify({ type: "resync" });
 export const markReadRequest = (channel: number, message: number) =>
   JSON.stringify({ type: "mark-read", channel, message });
+// Unread from the message on (the mark goes to the one before).
+export const markUnreadRequest = (channel: number, message: number) =>
+  JSON.stringify({ type: "mark-unread", channel, message });
 // remove: the keys of files to take off (as in Discord, none can be added).
 export const editMessageRequest = (message: number, text: string, remove: readonly string[] = []) =>
   JSON.stringify(remove.length ? { type: "edit-message", message, text, remove } : { type: "edit-message", message, text });
