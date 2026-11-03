@@ -304,6 +304,13 @@ func (d *DB) SaveChannel(c *Channel) error {
 		return err
 	}
 	defer tx.Rollback()
+	if err := saveChannel(tx, c); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func saveChannel(tx *sql.Tx, c *Channel) error {
 	if _, err := tx.Exec(`INSERT INTO mumble_channels (id, parent, name, description, position, no_inherit_acl) VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET parent = excluded.parent, name = excluded.name,
 		description = excluded.description, position = excluded.position, no_inherit_acl = excluded.no_inherit_acl`,
@@ -324,7 +331,7 @@ func (d *DB) SaveChannel(c *Channel) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // DeleteChannels removes channels (a subtree) at once.
@@ -661,6 +668,13 @@ func (d *DB) SaveBans(bans []BanEntry) error {
 		return err
 	}
 	defer tx.Rollback()
+	if err := saveBans(tx, bans); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func saveBans(tx *sql.Tx, bans []BanEntry) error {
 	if _, err := tx.Exec(`DELETE FROM mumble_bans`); err != nil {
 		return err
 	}
@@ -674,7 +688,7 @@ func (d *DB) SaveBans(bans []BanEntry) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // Timeouts: the saved time-outs, by user id.

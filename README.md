@@ -69,6 +69,8 @@ of building it, Compose can pull the published image
 - [Configuration](docs/configuration.md): all settings
 - [Updating](docs/updating.md), with upgrade notes
 - [Backups](docs/backups.md)
+- [Moving from Murmur](docs/migrating-from-murmur.md): channels, users,
+  groups, ACLs and bans of a Murmur server
 - [Deployment guides](docs/deploy/README.md): Docker (also behind an
   existing proxy, or with Cloudflare DNS-01 and no port 80), systemd and
   Kubernetes
