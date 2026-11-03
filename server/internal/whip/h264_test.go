@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"os"
+	"slices"
 	"testing"
 )
 
@@ -103,4 +104,51 @@ func splitFrames(clip []byte) [][]byte {
 		out[i] = annexB(f...)
 	}
 	return out
+}
+
+// Slice headers start with first_mb_in_slice and slice_type (Exp-Golomb):
+// 0 and then I (2), P (0), B (1) or "all slices B" (6).
+func TestBFrames(t *testing.T) {
+	var a avc
+	a.sps, a.pps = sps360, unhex("68ce3c80")
+	for _, c := range []struct {
+		au []byte
+		b  bool
+	}{
+		{annexB([]byte{0x65, 0xb0}), false}, // IDR, I
+		{annexB([]byte{0x41, 0xc0}), false}, // P
+		{annexB([]byte{0x01, 0xa0}), true},  // B
+		{annexB([]byte{0x01, 0x9c}), true},  // B (6)
+		{annexB(sps360, []byte{0x41, 0xc0}), false},
+		{annexB([]byte{0x41}), false}, // too short: not B
+	} {
+		if p, err := a.unit(c.au); err != nil || p.b != c.b {
+			t.Errorf("%x: b %v %v, want %v", c.au, p.b, err, c.b)
+		}
+	}
+}
+
+// From x264 (ffmpeg, bframes=2): a keyframe, then P and B pictures.
+func TestBFramesFromX264(t *testing.T) {
+	clip, err := os.ReadFile("testdata/bframes.h264")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var a avc
+	var kinds []bool
+	for _, f := range splitFrames(clip) {
+		p, err := a.unit(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		kinds = append(kinds, p.b)
+	}
+	if len(kinds) < 3 || kinds[0] || !slices.Contains(kinds, true) {
+		t.Fatalf("B pictures %v", kinds)
+	}
+	for _, f := range clipFrames(t) { // without B-frames
+		if p, _ := a.unit(f); p.b {
+			t.Fatal("a B picture")
+		}
+	}
 }

@@ -142,6 +142,10 @@ type feed struct {
 	still      func(ctx context.Context, keyframe []byte) ([]byte, error)
 	previewAt  time.Time
 	previewing atomic.Bool
+	// warn tells the owner about a problem of the stream (nil: nobody);
+	// bWarned: about B-frames, once (the pictures').
+	warn    func(session uint32, text string)
+	bWarned bool
 	// done ends a preview in the making when the stream stops (a late one
 	// would land on the session's next stream).
 	done   context.Context
@@ -172,6 +176,9 @@ func (f *feed) makePreview(key []byte) {
 		slog.Debug("no preview of a stream from OBS", "session", f.session.Load(), "err", err)
 	}
 }
+
+// bFramesNote: what the owner reads (see the web app's OBS dialog).
+const bFramesNote = `Your OBS stream has B-frames, so the picture breaks up for viewers. In OBS, Settings → Output: with x264 type "bframes=0" in x264 Options; with NVENC, QuickSync or AMF set B-Frames to 0. Then start the stream again.`
 
 const soundsPerSec = 100 // as from a stream connection
 
@@ -224,6 +231,13 @@ func (f *feed) picture(t timed) error {
 	}
 	if t.data == nil {
 		return nil
+	}
+	if t.b && !f.bWarned && f.warn != nil {
+		if session := f.session.Load(); session != 0 {
+			f.bWarned = true
+			slog.Info("stream from OBS has B-frames", "session", session)
+			f.warn(session, bFramesNote)
+		}
 	}
 	if f.audio != "" {
 		t.ts = uint64(f.av.picture(int64(t.ts), t.arrival))

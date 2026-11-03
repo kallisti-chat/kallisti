@@ -49,6 +49,9 @@ type Handler struct {
 	// Preview makes a JPEG of a keyframe for the stream's preview (nil:
 	// none).
 	Preview func(ctx context.Context, keyframe []byte) ([]byte, error)
+	// Warn tells the owner's voice session about a problem of its stream,
+	// such as B-frames (nil: nobody).
+	Warn func(session uint32, text string)
 
 	mu       sync.Mutex
 	sessions map[string]*session

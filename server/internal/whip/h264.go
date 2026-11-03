@@ -11,9 +11,10 @@ import (
 // keyframe (no decoder description), keyframes flagged.
 
 const (
-	nalIDR = 5
-	nalSPS = 7
-	nalPPS = 8
+	nalSlice = 1
+	nalIDR   = 5
+	nalSPS   = 7
+	nalPPS   = 8
 )
 
 // nals splits Annex B data into NAL units (without start codes).
@@ -39,10 +40,11 @@ func nals(b []byte) [][]byte {
 }
 
 // picture is an access unit to forward. codec, width, height: from its
-// SPS ("" without one).
+// SPS ("" without one). b: it has a B slice (viewers decode pictures in
+// the order they come, so B-frames break the picture).
 type picture struct {
 	data          []byte
-	key           bool
+	key, b        bool
 	codec         string
 	width, height int
 }
@@ -65,6 +67,8 @@ func (a *avc) unit(au []byte) (picture, error) {
 			a.pps, pps = bytes.Clone(n), true
 		case nalIDR:
 			p.key = true
+		case nalSlice:
+			p.b = p.b || bSlice(n)
 		}
 	}
 	p.data = au
@@ -75,6 +79,14 @@ func (a *avc) unit(au []byte) (picture, error) {
 		p.data = append(annexB(a.sps, a.pps), au...)
 	}
 	return p, nil
+}
+
+// bSlice: the slice header's slice_type is B (1, or 6: all slices B).
+func bSlice(nal []byte) bool {
+	r := &bits{b: unescape(nal[1:])}
+	r.ue() // first_mb_in_slice
+	t := r.ue()
+	return r.err == nil && t%5 == 1
 }
 
 // annexB joins NAL units with 4-byte start codes.

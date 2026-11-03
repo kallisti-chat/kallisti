@@ -311,3 +311,23 @@ func TestFragmentsOverTheLimitAreDropped(t *testing.T) {
 		t.Fatal("no unit after")
 	}
 }
+
+// B-frames: the owner is told once (viewers decode in arrival order).
+func TestBFramesWarnOnce(t *testing.T) {
+	h, _, _ := hubWithViewer()
+	f := newFeed(h, 1, false, 1<<20, stream.IngestHooks{Keyframe: func() {}, Ended: func() {}})
+	var told []uint32
+	f.warn = func(session uint32, text string) {
+		if text == "" {
+			t.Error("no text")
+		}
+		told = append(told, session)
+	}
+	f.picture(timed{picture: picture{data: []byte{1}}})
+	for range 3 {
+		f.picture(timed{picture: picture{data: []byte{1}, b: true}})
+	}
+	if len(told) != 1 || told[0] != 1 {
+		t.Fatalf("told %v", told)
+	}
+}
