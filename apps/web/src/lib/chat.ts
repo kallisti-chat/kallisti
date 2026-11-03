@@ -15,14 +15,18 @@ const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Dat
 // within 5 minutes and on the same day.
 const webhookOf = (m: ChatMessage | undefined) => (m && "webhook" in m ? m.webhook : undefined);
 
-export const groupMessages = (messages: readonly ChatMessage[]): MessageGroup[] => {
+// newFrom: the first unread message (a group starts there, see chatItems).
+const idOf = (m: ChatMessage) => ("source" in m ? (m.source as { id: number } | undefined)?.id : undefined);
+
+export const groupMessages = (messages: readonly ChatMessage[], newFrom: number | null = null): MessageGroup[] => {
   const groups: MessageGroup[] = [];
   for (const m of messages) {
     const last = groups.at(-1);
     const prev = last?.messages.at(-1);
     // A webhook's post may carry a user's name (see lib/webhooks).
     const sameAuthor = last?.actor === m.actor && last.actorName === m.actorName && webhookOf(prev) === webhookOf(m);
-    if (last && prev && sameAuthor && m.at - prev.at <= GROUP_WINDOW_MS && sameDay(prev.at, m.at)) {
+    const fresh = newFrom !== null && idOf(m) === newFrom;
+    if (last && prev && sameAuthor && !fresh && m.at - prev.at <= GROUP_WINDOW_MS && sameDay(prev.at, m.at)) {
       last.messages.push(m);
     } else {
       groups.push({ actor: m.actor, actorName: m.actorName, at: m.at, messages: [m] });
@@ -33,17 +37,20 @@ export const groupMessages = (messages: readonly ChatMessage[]): MessageGroup[] 
 
 export type ChatItem =
   | { kind: "day"; at: number }
+  | { kind: "new" }
   | { kind: "group"; group: MessageGroup }
   | { kind: "blocked"; groups: MessageGroup[] };
 
 // Groups with a date divider before the first group of each day. Groups
-// of blocked users in a row (on one day) are one "blocked" item.
-export const chatItems = (messages: readonly ChatMessage[], blocked: (name: string) => boolean = () => false): ChatItem[] => {
+// of blocked users in a row (on one day) are one "blocked" item. newFrom:
+// the "NEW" line before this message (see lib/unread).
+export const chatItems = (messages: readonly ChatMessage[], blocked: (name: string) => boolean = () => false, newFrom: number | null = null): ChatItem[] => {
   const items: ChatItem[] = [];
   let prev: MessageGroup | undefined;
-  for (const group of groupMessages(messages)) {
+  for (const group of groupMessages(messages, newFrom)) {
     const hidden = group.actorName !== null && blocked(group.actorName);
     if (!prev || !sameDay(prev.at, group.at)) items.push({ kind: "day", at: group.at });
+    if (newFrom !== null && idOf(group.messages[0]!) === newFrom) items.push({ kind: "new" });
     prev = group;
     const last = items.at(-1);
     if (hidden && last?.kind === "blocked") last.groups.push(group);
@@ -66,7 +73,7 @@ export const messageKey = (m: ChatMessage & { source?: { id: number } }) => {
 
 // Groups (and hidden blocked ones) by their first message.
 export const itemKey = (item: ChatItem) =>
-  item.kind === "day" ? `day-${item.at}` : messageKey((item.kind === "group" ? item.group : item.groups[0]!).messages[0]!);
+  item.kind === "day" ? `day-${item.at}` : item.kind === "new" ? "new" : messageKey((item.kind === "group" ? item.group : item.groups[0]!).messages[0]!);
 
 // "auto": as the language has it (12-hour for English).
 export type TimeFormat = "auto" | "12" | "24";

@@ -1201,6 +1201,8 @@
       {#each items as item (itemKey(item))}
         {#if item.kind === "day"}
           <li class="divider" role="separator"><span>{formatDay(item.at)}</span></li>
+        {:else if item.kind === "new"}
+          <li class="new-line" role="separator" aria-label="New messages"><span>New</span></li>
         {:else if item.kind === "group"}
           {@render lines(item.group)}
         {:else if item.groups.some((g) => unblocked.has(groupKey(g)))}
@@ -2102,6 +2104,25 @@
   }
   .divider span {
     padding: 0 8px;
+  }
+  /* The first unread message (see lib/unread): a red line, "New" on the
+     right as in Discord. */
+  .new-line {
+    display: flex;
+    align-items: center;
+    margin: 8px 16px 0;
+    color: var(--danger);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .new-line::before {
+    flex: 1;
+    height: 1px;
+    background: var(--danger);
+    content: "";
+  }
+  .new-line span {
+    padding: 0 4px 0 8px;
   }
   .line {
     display: flex;
