@@ -14,8 +14,6 @@ import (
 // manage them; channel moderators and channel invites grant no admission.
 func (c *Conn) registrationRequest(id mumble.Identity, req request) {
 	h := c.hub
-	h.registrationMu.Lock()
-	defer h.registrationMu.Unlock()
 	if h.voice == nil || !h.voice.IsAdmin(id.Session) {
 		c.manageError("only admins manage account invitations")
 		return

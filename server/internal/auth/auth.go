@@ -268,12 +268,9 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/api/server" && r.Method == http.MethodGet:
 		info := map[string]any{"password": a.ServerPassword}
-		on, err := a.Store.InviteOnly()
-		if err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "cannot read server settings"})
-			return
+		if on, err := a.Store.InviteOnly(); err == nil {
+			info["inviteOnly"] = on // else left out: the signup form finds out on submit
 		}
-		info["inviteOnly"] = on
 		if a.ServerName != nil {
 			info["name"] = a.ServerName()
 		}
