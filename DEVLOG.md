@@ -2606,3 +2606,16 @@ Three GitHub PRs, merged by the user after review:
 - #8 (hutchisr): on desktop the message box has the user panel's height and bottom edge; "is typing…" floats above the box instead of a fixed row below it, and "Jump to present" moves up while someone types. Phones keep the reserved row. Checked with screenshots of main and the PR (1280 px, a second guest typing).
 - #9 (hutchisr): an interrupted audio context (WebKit, also the Mac app) now resumes in a visible window too, at once when voice starts, and a click resumes it like a suspended one. Suspended contexts stay with the click handler (user activation, the Linux app's worklet hold).
 - #12 (cortexobscura): commented examples for uploads on their own disk (a Compose bind mount, a Kubernetes PVC). Safe: uploads are written into the upload folder directly, previews are renamed only inside it, so no rename crosses file systems.
+
+## Invite-only registration (PR #11)
+
+From cortexobscura's PR #11, finished here. An admin switch (Server settings → Registration, off by default and after upgrades) closes signup: a new account needs an account invitation link (`/register#token`, the token in the fragment so it is in no request or Referer; only its hash is stored), new guests are refused on the web and over Mumble. Existing accounts, sessions and registered Mumble users keep their access; a guest from before can still get a password (the user's decision). The policy check, the invitation's use and the account's insert are one transaction (one store connection), so a failed insert gives the use back and twelve signups at once get one account from a single-use link. The policy is a store table, not mumbled meta like guests-read-only and captcha, because it must be in that transaction.
+
+Review fixes on top (a subagent and Astra reviewed the PR):
+
+- Invitation ids are AUTOINCREMENT: SQLite used a deleted highest id again, and another admin's stale revoke deleted the new link.
+- One admission function for the early check (before the password hash) and the transaction; with registration open an invitation is neither checked nor used (an old link gave 403 before). One CreateAccount and one CreateFediAccount, both with the invitation; every creation passes the policy.
+- An invitation carried over a fediverse login has its own tab key; it took the one slot of a waiting channel link, ?join or ?authorize.
+- Second review round: an invite_required answer shows the invitation field (the policy can be unknown: an older server, a failed read; the Guest tab then goes too); a pasted token is cleared when the desktop app changes to another server (a bare token says nothing about its server); a kept invitation is taken even when the address brings a newer one.
+- Docs: bots over Mumble (Jukebox, Kallisti TV) are guests unless their certificate is registered; register them before the switch.
+- Left as they are (they heal or are harmless): a Mumble guest that registers just as the switch goes on, an old snapshot that shows the old switch state, an invitation that expires while its signup waits on the database.
