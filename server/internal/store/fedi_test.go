@@ -44,7 +44,7 @@ func TestFediIdentities(t *testing.T) {
 	id := FediIdentity{Host: "social.example", RemoteID: "42", Handle: "@alice@social.example"}
 
 	// A new account with its identity, in one step.
-	acc, err := s.CreateFediAccount(Account{Name: "alice", CertPEM: []byte("c"), KeyPEM: []byte("k")}, id, now)
+	acc, err := s.CreateFediAccount(Account{Name: "alice", CertPEM: []byte("c"), KeyPEM: []byte("k")}, id, now, "")
 	if err != nil || acc.ID == 0 || acc.PasswordHash != "" {
 		t.Fatalf("create: %+v %v", acc, err)
 	}
@@ -57,13 +57,13 @@ func TestFediIdentities(t *testing.T) {
 	}
 	// The identity belongs to one account: no second one with it, and the
 	// name is not taken by the failed try.
-	if _, err := s.CreateFediAccount(Account{Name: "alice2", CertPEM: []byte("c"), KeyPEM: []byte("k")}, id, now); !errors.Is(err, ErrFediTaken) {
+	if _, err := s.CreateFediAccount(Account{Name: "alice2", CertPEM: []byte("c"), KeyPEM: []byte("k")}, id, now, ""); !errors.Is(err, ErrFediTaken) {
 		t.Fatalf("second account: %v", err)
 	}
 	if _, err := s.AccountByName("alice2"); err != ErrNotFound {
 		t.Fatalf("half-made account: %v", err)
 	}
-	if _, err := s.CreateFediAccount(Account{Name: "ALICE", CertPEM: []byte("c"), KeyPEM: []byte("k")}, FediIdentity{Host: "x.example", RemoteID: "1", Handle: "@a@x.example"}, now); !errors.Is(err, ErrNameTaken) {
+	if _, err := s.CreateFediAccount(Account{Name: "ALICE", CertPEM: []byte("c"), KeyPEM: []byte("k")}, FediIdentity{Host: "x.example", RemoteID: "1", Handle: "@a@x.example"}, now, ""); !errors.Is(err, ErrNameTaken) {
 		t.Fatalf("taken name: %v", err)
 	}
 
@@ -86,7 +86,7 @@ func TestFediIdentities(t *testing.T) {
 	}
 
 	// Linking: a guest account becomes permanent; one identity per account.
-	guest, _ := s.CreateAccount(Account{Name: "guest", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	guest, _ := s.CreateAccount(Account{Name: "guest", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	later := now.Add(time.Hour)
 	s.CreateSession("guest-session", guest.ID, later)
 	s.CreateSession("acc-session", acc.ID, later)
@@ -139,13 +139,13 @@ func TestFediIdentities(t *testing.T) {
 func TestFediOnlyAccounts(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
-	only, err := s.CreateFediAccount(Account{Name: "ann@a.example", CertPEM: []byte("c"), KeyPEM: []byte("k")},
-		FediIdentity{Host: "a.example", RemoteID: "1", Handle: "@ann@a.example"}, now)
+	only, err := s.CreateFediAccount(Account{Name: "ann@a.example", CertPEM: []byte("c"), KeyPEM: []byte("k")}, FediIdentity{Host: "a.example", RemoteID: "1", Handle: "@ann@a.example"}, now, "")
+
 	if err != nil {
 		t.Fatal(err)
 	}
 	// With a password: it logs in without its remote account too.
-	both, err := s.CreateAccount(Account{Name: "bob", PasswordHash: "hash", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	both, err := s.CreateAccount(Account{Name: "bob", PasswordHash: "hash", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -170,7 +170,7 @@
   const keptInvite = safeGet(tab, "kallisti-invite");
   if (keptInvite) safeSet(tab, "kallisti-invite", "");
   // A link in the address wins (a newer one).
-  const explicit = /^\/invite\//.test(location.pathname) || /[?&](join|open|authorize)=/.test(location.search);
+  const explicit = /^\/(invite\/|register$)/.test(location.pathname) || /[?&](join|open|authorize)=/.test(location.search);
   const restore = !explicit && /^\/(invite\/|\?(join|authorize)=)/.test(keptInvite ?? "") ? keptInvite : null;
   if (restore) history.replaceState(history.state, "", restore);
   else if (fediBack) history.replaceState(history.state, "", withoutFediResult(location.pathname + location.search + location.hash));

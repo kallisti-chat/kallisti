@@ -203,6 +203,9 @@ func (s *Server) identify(h hello, hash string, host netip.Addr, account *WebAcc
 		s.logins.failed(host)
 		return identity{}, mumble.RejectFrame(pb.Reject_WrongServerPW, "Wrong server password.")
 	}
+	if s.cfg.AllowGuest != nil && !s.cfg.AllowGuest() {
+		return identity{}, mumble.RejectFrame(pb.Reject_AuthenticatorFail, "This server is invite-only. Create an account with an admin's invitation first.")
+	}
 	return identity{name: h.name, hash: hash, tokens: h.tokens}, nil
 }
 

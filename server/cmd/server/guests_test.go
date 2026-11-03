@@ -19,7 +19,7 @@ func TestCleanGuests(t *testing.T) {
 	now := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
 	add := func(name string, temporary bool, at time.Time) store.Account {
 		certPEM, keyPEM, _ := certs.Generate(name)
-		a, err := db.CreateAccount(store.Account{Name: name, CertPEM: certPEM, KeyPEM: keyPEM, Temporary: temporary}, at)
+		a, err := db.CreateAccount(store.Account{Name: name, CertPEM: certPEM, KeyPEM: keyPEM, Temporary: temporary}, at, "")
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -138,6 +138,7 @@ export type ServerEvent =
       guestsReadOnly?: boolean;
       // The browser check for new accounts (see lib/captcha).
       captcha?: CaptchaLevel;
+      inviteOnly?: boolean;
       logo?: string;
       // Registered users' direct chats (with messages).
       directs?: DirectChat[];
@@ -222,6 +223,9 @@ export type ServerEvent =
   // Admins changed whether guests may only read.
   | { type: "guests-read-only"; on: boolean }
   | { type: "captcha"; level: CaptchaLevel }
+  | { type: "invite-only"; on: boolean }
+  | { type: "registration-invites"; invites: Invite[] }
+  | { type: "registration-invite-created"; token: string }
   // Admins renamed the server (the state has it as the root channel's
   // name: the confirmation only).
   | { type: "server-name"; name: string }
@@ -330,6 +334,8 @@ export type TextState = {
   // The text of the last refused send (n counts them, see ChatPane).
   returned?: { channel: number; text: string; n: number };
   captcha: CaptchaLevel;
+  inviteOnly: boolean | null; // null: older server or external Murmur
+  registrationInvites: readonly Invite[] | null;
   // The server's logo's version (null: none, undefined: not known before
   // ready; see lib/serverLogo).
   logo: string | null | undefined;
@@ -414,6 +420,8 @@ export const initialTextState: TextState = {
   guestsReadOnly: false,
   slowUntil: {},
   captcha: "off",
+  inviteOnly: null,
+  registrationInvites: null,
   logo: undefined,
   connections: null,
   messageRules: null,
@@ -628,6 +636,7 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         ...(isTimeouts(v.timeouts) ? { timeouts: v.timeouts } : {}),
         ...(isChannelTimeouts(v.channelTimeouts) ? { channelTimeouts: v.channelTimeouts } : {}),
         ...(v.guestsReadOnly === true ? { guestsReadOnly: true } : {}),
+        ...(typeof v.inviteOnly === "boolean" ? { inviteOnly: v.inviteOnly } : {}),
         ...(isCaptchaLevel(v.captcha) ? { captcha: v.captcha } : {}),
         ...(typeof v.logo === "string" && v.logo ? { logo: v.logo } : {}),
         ...(Array.isArray(v.directs) ? { directs: v.directs.filter(isDirect) } : {}),
@@ -683,6 +692,12 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       return isPrivateList(v.channels) ? { type: "private", channels: v.channels } : null;
     case "invites":
       return isNum(v.voice) && Array.isArray(v.invites) && v.invites.every(isInvite) ? { type: "invites", voice: v.voice, invites: v.invites } : null;
+    case "invite-only":
+      return typeof v.on === "boolean" ? { type: "invite-only", on: v.on } : null;
+    case "registration-invites":
+      return Array.isArray(v.invites) && v.invites.every(isInvite) ? { type: "registration-invites", invites: v.invites } : null;
+    case "registration-invite-created":
+      return isStr(v.token) ? { type: "registration-invite-created", token: v.token } : null;
     case "invite-created":
       return isNum(v.voice) && isStr(v.token) ? { type: "invite-created", voice: v.voice, token: v.token } : null;
     case "webhooks":
@@ -879,6 +894,8 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
         channelTimeouts: event.channelTimeouts ?? [],
         guestsReadOnly: event.guestsReadOnly === true,
         captcha: event.captcha ?? "off",
+        inviteOnly: event.inviteOnly ?? null,
+        registrationInvites: null,
         logo: event.logo ?? null,
         directs: { ...state.directs, ...Object.fromEntries((event.directs ?? []).map((d) => [d.channel, d.peer])) },
         streams: event.streams ?? [],
@@ -932,6 +949,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       return { ...state, webhooks: { ...state.webhooks, [event.channel]: event.webhooks } };
     case "webhook-picture":
       return { ...state, webhookPictures: { ...state.webhookPictures, [event.webhook]: event.version } };
+    case "registration-invite-created": // only the requester shows its token
     case "invite-created": // the client shows it once (lib/invites)
     case "invite-joined":
     case "webhook-created": // the same (lib/webhooks)
@@ -951,6 +969,10 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       return { ...state, guestsReadOnly: event.on };
     case "captcha":
       return { ...state, captcha: event.level };
+    case "invite-only":
+      return { ...state, inviteOnly: event.on };
+    case "registration-invites":
+      return { ...state, registrationInvites: event.invites };
     case "server-name":
       return state; // the root channel's name (Mumble)
     case "logo":
@@ -1237,6 +1259,10 @@ export type ManageAction =
   | { deleteMessages: UserTarget; seconds: number }
   | { guestsReadOnly: boolean }
   | { captcha: CaptchaLevel }
+  | { inviteOnly: boolean }
+  | { registrationInvites: true }
+  | { createRegistrationInvite: true; seconds: number; uses: number }
+  | { deleteRegistrationInvite: number }
   | { serverName: string }
   | { removeLogo: true }
   // Every connection (admins).
@@ -1286,6 +1312,10 @@ const manageBody = (a: ManageAction) => {
   if ("channelTimeout" in a) return { type: "channel-time-out", session: a.channelTimeout, voice: a.channel, seconds: a.seconds };
   if ("deleteMessages" in a) return { type: "delete-messages", ...a.deleteMessages, seconds: a.seconds };
   if ("guestsReadOnly" in a) return { type: "set-guests-read-only", on: a.guestsReadOnly };
+  if ("inviteOnly" in a) return { type: "set-invite-only", on: a.inviteOnly };
+  if ("registrationInvites" in a) return { type: "registration-invites" };
+  if ("createRegistrationInvite" in a) return { type: "create-registration-invite", seconds: a.seconds, uses: a.uses };
+  if ("deleteRegistrationInvite" in a) return { type: "delete-registration-invite", invite: a.deleteRegistrationInvite };
   if ("captcha" in a) return { type: "set-captcha", level: a.captcha };
   if ("serverName" in a) return { type: "set-server-name", name: a.serverName };
   if ("removeLogo" in a) return { type: "remove-logo" };

@@ -248,11 +248,11 @@ func TestUploadedBytesSince(t *testing.T) {
 func TestAccounts(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
-	a, err := s.CreateAccount(Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	a, err := s.CreateAccount(Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	if err != nil || a.ID == 0 {
 		t.Fatalf("create: %+v %v", a, err)
 	}
-	if _, err := s.CreateAccount(Account{Name: "alice", PasswordHash: "h2", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now); err != ErrNameTaken {
+	if _, err := s.CreateAccount(Account{Name: "alice", PasswordHash: "h2", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, ""); err != ErrNameTaken {
 		t.Fatalf("duplicate (other case): got %v, want ErrNameTaken", err)
 	}
 	got, err := s.AccountByName("ALICE")
@@ -267,7 +267,7 @@ func TestAccounts(t *testing.T) {
 func TestSessions(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
-	a, err := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	a, err := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,11 +292,11 @@ func TestSessions(t *testing.T) {
 func TestAccountNamesCompareByKey(t *testing.T) {
 	s := open(t)
 	now := time.Now()
-	if _, err := s.CreateAccount(Account{Name: "Émile", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now); err != nil {
+	if _, err := s.CreateAccount(Account{Name: "Émile", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, ""); err != nil {
 		t.Fatal(err)
 	}
 	// Lower case and decomposed: the same name.
-	if _, err := s.CreateAccount(Account{Name: "émile", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now); err != ErrNameTaken {
+	if _, err := s.CreateAccount(Account{Name: "émile", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, ""); err != ErrNameTaken {
 		t.Fatalf("got %v, want ErrNameTaken", err)
 	}
 	if a, err := s.AccountByName(" ÉMILE "); err != nil || a.Name != "Émile" {
@@ -307,7 +307,7 @@ func TestAccountNamesCompareByKey(t *testing.T) {
 func TestDeleteExpiredSessions(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
-	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	s.CreateSession("old", a.ID, now.Add(-time.Minute))
 	s.CreateSession("new", a.ID, now.Add(time.Hour))
 	if n, err := s.DeleteExpiredSessions(now); err != nil || n != 1 {
@@ -321,7 +321,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 func TestPasswordAndSessionsOfAnAccount(t *testing.T) {
 	s := open(t)
 	now := time.Now()
-	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	s.CreateSession("one", a.ID, now.Add(time.Hour))
 	s.CreateSession("two", a.ID, now.Add(time.Hour))
 	if err := s.ChangePassword(a.ID, "two", "stale", "h2", now); err != ErrNotFound {
@@ -1047,7 +1047,7 @@ func TestMessagesAfterHaveTheirFiles(t *testing.T) {
 func TestSessionExpires(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
-	acc, _ := s.CreateAccount(Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	acc, _ := s.CreateAccount(Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	s.CreateSession("h", acc.ID, now.Add(time.Hour))
 	if got, err := s.SessionExpires("h"); err != nil || !got.Equal(now.Add(time.Hour)) {
 		t.Fatalf("expires: %v %v", got, err)
@@ -1062,7 +1062,7 @@ func TestSessionExpires(t *testing.T) {
 func TestCreateSessionVouched(t *testing.T) {
 	s := open(t)
 	now := time.Now()
-	acc, err := s.CreateAccount(Account{Name: "alice", PasswordHash: "x", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	acc, err := s.CreateAccount(Account{Name: "alice", PasswordHash: "x", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -124,7 +124,7 @@ func TestStreamKeysOff(t *testing.T) {
 func TestGuestsHaveNoStreamKey(t *testing.T) {
 	a, srv := setup(t)
 	a.StreamKeys = true
-	acc, _ := a.Store.CreateAccount(store.Account{Name: "guest", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := a.Store.CreateAccount(store.Account{Name: "guest", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	a.Store.CreateSession(tokenHash("tok"), acc.ID, time.Now().Add(time.Hour))
 	if resp, _ := streamKeyRequest(t, srv.URL, "POST", &http.Cookie{Name: CookieName, Value: "tok"}); resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("a guest's key: %d", resp.StatusCode)

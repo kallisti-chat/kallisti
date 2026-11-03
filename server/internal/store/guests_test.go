@@ -10,17 +10,17 @@ import (
 func TestTemporaryAccounts(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
-	guest, err := s.CreateAccount(Account{Name: "visitor", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now)
+	guest, err := s.CreateAccount(Account{Name: "visitor", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := s.AccountByName("visitor"); !got.Temporary || got.PasswordHash != "" {
 		t.Fatalf("%+v", got)
 	}
-	old, _ := s.CreateAccount(Account{Name: "gone", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now.Add(-48*time.Hour))
-	kept, _ := s.CreateAccount(Account{Name: "kept", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now.Add(-48*time.Hour))
+	old, _ := s.CreateAccount(Account{Name: "gone", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now.Add(-48*time.Hour), "")
+	kept, _ := s.CreateAccount(Account{Name: "kept", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now.Add(-48*time.Hour), "")
 	// Seen lately: not idle.
-	back, _ := s.CreateAccount(Account{Name: "back", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now.Add(-48*time.Hour))
+	back, _ := s.CreateAccount(Account{Name: "back", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now.Add(-48*time.Hour), "")
 	if err := s.TouchAccount(back.ID, now.Add(-time.Hour)); err != nil {
 		t.Fatal(err)
 	}

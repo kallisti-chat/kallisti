@@ -810,7 +810,10 @@ func (s *Server) registerMsg(c *client, m *pb.UserState) {
 	}
 	name, hash := u.Name, u.Hash
 	s.mu.Unlock()
-	// A database query: not under mu.
+	// Database queries: not under mu.
+	if err == nil && s.cfg.AllowGuest != nil && !s.cfg.AllowGuest() {
+		err = deny(pb.PermissionDenied_Text, "This server is invite-only. Create an account with an admin invitation first.")
+	}
 	if err == nil && s.cfg.ReservedName != nil && s.cfg.ReservedName(names.Key(name)) {
 		err = deny(pb.PermissionDenied_UserName, "this name belongs to a Kallisti account")
 	}

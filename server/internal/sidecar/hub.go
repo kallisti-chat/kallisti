@@ -829,6 +829,9 @@ func (c *Conn) Handle(raw []byte) {
 	case "invites":
 		c.invites(*id, req)
 		return
+	case "set-invite-only", "registration-invites", "create-registration-invite", "delete-registration-invite":
+		c.registrationRequest(*id, req)
+		return
 	case "create-invite":
 		c.createInvite(*id, req)
 		return

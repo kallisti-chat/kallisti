@@ -157,6 +157,7 @@
   import { mirrorIds, withoutMirrors } from "../lib/mirrors";
   import { railBadge, tabTitle, type RailBadge } from "../lib/title";
   import { inviteTarget, messageLink, parseMessageLink, plainLink, type ChannelLink } from "../lib/messageLink";
+  import { registrationLink } from "../lib/registration";
   import { inviteLink, inviteOf, invitePlace, parseInviteLink } from "../lib/invites";
   import { webhookPicture, webhookUrl } from "../lib/webhooks";
   import WebhooksDialog from "./WebhooksDialog.svelte";
@@ -2099,6 +2100,12 @@
     logo={text.logo ? iconHref(connection.httpBase, 192, text.logo) : null}
     onUploadLogo={mayChangeGuests(server, text) ? connection.uploadLogo : undefined}
     onRemoveLogo={() => connection.request({ removeLogo: true })}
+    inviteOnly={mayChangeGuests(server, text) ? text.inviteOnly : null}
+    registrationInvites={text.registrationInvites}
+    onInviteOnly={mayChangeGuests(server, text) ? (on) => connection.request({ inviteOnly: on }) : undefined}
+    onLoadRegistrationInvites={() => connection.request({ registrationInvites: true })}
+    onCreateRegistrationInvite={async (seconds, uses) => registrationLink(site, await connection.createRegistrationInvite(seconds, uses))}
+    onDeleteRegistrationInvite={(id) => connection.request({ deleteRegistrationInvite: id })}
     guestsReadOnly={mayChangeGuests(server, text) ? text.guestsReadOnly : null}
     onGuestsReadOnly={(on) => connection.request({ guestsReadOnly: on })}
     captcha={text.captcha}

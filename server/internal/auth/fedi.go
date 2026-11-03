@@ -638,6 +638,9 @@ func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		return
 	}
+	if !a.mayRegister(w, c.Invite, false) {
+		return
+	}
 	key := a.cookie(r, signupCookie)
 	s, ok := a.Fedi.signups.get(key, a.Now(), false) // kept for another name after a clash
 	if !ok {
@@ -662,7 +665,7 @@ func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	acc, token, ok := a.newAccount(w, r, store.Account{Name: name}, s.handoff == "", func(acc store.Account) (store.Account, error) {
-		return a.Store.CreateFediAccount(acc, s.id, a.Now())
+		return a.Store.CreateFediAccount(acc, s.id, a.Now(), c.Invite)
 	})
 	if !ok {
 		return

@@ -251,7 +251,7 @@ func Open(path string) (*Store, error) {
 	// One writer at a time is all SQLite allows anyway, and an in-memory
 	// database exists only for one connection.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema + reactionsTable + ";" + statusTable + ";" + channelListTable + ";" + emojiTable + ";" + userEmojiTables + ";" + stickersTable + ";" + invitesTable + ";" + webhooksTable + ";" + pushTables + ";" + streamKeysTable + ";" + categoriesTable + ";" + threadsTable + ";" + fediTables + ";" + pollsTables + ";" + logoTable + ";" + accountServersTable + ";" + friendsTable + ";" + oauthTables); err != nil {
+	if _, err := db.Exec(schema + reactionsTable + ";" + statusTable + ";" + channelListTable + ";" + emojiTable + ";" + userEmojiTables + ";" + stickersTable + ";" + invitesTable + ";" + webhooksTable + ";" + pushTables + ";" + streamKeysTable + ";" + categoriesTable + ";" + threadsTable + ";" + fediTables + ";" + pollsTables + ";" + logoTable + ";" + accountServersTable + ";" + friendsTable + ";" + oauthTables + ";" + registrationTables); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
@@ -1434,10 +1434,6 @@ type Account struct {
 	// Temporary: a guest's account without a password, deleted after a
 	// day without a visit (see IdleTemporaryAccounts).
 	Temporary bool
-}
-
-func (s *Store) CreateAccount(a Account, at time.Time) (Account, error) {
-	return createAccount(s.db, a, at)
 }
 
 func createAccount(db interface {

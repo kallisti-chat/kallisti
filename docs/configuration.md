@@ -112,6 +112,20 @@ Used unless `MUMBLE_HOST` is set.
 - `RECORDING_MAX_MINUTES` (240) and `RECORDING_MAX_MB` (1024): one
   recording stops by itself at either limit.
 
+### Invite-only registration
+
+Admins turn it on in Server settings → Registration (off by default, also
+after an upgrade). Then a new account needs an account invitation link from
+an admin, and new guests (web and Mumble) are refused. Existing accounts,
+their sessions and registered Mumble users keep their access; guest
+accounts from before can still get a password. Channel invitations do not
+admit new accounts. It needs the built-in Mumble server.
+
+Bots that connect over Mumble (Jukebox, Kallisti TV) count as guests unless
+their certificate is registered: register them before the switch goes on
+(connected, a SuperUser or admin registers them in a Mumble client, or the
+bot registers itself), else they are refused.
+
 ### Streams from OBS (WHIP)
 
 Users stream from OBS 30 or newer (or another WHIP encoder) into their voice

@@ -761,7 +761,7 @@ func TestPlainCookiesMoveToHostOnly(t *testing.T) {
 	a, srv := setup(t)
 	a.TrustForwardedFor = true
 	a.Now = func() time.Time { return plainCookiesUntil.Add(-2 * time.Hour) }
-	acc, _ := a.Store.CreateAccount(store.Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := a.Store.CreateAccount(store.Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	a.Store.CreateSession(tokenHash("old"), acc.ID, plainCookiesUntil.Add(-time.Hour))
 	a.Store.CreateSession(tokenHash("new"), acc.ID, plainCookiesUntil.Add(time.Hour))
 	get := func(cookies ...*http.Cookie) *http.Response {

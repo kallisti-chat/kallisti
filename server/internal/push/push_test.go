@@ -69,8 +69,8 @@ func newService(t *testing.T) (*Service, *fakeSender, *time.Time) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
-	alice, _ := st.CreateAccount(store.Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock)
-	guest, _ := st.CreateAccount(store.Account{Name: "visitor", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, clock)
+	alice, _ := st.CreateAccount(store.Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock, "")
+	guest, _ := st.CreateAccount(store.Account{Name: "visitor", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, clock, "")
 	st.CreateSession("a1", alice.ID, clock.Add(time.Hour))
 	st.CreateSession("a2", alice.ID, clock.Add(time.Hour))
 	st.CreateSession("g1", guest.ID, clock.Add(time.Hour))

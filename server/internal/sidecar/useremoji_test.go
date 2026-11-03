@@ -78,7 +78,7 @@ func TestReadyHasPersonalEmojiAndRemovedImages(t *testing.T) {
 func TestOnlyRegisteredUsersGetPersonalEmojiTokens(t *testing.T) {
 	h := newHub(t, "general")
 	h.SetVoice(&fakeVoice{}, "")
-	h.store.CreateAccount(store.Account{Name: "Guest-1", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock)
+	h.store.CreateAccount(store.Account{Name: "Guest-1", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock, "")
 	anon := readyAs(t, h, 2, "anon")
 	guest := joinAs(t, h, registered(3, 7, "Guest-1"))
 	for _, c := range []*Conn{anon, guest} {

@@ -222,6 +222,7 @@ func (a *Service) ownSite(w http.ResponseWriter, r *http.Request, why string) bo
 type credentials struct {
 	Name     string `json:"name"`
 	Password string `json:"password"`
+	Invite   string `json:"invite"` // account invitation, never a channel invite
 	// A solved challenge (see challenge.go), for new accounts.
 	Challenge string `json:"challenge"`
 	Nonce     string `json:"nonce"`
@@ -267,6 +268,9 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/api/server" && r.Method == http.MethodGet:
 		info := map[string]any{"password": a.ServerPassword}
+		if on, err := a.Store.InviteOnly(); err == nil {
+			info["inviteOnly"] = on // else left out: the signup form finds out on submit
+		}
 		if a.ServerName != nil {
 			info["name"] = a.ServerName()
 		}
@@ -460,6 +464,9 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
 		return
 	}
+	if !a.mayRegister(w, c.Invite, false) {
+		return
+	}
 	name, ok := a.checkName(w, c.Name)
 	if !ok {
 		return
@@ -480,7 +487,9 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot create the account"})
 		return
 	}
-	if acc, token, ok := a.newAccount(w, r, store.Account{Name: name, PasswordHash: hash}, true, a.createAccount); ok {
+	if acc, token, ok := a.newAccount(w, r, store.Account{Name: name, PasswordHash: hash}, true, func(acc store.Account) (store.Account, error) {
+		return a.Store.CreateAccount(acc, a.Now(), c.Invite)
+	}); ok {
 		writeJSON(w, http.StatusCreated, withToken(map[string]any{"name": acc.Name}, token))
 	}
 }
@@ -488,6 +497,9 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 // guest makes a temporary account: no password, kept by its session
 // cookie, deleted after a day without a visit.
 func (a *Service) guest(w http.ResponseWriter, r *http.Request) {
+	if !a.mayRegister(w, "", true) {
+		return
+	}
 	if !a.ownSite(w, r, "join as a guest on the server's own site") {
 		return
 	}
@@ -544,7 +556,7 @@ func (a *Service) checkNameBy(w http.ResponseWriter, raw string, check func(stri
 }
 
 func (a *Service) createAccount(acc store.Account) (store.Account, error) {
-	return a.Store.CreateAccount(acc, a.Now())
+	return a.Store.CreateAccount(acc, a.Now(), "")
 }
 
 // newAccount stores an account with a new certificate (by create) and logs
@@ -560,6 +572,9 @@ func (a *Service) newAccount(w http.ResponseWriter, r *http.Request, acc store.A
 		return fail()
 	}
 	acc, err = create(acc)
+	if registrationError(w, err) {
+		return store.Account{}, "", false
+	}
 	if errors.Is(err, store.ErrNameTaken) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "this name is already taken"})
 		return store.Account{}, "", false

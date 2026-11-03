@@ -92,13 +92,16 @@ func linkFedi(tx *sql.Tx, accountID int64, id FediIdentity, at time.Time) error 
 }
 
 // CreateFediAccount stores a new account (without a password) with its
-// remote account.
-func (s *Store) CreateFediAccount(a Account, id FediIdentity, at time.Time) (Account, error) {
+// remote account, if the registration policy admits it (see admit).
+func (s *Store) CreateFediAccount(a Account, id FediIdentity, at time.Time, invite string) (Account, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return Account{}, err
 	}
 	defer tx.Rollback()
+	if err := admit(tx, invite, a.Temporary, at, true); err != nil {
+		return Account{}, err
+	}
 	if a, err = createAccount(tx, a, at); err != nil {
 		return Account{}, err
 	}

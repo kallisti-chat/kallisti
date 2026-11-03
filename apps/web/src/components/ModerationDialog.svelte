@@ -33,6 +33,8 @@
   import { describeRecording, type FinishedRecording } from "../lib/recording";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
+  import RegistrationSettings from "./RegistrationSettings.svelte";
+  import type { Invite } from "../lib/invites";
   import SaveStatus from "./SaveStatus.svelte";
 
   // Server settings for moderators and admins: the ban list, the
@@ -59,6 +61,12 @@
     logo = null,
     onUploadLogo,
     onRemoveLogo,
+    inviteOnly = null,
+    registrationInvites = null,
+    onInviteOnly,
+    onLoadRegistrationInvites,
+    onCreateRegistrationInvite,
+    onDeleteRegistrationInvite,
     guestsReadOnly = null,
     onGuestsReadOnly,
     captcha = "off",
@@ -103,6 +111,12 @@
     onUploadLogo?: (file: File) => Promise<void>;
     onRemoveLogo?: () => Promise<void>;
     // Admins: whether guests may only read (null: not ours to change).
+    inviteOnly?: boolean | null;
+    registrationInvites?: readonly Invite[] | null;
+    onInviteOnly?: (on: boolean) => Promise<void>;
+    onLoadRegistrationInvites?: () => Promise<void>;
+    onCreateRegistrationInvite?: (seconds: number, uses: number) => Promise<string>;
+    onDeleteRegistrationInvite?: (id: number) => Promise<void>;
     guestsReadOnly?: boolean | null;
     onGuestsReadOnly?: (on: boolean) => Promise<void>;
     // Admins (with the guests setting): the browser check for new accounts.
@@ -146,6 +160,7 @@
       users: rights.users,
       emoji: rights.emoji,
       guests: guestsReadOnly !== null,
+      registration: inviteOnly !== null && !!onInviteOnly,
       threads: !!onThreadArchive,
       rules: !!onLoadMessageRules,
       connections: !!onPollConnections,
@@ -349,6 +364,8 @@
           </p>
         {/if}
       {/if}
+    {:else if id === "registration" && inviteOnly !== null && onInviteOnly && onLoadRegistrationInvites && onCreateRegistrationInvite && onDeleteRegistrationInvite}
+      <RegistrationSettings on={inviteOnly} invites={registrationInvites} onSet={onInviteOnly} onLoad={onLoadRegistrationInvites} onCreate={onCreateRegistrationInvite} onDelete={onDeleteRegistrationInvite} />
     {:else if id === "guests"}
       <label class="check">
         <input type="checkbox" checked={guestsReadOnly === true} disabled={saves.guests.busy} onchange={(e) => setGuests(e.currentTarget)} />

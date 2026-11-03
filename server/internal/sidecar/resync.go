@@ -22,6 +22,9 @@ func (h *Hub) readyFor(id mumble.Identity) map[string]any {
 		ready["channelTimeouts"] = h.channelTimeoutsFor(id)
 		ready["private"], ready["members"] = h.privateFor(id), h.members()
 		ready["guestsReadOnly"], ready["captcha"] = h.voice.GuestsReadOnly(), h.voice.Captcha()
+		if on, err := h.store.InviteOnly(); err == nil {
+			ready["inviteOnly"] = on
+		}
 		ready["logo"] = h.logoVersion()
 		if h.LiveStreams != nil {
 			ready["streams"] = h.liveStreams(id)

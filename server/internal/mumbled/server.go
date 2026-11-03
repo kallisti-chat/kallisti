@@ -36,6 +36,9 @@ type Config struct {
 	// ReservedName reports names (as names.Key) that belong to Kallisti
 	// accounts: nobody else may use them. Nil: none.
 	ReservedName func(key string) bool
+	// AllowGuest checks admission for an unregistered connection. Registered
+	// identities and existing web accounts are checked first. Nil: open.
+	AllowGuest func() bool
 	// WebAccountExists: the Kallisti account with this name and certificate
 	// still exists (a guest account can be deleted while it connects).
 	// Nil: yes.
