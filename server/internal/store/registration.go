@@ -80,70 +80,60 @@ func (s *Store) DeleteRegistrationInvite(id int64) error {
 	return err
 }
 
-// CheckRegistration is an early check before expensive password/certificate
-// work. The transaction below checks again; this result never authorizes a write.
+// admit applies the policy: open admits everyone, an invitation is neither
+// checked nor used then; invite-only needs a valid invitation for a
+// permanent account. use: count one use (in the account's transaction, so a
+// failed creation gives it back).
+func admit(q interface {
+	QueryRow(string, ...any) *sql.Row
+	Exec(string, ...any) (sql.Result, error)
+}, token string, temporary bool, at time.Time, use bool) error {
+	var on bool
+	if err := q.QueryRow(`SELECT invite_only FROM registration_policy WHERE id = 1`).Scan(&on); err != nil {
+		return err
+	}
+	if !on {
+		return nil
+	}
+	if token == "" || temporary {
+		return ErrRegistrationInvite
+	}
+	var n int64
+	var err error
+	if use {
+		var r sql.Result
+		if r, err = q.Exec(`UPDATE registration_invites SET uses = uses + 1 WHERE token_hash = ? AND `+validInvite,
+			registrationHash(token), at.UnixMilli()); err == nil {
+			n, err = r.RowsAffected()
+		}
+	} else {
+		err = q.QueryRow(`SELECT count(*) FROM registration_invites WHERE token_hash = ? AND `+validInvite,
+			registrationHash(token), at.UnixMilli()).Scan(&n)
+	}
+	if err == nil && n != 1 {
+		return ErrRegistrationInvite
+	}
+	return err
+}
+
+// CheckRegistration is the early check, before the expensive password or
+// certificate work; the creation checks again.
 func (s *Store) CheckRegistration(token string, temporary bool, at time.Time) error {
-	var on bool
-	if err := s.db.QueryRow(`SELECT invite_only FROM registration_policy WHERE id = 1`).Scan(&on); err != nil {
-		return err
-	}
-	if token == "" {
-		if on {
-			return ErrRegistrationInvite
-		}
-		return nil
-	}
-	if temporary {
-		return ErrRegistrationInvite
-	}
-	var n int
-	err := s.db.QueryRow(`SELECT count(*) FROM registration_invites WHERE token_hash = ? AND `+validInvite,
-		registrationHash(token), at.UnixMilli()).Scan(&n)
-	if err == nil && n != 1 {
-		return ErrRegistrationInvite
-	}
-	return err
+	return admit(s.db, token, temporary, at, false)
 }
 
-// admitAccount and account creation run in one transaction. Failed account
-// creation rolls back the use, and toggling the policy cannot race the write.
-func admitAccount(tx *sql.Tx, token string, temporary bool, at time.Time) error {
-	var on bool
-	if err := tx.QueryRow(`SELECT invite_only FROM registration_policy WHERE id = 1`).Scan(&on); err != nil {
-		return err
-	}
-	if token == "" {
-		if on {
-			return ErrRegistrationInvite
-		}
-		return nil
-	}
-	if temporary {
-		return ErrRegistrationInvite
-	}
-	r, err := tx.Exec(`UPDATE registration_invites SET uses = uses + 1 WHERE token_hash = ? AND `+validInvite,
-		registrationHash(token), at.UnixMilli())
-	if err != nil {
-		return err
-	}
-	n, err := r.RowsAffected()
-	if err == nil && n != 1 {
-		return ErrRegistrationInvite
-	}
-	return err
-}
-
-func (s *Store) CreateAccountWithInvite(a Account, at time.Time, token string) (Account, error) {
+// CreateAccount stores a new account if the registration policy admits it
+// (see admit).
+func (s *Store) CreateAccount(a Account, at time.Time, invite string) (Account, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return Account{}, err
 	}
 	defer tx.Rollback()
-	if err := admitAccount(tx, token, a.Temporary, at); err != nil {
+	if err := admit(tx, invite, a.Temporary, at, true); err != nil {
 		return Account{}, err
 	}
-	a, err = createAccount(tx, a, at)
-	if err != nil {
+	if a, err = createAccount(tx, a, at); err != nil {
 		return Account{}, err
 	}
 	return a, tx.Commit()

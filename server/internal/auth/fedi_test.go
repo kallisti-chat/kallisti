@@ -792,7 +792,7 @@ func TestFediSignupWithTheRemoteName(t *testing.T) {
 		t.Fatalf("unlink of a remote name: %d", resp.StatusCode)
 	}
 	// Taken already (an account of that name from before): the name step.
-	a.Store.CreateAccount(store.Account{Name: "Bob@" + host, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	a.Store.CreateAccount(store.Account{Name: "Bob@" + host, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	b2 := newBrowser(t, srv)
 	wantRedirect(t, b2.fediFlow(f, map[string]any{"instance": host}, "Bob"), home+"?fedi=register")
 	if resp, _ := b2.do("POST", "/api/fedi/signup", map[string]any{}); resp.StatusCode != http.StatusConflict {
@@ -852,7 +852,7 @@ func TestEndBlockedHomes(t *testing.T) {
 	}
 	// An account with a password, linked to the same home: it stays.
 	now := time.Now()
-	bob, _ := a.Store.CreateAccount(store.Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	bob, _ := a.Store.CreateAccount(store.Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	a.Store.CreateSession(tokenHash("bob"), bob.ID, now.Add(time.Hour))
 	if err := a.Store.LinkFedi(bob.ID, tokenHash("bob"), store.FediIdentity{Host: host, RemoteID: "bob-id", Handle: "@bob@" + host}, now); err != nil {
 		t.Fatal(err)

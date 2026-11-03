@@ -665,7 +665,7 @@ func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	acc, token, ok := a.newAccount(w, r, store.Account{Name: name}, s.handoff == "", func(acc store.Account) (store.Account, error) {
-		return a.Store.CreateFediAccountWithInvite(acc, s.id, a.Now(), c.Invite)
+		return a.Store.CreateFediAccount(acc, s.id, a.Now(), c.Invite)
 	})
 	if !ok {
 		return

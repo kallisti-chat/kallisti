@@ -89,7 +89,7 @@ func TestFriendsChecks(t *testing.T) {
 
 func TestGuestsHaveNoFriendsList(t *testing.T) {
 	a, srv := setup(t)
-	acc, _ := a.Store.CreateAccount(store.Account{Name: "guest", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := a.Store.CreateAccount(store.Account{Name: "guest", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	a.Store.CreateSession(tokenHash("tok"), acc.ID, time.Now().Add(time.Hour))
 	c := &http.Cookie{Name: CookieName, Value: "tok"}
 	if code, _ := call(t, srv, "POST", "/api/friends", "https://app.example", map[string]any{"origin": "https://chat.bob.org", "user": 1, "name": "bob"}, c); code != http.StatusForbidden {

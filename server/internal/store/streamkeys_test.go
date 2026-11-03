@@ -8,8 +8,8 @@ import (
 func TestStreamKeys(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
-	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
-	b, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+	b, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	if has, err := s.HasStreamKey(a.ID); err != nil || has {
 		t.Fatalf("a key before one was made: %v %v", has, err)
 	}

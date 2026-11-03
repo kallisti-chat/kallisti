@@ -9,7 +9,7 @@ import (
 func TestOAuthProvider(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
-	acc, _ := s.CreateAccount(Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	acc, _ := s.CreateAccount(Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	const redirect = "https://b.example/api/fedi/callback"
 	// Consent per redirect URI.
 	if ok, _ := s.HasOAuthGrant(acc.ID, redirect); ok {
@@ -40,8 +40,8 @@ func TestOAuthProvider(t *testing.T) {
 func TestOAuthGrantsListAndRevoke(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
-	acc, _ := s.CreateAccount(Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
-	other, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	acc, _ := s.CreateAccount(Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+	other, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	const b, c = "https://b.example/api/fedi/callback", "https://c.example/api/fedi/callback"
 	s.GrantOAuth(acc.ID, b, now)
 	s.GrantOAuth(acc.ID, c, now.Add(time.Minute))

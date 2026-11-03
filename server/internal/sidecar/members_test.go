@@ -30,7 +30,7 @@ func (f *fakeVoice) setOnline(online map[uint32]OnlineUser) {
 func membersHub(t *testing.T) *Hub {
 	t.Helper()
 	h := newHub(t, "general")
-	if _, err := h.store.CreateAccount(store.Account{Name: "Guest-1", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock); err != nil {
+	if _, err := h.store.CreateAccount(store.Account{Name: "Guest-1", Temporary: true, CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock, ""); err != nil {
 		t.Fatal(err)
 	}
 	h.SetVoice(&fakeVoice{names: map[uint32]string{20: "bob", 10: "alice", 30: "guest-1"}, bios: map[uint32]string{20: "<b>hi</b>"}, pictures: map[uint32]bool{10: true}}, "")

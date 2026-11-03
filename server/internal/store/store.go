@@ -1436,10 +1436,6 @@ type Account struct {
 	Temporary bool
 }
 
-func (s *Store) CreateAccount(a Account, at time.Time) (Account, error) {
-	return s.CreateAccountWithInvite(a, at, "")
-}
-
 func createAccount(db interface {
 	Exec(string, ...any) (sql.Result, error)
 }, a Account, at time.Time) (Account, error) {

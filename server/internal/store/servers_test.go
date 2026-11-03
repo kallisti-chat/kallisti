@@ -10,8 +10,8 @@ import (
 func TestAccountServers(t *testing.T) {
 	s := open(t)
 	now := time.Now()
-	acc, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
-	other, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	acc, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+	other, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	origins := func(id int64) []string {
 		list, err := s.AccountServers(id)
 		if err != nil {

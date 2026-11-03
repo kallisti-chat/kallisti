@@ -106,7 +106,7 @@ func TestProviderCodesAndTokens(t *testing.T) {
 		t.Fatal(err)
 	}
 	other, _ := client.RegisterApp(ctx, inst, "C", "https://c.example/api/fedi/callback", "")
-	acc, _ := p.Store.CreateAccount(store.Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := p.Store.CreateAccount(store.Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	p.Store.GrantOAuth(acc.ID, redirect, time.Now())
 	code := func(c fedi.App, uri, verifier string) string {
 		return p.Provider.issue(acc.ID, c.ClientID, uri, "read:accounts", fedi.Challenge(verifier), time.Now())
@@ -213,7 +213,7 @@ func TestProviderRefusals(t *testing.T) {
 	app, _ := client.RegisterApp(ctx, inst, "B", "https://b.example/api/fedi/callback", "")
 	query := url.Values{"client_id": {app.ClientID}, "redirect_uri": {"https://b.example/api/fedi/callback"}, "response_type": {"code"}, "state": {"s"}, "code_challenge": {fedi.Challenge(fedi.NewVerifier())}, "code_challenge_method": {"S256"}}.Encode()
 	ask := func(name string, temporary bool) int {
-		acc, err := p.Store.CreateAccount(store.Account{Name: name, PasswordHash: "h", Temporary: temporary, CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+		acc, err := p.Store.CreateAccount(store.Account{Name: name, PasswordHash: "h", Temporary: temporary, CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -260,7 +260,7 @@ func TestProviderRefusals(t *testing.T) {
 // for an account here cannot make it vouch for that account.
 func TestConsentOnlyOnTheOwnSite(t *testing.T) {
 	p, pSrv, _, _ := providerSetup(t)
-	acc, _ := p.Store.CreateAccount(store.Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := p.Store.CreateAccount(store.Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	p.Store.CreateSession(tokenHash("tok"), acc.ID, time.Now().Add(time.Hour))
 	query := url.Values{"client_id": {clientIDFor("https://b.example/api/fedi/callback")}, "redirect_uri": {"https://b.example/api/fedi/callback"}, "response_type": {"code"}, "state": {"s"}, "code_challenge": {fedi.Challenge(fedi.NewVerifier())}, "code_challenge_method": {"S256"}}.Encode()
 	for _, origin := range []string{"https://home.example", ""} {
@@ -284,7 +284,7 @@ func TestConsentOnlyOnTheOwnSite(t *testing.T) {
 // the grant and its tokens go, the next login there asks again.
 func TestAllowedSites(t *testing.T) {
 	p, pSrv, _, _ := providerSetup(t)
-	acc, _ := p.Store.CreateAccount(store.Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := p.Store.CreateAccount(store.Account{Name: "lain", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	p.Store.CreateSession(tokenHash("tok"), acc.ID, time.Now().Add(time.Hour))
 	const b, c = "https://b.example/api/fedi/callback", "https://c.example/api/fedi/callback"
 	p.Store.GrantOAuth(acc.ID, b, time.Now().Add(-time.Hour))

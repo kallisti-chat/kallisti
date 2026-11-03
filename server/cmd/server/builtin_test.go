@@ -27,7 +27,7 @@ func TestWebAccountsJoinTheBuiltInServer(t *testing.T) {
 	}
 	defer db.Close()
 	certPEM, keyPEM, _ := certs.Generate("alice")
-	db.CreateAccount(store.Account{Name: "alice", PasswordHash: "x", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now())
+	db.CreateAccount(store.Account{Name: "alice", PasswordHash: "x", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now(), "")
 	b, err := startBuiltin(&config.Builtin{Listen: "127.0.0.1:0", ServerName: "Test", MaxUsers: 10, CertDir: t.TempDir()}, db, nil, "")
 	if err != nil {
 		t.Fatal(err)
@@ -75,8 +75,8 @@ func TestAccountLoginChecksTheAccountPassword(t *testing.T) {
 	defer db.Close()
 	certPEM, keyPEM, _ := certs.Generate("alice")
 	hash, _ := password.Hash("secret pw")
-	alice, _ := db.CreateAccount(store.Account{Name: "Alice", PasswordHash: hash, CertPEM: certPEM, KeyPEM: keyPEM}, time.Now())
-	db.CreateAccount(store.Account{Name: "gus", CertPEM: certPEM, KeyPEM: keyPEM, Temporary: true}, time.Now())
+	alice, _ := db.CreateAccount(store.Account{Name: "Alice", PasswordHash: hash, CertPEM: certPEM, KeyPEM: keyPEM}, time.Now(), "")
+	db.CreateAccount(store.Account{Name: "gus", CertPEM: certPEM, KeyPEM: keyPEM, Temporary: true}, time.Now(), "")
 	login := accountLogin(db)
 	if a, ok := login("alice", "secret pw"); !ok || a == nil || a.Name != "Alice" || a.CertHash != accountCertHash(alice) {
 		t.Fatalf("right password: %+v %v", a, ok)
@@ -102,7 +102,7 @@ func TestBuiltinUsesSavedRegistrationPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.CreateAccount(store.Account{Name: "alice", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now()); err != nil {
+	if _, err := db.CreateAccount(store.Account{Name: "alice", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now(), ""); err != nil {
 		t.Fatal(err)
 	}
 	cert, err := certs.Load(certPEM, keyPEM)

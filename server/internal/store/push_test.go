@@ -10,9 +10,9 @@ import (
 func TestPushSubscriptions(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
-	alice, _ := s.CreateAccount(Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
-	bob, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
-	guest, _ := s.CreateAccount(Account{Name: "visitor", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now)
+	alice, _ := s.CreateAccount(Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+	bob, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+	guest, _ := s.CreateAccount(Account{Name: "visitor", CertPEM: []byte("c"), KeyPEM: []byte("k"), Temporary: true}, now, "")
 	for hash, acc := range map[string]int64{"a1": alice.ID, "a2": alice.ID, "b1": bob.ID, "g1": guest.ID} {
 		if err := s.CreateSession(hash, acc, now.Add(time.Hour)); err != nil {
 			t.Fatal(err)
@@ -104,7 +104,7 @@ func TestPushSubscriptions(t *testing.T) {
 func TestPushSubscriptionsPerAccountAreLimited(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
-	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now)
+	a, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	s.CreateSession("a1", a.ID, now.Add(time.Hour))
 	for i := range maxPushSubscriptions + 2 {
 		sub := PushSubscription{Endpoint: "https://push.example/" + string(rune('a'+i)), P256dh: "p", Auth: "a"}

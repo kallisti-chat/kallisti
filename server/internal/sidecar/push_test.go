@@ -98,7 +98,7 @@ func pushHub(t *testing.T) (*Hub, *fakeVoice, *Conn, *Conn, func() []string) {
 	v.names = map[uint32]string{10: "mod", 20: "bob", 30: "carol", 40: "alice"}
 	v.online = map[uint32]OnlineUser{10: {"mod", 1}, 30: {"carol", 3}}
 	for i, name := range []string{"bob", "alice", "mod"} {
-		acc, err := h.store.CreateAccount(store.Account{Name: name, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock)
+		acc, err := h.store.CreateAccount(store.Account{Name: name, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock, "")
 		if err != nil {
 			t.Fatal(err)
 		}

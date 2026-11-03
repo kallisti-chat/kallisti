@@ -9,7 +9,7 @@ import (
 
 func TestFriends(t *testing.T) {
 	s := open(t)
-	acc, _ := s.CreateAccount(Account{Name: "alice", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now())
+	acc, _ := s.CreateAccount(Account{Name: "alice", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
 	if list, err := s.Friends(acc.ID); err != nil || len(list) != 0 {
 		t.Fatalf("none yet: %v %v", list, err)
 	}

@@ -491,7 +491,7 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if acc, token, ok := a.newAccount(w, r, store.Account{Name: name, PasswordHash: hash}, true, func(acc store.Account) (store.Account, error) {
-		return a.Store.CreateAccountWithInvite(acc, a.Now(), c.Invite)
+		return a.Store.CreateAccount(acc, a.Now(), c.Invite)
 	}); ok {
 		writeJSON(w, http.StatusCreated, withToken(map[string]any{"name": acc.Name}, token))
 	}
@@ -559,7 +559,7 @@ func (a *Service) checkNameBy(w http.ResponseWriter, raw string, check func(stri
 }
 
 func (a *Service) createAccount(acc store.Account) (store.Account, error) {
-	return a.Store.CreateAccount(acc, a.Now())
+	return a.Store.CreateAccount(acc, a.Now(), "")
 }
 
 // newAccount stores an account with a new certificate (by create) and logs
