@@ -72,7 +72,17 @@
   ];
   // An account invitation opens signup; a guest who tried an account's
   // name gets the Log in tab right away.
-  let accountInvite = $state(untrack(() => !desktop ? registrationToken(location.href, api.base || location.origin) ?? "" : ""));
+  // From the address, or kept over a fediverse login (see fediLogin), once.
+  const keptInvite = () => {
+    const kept = safeGet(tabStorage(), "kallisti-account-invite") ?? "";
+    if (kept) safeSet(tabStorage(), "kallisti-account-invite", "");
+    return kept;
+  };
+  let accountInvite = $state(untrack(() => {
+    if (desktop) return "";
+    const origin = api.base || location.origin;
+    return registrationToken(location.href, origin) ?? registrationToken(keptInvite(), origin) ?? "";
+  }));
   let inviteOnly = $state(false);
   const inviteToken = () => {
     if (!accountInvite.trim()) return undefined;
@@ -213,8 +223,10 @@
       const url = await api.fediStart(instance.trim());
       safeSet(localStore(), "fediInstance", instance.trim());
       // A link to come back to (an invite here, a ?join): kept over the
-      // login's pages (see App keptInvite); none: none.
-      safeSet(tabStorage(), "kallisti-invite", token ? `/register#${token}` : keep ?? (invite ? location.pathname : ""));
+      // login's pages (see App keptInvite); none: none. An account
+      // invitation beside it, for the signup after the login.
+      safeSet(tabStorage(), "kallisti-invite", keep ?? (invite ? location.pathname : ""));
+      safeSet(tabStorage(), "kallisti-account-invite", token ?? "");
       location.assign(url); // to the instance, and back to the server
     } catch (err) {
       apiError = err instanceof Error ? err.message : String(err);

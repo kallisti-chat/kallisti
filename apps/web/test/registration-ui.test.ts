@@ -21,7 +21,7 @@ const input = (selector: string, value: string) => {
   flushSync();
 };
 
-const login = (closed: boolean | undefined, token?: string, federated = false) => {
+const login = (closed: boolean | undefined, token?: string, federated = false, extra: Record<string, unknown> = {}) => {
   if (token) history.replaceState(null, "", `/register#${token}`);
   const requests: { path: string; body: Record<string, unknown> }[] = [];
   const fetcher = (async (url: string, init: RequestInit) => {
@@ -29,7 +29,8 @@ const login = (closed: boolean | undefined, token?: string, federated = false) =
     requests.push({ path: url, body });
     let result: unknown = {};
     if (url === "/api/server") result = { password: false, name: "Friends", ...(closed !== undefined && { inviteOnly: closed }) };
-    if (url === "/api/fedi") result = { enabled: false };
+    if (url === "/api/fedi") result = { enabled: "keep" in extra };
+    if (url === "/api/fedi/start") result = { url: "https://home.example/oauth" };
     if (url === "/api/fedi/signup") result = init.body ? { name: "alice" } : { name: "alice", handle: "@alice@home.example", remote: "alice@home.example" };
     if (url === "/api/accounts") result = { name: "alice" };
     if (url === "/api/me") result = { name: "alice", temporary: false };
@@ -38,7 +39,7 @@ const login = (closed: boolean | undefined, token?: string, federated = false) =
   const onConnect = vi.fn();
   mounted.push(mount(Login, { target: document.body, props: {
     api: createAccountsApi("", fetcher), error: null, account: null,
-    onAccountChange: vi.fn(), onConnect, fediSignup: federated, onFediSignupDone: vi.fn(),
+    onAccountChange: vi.fn(), onConnect, fediSignup: federated, onFediSignupDone: vi.fn(), ...extra,
   } }));
   flushSync();
   return { requests, onConnect };
@@ -64,11 +65,24 @@ describe("invite-only user interface", () => {
     expect(location.hash).toBe("");
   });
 
-  it("carries the restored invitation into first-time federated signup", async () => {
+  it("keeps a waiting channel link beside the invitation over a fediverse login", async () => {
+    const token = "e".repeat(32);
+    const { requests } = login(true, token, false, { keep: "/?join=5" });
+    await vi.waitFor(() => expect(document.querySelector('input[aria-describedby="fedi-hint"]')).not.toBeNull());
+    input('input[aria-describedby="fedi-hint"]', "home.example");
+    document.querySelector('input[aria-describedby="fedi-hint"]')!.closest("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(requests.some((r) => r.path === "/api/fedi/start")).toBe(true));
+    await vi.waitFor(() => expect(sessionStorage.getItem("kallisti-account-invite")).toBe(token));
+    expect(sessionStorage.getItem("kallisti-invite")).toBe("/?join=5");
+  });
+
+  it("carries the kept invitation into first-time federated signup", async () => {
     const token = "c".repeat(32);
-    const { requests, onConnect } = login(true, token, true);
+    sessionStorage.setItem("kallisti-account-invite", token);
+    const { requests, onConnect } = login(true, undefined, true);
     await vi.waitFor(() => expect(onConnect).toHaveBeenCalled());
     expect(requests.find((r) => r.path === "/api/fedi/signup" && "invite" in r.body)?.body).toEqual({ name: "", invite: token });
+    expect(sessionStorage.getItem("kallisti-account-invite")).toBeFalsy(); // once
   });
 
   it("creates single-use invitations by default and shows the returned link", async () => {
