@@ -2622,3 +2622,7 @@ Review fixes on top (a subagent and Astra reviewed the PR):
 ## Three pictures: a gap in the grid
 
 Three pictures show as one big cell (two rows high) and two small ones. The big cell had no aspect ratio, so its picture's own height sized the rows: a portrait first picture (1080×1920) made the grid 613 px high instead of 345, and the two small pictures sat at the top of their rows with a gap between (the user's screenshot on test). Now the big cell has `contain: size`: the small cells set the rows, the big picture is cropped to them. Measured headless in Chromium before and after (a seeded message with a portrait picture first); no unit test, it is layout only. Firefox and WebKit did not start on the Mac; `contain: size` is in both for years.
+
+## OBS: how to turn off B-frames
+
+A user's OBS 30.1.2 stream (x264, profile baseline) showed a white window as pink with a purple bar until they put `bframes=0` in "x264 Options". The dialog said only "no B-frames", and OBS's x264 has no field for them. Now the dialog and the docs say it per encoder: x264 `bframes=0` in "x264 Options"; NVENC, QuickSync, AMF: B-Frames 0. The server still forwards the video as it comes.

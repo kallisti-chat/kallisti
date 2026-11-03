@@ -149,7 +149,8 @@ shows the server address
   connection fails, or the user leaves the channel or disconnects.
 - OBS must send H.264 (packetization-mode 1) and Opus. The server forwards
   the video as it comes: viewers need a browser that decodes H.264, and the
-  stream should have no B-frames, a keyframe every 1 or 2 seconds, and
+  stream should have no B-frames (x264: `bframes=0` in "x264 Options";
+  NVENC, QuickSync, AMF: B-Frames 0), a keyframe every 1 or 2 seconds, and
   at most 4096 pixels per side (larger streams are refused). Pictures above
   8 Mbit/s are dropped; at most 20 streams from OBS at once.
 

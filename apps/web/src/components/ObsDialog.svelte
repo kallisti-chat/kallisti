@@ -57,8 +57,12 @@
     Bearer Token: your stream key.
   </p>
   <p>
-    Settings → Output: H.264 video, keyframe interval 1 or 2 s, profile baseline or main, no B-frames (B-frames make the
-    picture jump: we forward the video as it is), 1080p and 8 Mbit/s at most.
+    Settings → Output (Advanced): H.264 video, keyframe interval 1 or 2 s, profile baseline or main, 1080p and 8 Mbit/s
+    at most.
+  </p>
+  <p>
+    No B-frames (we forward the video as it is; with them the picture breaks up or turns pink): with x264, type
+    <code>bframes=0</code> in "x264 Options"; with NVENC, QuickSync or AMF, set B-Frames to 0.
   </p>
   {#if newKey}
     <p class="key">
