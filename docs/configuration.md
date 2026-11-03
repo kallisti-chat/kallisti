@@ -70,46 +70,6 @@ brackets.
 
 Used unless `MUMBLE_HOST` is set.
 
-### Invite-only registration
-
-Admins can open **Server settings → Registration**, enable **Invite-only
-server**, and create account invitation links. The setting is saved in the
-database and takes effect without a restart. New installations and upgrades
-keep public registration until an admin enables it.
-
-In invite-only mode, creating a password account or a first-time federated
-account requires a valid invitation. New temporary guest accounts and new
-unregistered Mumble connections are refused. Existing accounts (including
-temporary accounts until they expire), their sessions, and registered Mumble
-users keep working. Connected anonymous Mumble guests are not disconnected,
-but cannot register after the switch is enabled; after disconnecting, they
-need an invited account to return. Existing permissions and bans still apply.
-
-Account invitations default to one use and seven days. Admins may change
-those limits and revoke a link. Creating an account consumes one use; a
-failed account insertion does not. Revoking a link prevents future signups and does not
-remove accounts already created. Only the link's hash is stored, so copy a
-new link before closing the Registration page. Its recipient can create an
-account in the browser, then use that account in the desktop or Mumble client.
-The login screen also accepts a pasted account invitation when registration
-is invite-only.
-
-Channel invitations remain separate: they grant channel membership to a user
-who can already join the server. They do not allow account creation, and an
-account invitation does not grant access to private channels.
-
-This control requires the built-in Mumble server. `MUMBLE_PASSWORD` alone
-does not close account registration. Turning invite-only off restores public
-registration and guest admission. Rolling back to a server version without
-this feature also removes enforcement; do not use such a rollback to keep a
-server private. The setting controls admission, not public file URLs or
-already connected guests.
-
-For a disposable local server and acceptance checks, see
-[testing invite-only registration](testing-invite-only.md).
-
-### Environment settings
-
 - `MUMBLE_LISTEN` (`:64738`, TCP and UDP): Mumble clients and the desktop
   app.
 - `SERVER_NAME` (`Kallisti`), `MUMBLE_WELCOME` (the welcome text).
@@ -151,6 +111,20 @@ For a disposable local server and acceptance checks, see
   `RECORDING_KEEP_DAYS` (7).
 - `RECORDING_MAX_MINUTES` (240) and `RECORDING_MAX_MB` (1024): one
   recording stops by itself at either limit.
+
+### Invite-only registration
+
+Admins turn it on in Server settings → Registration (off by default, also
+after an upgrade). Then a new account needs an account invitation link from
+an admin, and new guests (web and Mumble) are refused. Existing accounts,
+their sessions and registered Mumble users keep their access; guest
+accounts from before can still get a password. Channel invitations do not
+admit new accounts. It needs the built-in Mumble server.
+
+Bots that connect over Mumble (Jukebox, Kallisti TV) count as guests unless
+their certificate is registered: register them before the switch goes on
+(connected, a SuperUser or admin registers them in a Mumble client, or the
+bot registers itself), else they are refused.
 
 ### Streams from OBS (WHIP)
 
