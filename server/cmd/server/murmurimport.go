@@ -141,6 +141,7 @@ func importMurmur(args []string, getenv func(string) string, out io.Writer) erro
 // certs.LoadOrCreateServer), the old ones kept beside them.
 func installCert(dir, certPEM, keyPEM string, out io.Writer) error {
 	stamp := time.Now().Format("20060102-150405")
+	kept := false
 	for _, f := range []struct {
 		name, data string
 		mode       os.FileMode
@@ -150,11 +151,15 @@ func installCert(dir, certPEM, keyPEM string, out io.Writer) error {
 			if err := os.Rename(path, path+".before-murmur-import-"+stamp); err != nil {
 				return err
 			}
+			kept = true
 		}
 		if err := os.WriteFile(path, []byte(f.data), f.mode); err != nil {
 			return err
 		}
 	}
-	fmt.Fprintf(out, "Mumble certificate: the Murmur server's, in %s (the old one kept as *.before-murmur-import-%s)\n", dir, stamp)
+	fmt.Fprintf(out, "Mumble certificate: the Murmur server's, in %s\n", dir)
+	if kept {
+		fmt.Fprintf(out, "  (the old one kept as *.before-murmur-import-%s)\n", stamp)
+	}
 	return nil
 }

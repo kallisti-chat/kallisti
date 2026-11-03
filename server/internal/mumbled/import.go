@@ -16,8 +16,8 @@ import (
 // Channel ids count from 1 among themselves (parent 0: root); DB.Import
 // gives them ids after the existing channels. User ids stay.
 type Import struct {
-	// Root: the server's root (ACLs, groups, description) as ours; nil:
-	// ours stays and the channels go under it.
+	// Root: the server's root (ACLs, groups, description) as ours, made a
+	// lobby; nil: ours stays and the channels go under it.
 	Root       *Channel
 	Channels   []Channel
 	Users      []ImportUser
@@ -90,13 +90,14 @@ func (d *DB) Import(imp Import) error {
 		return err
 	}
 	if imp.Root != nil {
+		// The server's root, as a lobby (see InitLobby, which then adds no
+		// General); the moderator role at the next start (InitRoles).
 		root := *imp.Root
 		root.ID, root.Parent, root.Name = 0, 0, "Root"
+		root.ACLs = append(slices.Clone(root.ACLs), ACL{ApplyHere: true, Group: "all", Deny: Speak})
 		if err := saveChannel(tx, &root); err != nil {
 			return err
 		}
-		// Root as the server had it: no lobby; the moderator role at the
-		// next start (InitRoles).
 		if err := setMetaTx(tx, "lobby", 1); err != nil {
 			return err
 		}

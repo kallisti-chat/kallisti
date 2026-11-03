@@ -2,6 +2,7 @@ package mumbled
 
 import (
 	"net/netip"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -115,8 +116,9 @@ func mustChannels(t *testing.T, db *DB) []Channel {
 	return cs
 }
 
-// One server as the whole server: its root is Kallisti's root, no lobby
-// is added, and the moderator role comes back at the next start.
+// One server as the whole server: its root is Kallisti's root, with the
+// lobby (no General added), and the moderator role comes back at the next
+// start.
 func TestImportWithTheServersRoot(t *testing.T) {
 	db := testDB(t) // before the first start
 	imp := importData()
@@ -140,10 +142,8 @@ func TestImportWithTheServersRoot(t *testing.T) {
 	if root.Description != "welcome" || root.Groups["moderator"] == nil || root.Groups["admin"] == nil {
 		t.Errorf("root %+v", root)
 	}
-	for _, a := range root.ACLs {
-		if a.Deny&Speak != 0 && a.Group == "all" {
-			t.Error("lobby added")
-		}
+	if !slices.ContainsFunc(root.ACLs, func(a ACL) bool { return a.Group == "all" && a.Deny&Speak != 0 && a.ApplyHere && !a.ApplySubs }) {
+		t.Errorf("no lobby: %+v", root.ACLs)
 	}
 	if name, _ := db.ServerName(); name != "Old server" {
 		t.Errorf("name %q", name)
