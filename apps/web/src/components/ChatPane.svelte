@@ -2768,8 +2768,11 @@
   .cell.wide {
     aspect-ratio: 2;
   }
+  /* Two rows high (three pictures): the rows beside it set its height, its
+     picture does not (a portrait one stretched both rows apart). */
   .cell.tall {
     aspect-ratio: auto;
+    contain: size;
   }
   .cell .image {
     display: block;
