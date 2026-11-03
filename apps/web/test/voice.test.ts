@@ -47,6 +47,8 @@ describe("saved self state", () => {
 describe("soundHint", () => {
   it("asks for a click only in voice while the browser holds the sound back", () => {
     expect(soundHint("suspended", true)).toBe(true);
+    expect(soundHint("interrupted", true)).toBe(true);
+    expect(soundHint("interrupted", false)).toBe(false);
     expect(soundHint("suspended", false)).toBe(false);
     expect(soundHint("running", true)).toBe(false);
     expect(soundHint("closed", true)).toBe(false);

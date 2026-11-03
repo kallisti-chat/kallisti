@@ -46,6 +46,17 @@ services:
       WHIP_PUBLIC_IP: "${WHIP_PUBLIC_IP:-${DOMAIN}}"
     volumes:
       - kallisti-data:/data # database, uploads, server certificate
+      # Optional: store uploads (including media previews) on a separate disk.
+      # Keep kallisti-data above for the database, backups and certificates.
+      # Create the host directory first, owned by PUID:PGID (default 1000:1000).
+      # For an existing server, stop Kallisti and copy the contents of
+      # /data/uploads into it first: an empty mount hides existing uploads.
+      # Back up this directory separately; database backups exclude uploads.
+      # - type: bind
+      #   source: /mnt/media/kallisti/uploads
+      #   target: /data/uploads
+      #   bind:
+      #     create_host_path: false
 
   caddy:
     image: docker.io/library/caddy:2.11.7-alpine

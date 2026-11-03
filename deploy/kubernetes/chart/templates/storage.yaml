@@ -27,3 +27,22 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storage.caddySize | quote }}
+
+# Optional: split uploads from the main app data store.
+# Uncomment this PVC and both uploads blocks in deployment.yaml.
+# Choose a capacity and StorageClass for your media; see the chart README
+# for migration, ownership and backup requirements before enabling it.
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: {{ .Release.Name }}-uploads
+#   annotations:
+#     helm.sh/resource-policy: keep
+# spec:
+#   accessModes: [ReadWriteOnce]
+#   # Omit storageClassName to use the cluster default, or set a media class:
+#   # storageClassName: media
+#   resources:
+#     requests:
+#       storage: 100Gi # Example only; size for your media usage.

@@ -2598,3 +2598,11 @@ For tests in a realistic setting (the user's wish), `server/cmd/seedchat` fills 
 ## The iOS web app moved as a whole
 
 In the installed web app (not in a Safari tab), a swipe past the end of the chat list moved the whole app: the header off the top, a gap below the message box (the user's recording). iOS passed the swipe on to the page, and the page bounced. Reproduced in the iOS 27 simulator with the app added to the home screen. Now the page never bounces (overscroll-behavior: none on html and body) and the chat list keeps its end to itself (overscroll-behavior-y: contain); the list still bounces inside. Checked in the simulator and by the user on test.kallisti.chat.
+
+## Outside PRs: composer, audio recovery, uploads storage
+
+Three GitHub PRs, merged by the user after review:
+
+- #8 (hutchisr): on desktop the message box has the user panel's height and bottom edge; "is typing…" floats above the box instead of a fixed row below it, and "Jump to present" moves up while someone types. Phones keep the reserved row. Checked with screenshots of main and the PR (1280 px, a second guest typing).
+- #9 (hutchisr): an interrupted audio context (WebKit, also the Mac app) now resumes in a visible window too, at once when voice starts, and a click resumes it like a suspended one. Suspended contexts stay with the click handler (user activation, the Linux app's worklet hold).
+- #12 (cortexobscura): commented examples for uploads on their own disk (a Compose bind mount, a Kubernetes PVC). Safe: uploads are written into the upload folder directly, previews are renamed only inside it, so no rename crosses file systems.
