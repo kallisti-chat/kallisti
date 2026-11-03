@@ -347,9 +347,7 @@
         {#if checking}<p class="hint" role="status">Checking your browser…</p>{/if}
         {#if apiError}
           <p class="error" role="alert">{apiError}</p>
-          <label>Account invitation
-            <input bind:value={accountInvite} autocomplete="off" spellcheck={false} placeholder="Paste your invitation link" />
-          </label>
+          {@render inviteField(false)}
           <button class="primary" disabled={busy} onclick={() => void createFromFedi()}>Try again</button>
           <button type="button" class="link" onclick={onFediSignupDone}>Cancel</button>
         {/if}
@@ -362,11 +360,7 @@
           Name
           <input bind:value={username} required maxlength="32" autocomplete="username" />
         </label>
-        {#if inviteOnly || accountInvite}
-          <label>Account invitation
-            <input bind:value={accountInvite} required={inviteOnly} autocomplete="off" spellcheck={false} placeholder="Paste your invitation link" />
-          </label>
-        {/if}
+        {#if inviteOnly || accountInvite}{@render inviteField(inviteOnly)}{/if}
         {#if apiError}<p class="error" role="alert">{apiError}</p>{/if}
         {#if checking}<p class="hint" role="status">Checking your browser…</p>{/if}
         <button class="primary" type="submit" disabled={busy}>Create account</button>
@@ -444,11 +438,7 @@
       </label>
       {/if}
       {#if apiError ?? error}<p class="error" role="alert">{apiError ?? error}</p>{/if}
-      {#if mode === "create" && (inviteOnly || accountInvite)}
-        <label>Account invitation
-          <input bind:value={accountInvite} required={inviteOnly} autocomplete="off" spellcheck={false} placeholder="Paste your invitation link" />
-        </label>
-      {/if}
+      {#if mode === "create" && (inviteOnly || accountInvite)}{@render inviteField(inviteOnly)}{/if}
       {#if mode === "create"}
         <p class="hint">An account keeps your name: nobody else can use it.</p>
       {/if}
@@ -501,6 +491,12 @@
     onClose={() => (qrShown = false)}
   />
 {/if}
+
+{#snippet inviteField(required: boolean)}
+  <label>Account invitation
+    <input bind:value={accountInvite} {required} autocomplete="off" spellcheck={false} placeholder="Paste your invitation link" />
+  </label>
+{/snippet}
 
 <!-- Desktop: the chosen server, with a way back to the address step. -->
 {#snippet serverLine()}
