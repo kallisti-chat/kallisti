@@ -48,6 +48,13 @@ const (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "import-murmur" {
+		if err := importMurmur(os.Args[2:], os.Getenv, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "import-murmur:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
