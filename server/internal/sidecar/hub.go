@@ -734,8 +734,8 @@ func (c *Conn) Handle(raw []byte) {
 		"create-category", "rename-category", "delete-category", "order-categories", "set-category":
 		c.manage(*id, req)
 		return
-	case "mark-read":
-		c.markRead(*id, req)
+	case "mark-read", "mark-unread":
+		c.markRead(*id, req, req.Type == "mark-unread")
 		return
 	case "resync":
 		c.resendReady(*id)
