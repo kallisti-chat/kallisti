@@ -30,5 +30,5 @@ INSERT INTO users (server_id, user_id, name, pw, lastchannel, texture) VALUES
   (2, 0, 'SuperUser', 'x', 0, NULL), (2, 1, 'alice2', NULL, 1, NULL), (2, 2, 'Bob', NULL, 0, NULL), (2, 3, 'dave', NULL, 1, NULL);
 INSERT INTO user_info VALUES (1, 1, 3, 'aa'), (1, 1, 1, 'alice@example.org'), (1, 1, 2, 'hi'), (1, 2, 3, 'bb'),
   (2, 1, 3, 'aa'), (2, 2, 3, 'b2'), (2, 3, 3, 'dd');
-INSERT INTO bans VALUES (1, x'00000000000000000000ffff0a000000', 104, 'eve', 'ee', 'spam', '2026-01-02T03:04:05', 3600);
+INSERT INTO bans VALUES (1, x'00000000000000000000ffff0a000000', 104, 'eve', 'ee', 'spam', '2019-01-02T03:04:05Z', 3600);
 INSERT INTO channel_listeners (server_id, user_id, channel_id) VALUES (1, 1, 3);

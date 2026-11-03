@@ -305,15 +305,23 @@ func readBans(db *sql.DB, s *Server) error {
 		}
 		b.Prefix = banPrefix(base, mask)
 		b.Duration = time.Duration(seconds) * time.Second
-		b.Start = time.Now()
-		if t, err := time.Parse("2006-01-02T15:04:05", start); err == nil {
-			b.Start = t
-		}
+		b.Start = banStart(start)
 		if b.Prefix.IsValid() || b.Hash != "" {
 			s.Bans = append(s.Bans, b)
 		}
 		return nil
 	})
+}
+
+// banStart: Murmur's start (UTC, ISO 8601, with or without a Z); none:
+// now.
+func banStart(v string) time.Time {
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05"} {
+		if t, err := time.Parse(layout, v); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Now()
 }
 
 // banPrefix: Murmur keeps an IPv6 address (IPv4 mapped) and a mask over

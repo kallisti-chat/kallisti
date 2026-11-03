@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +44,11 @@ func importMurmur(args []string, getenv func(string) string, out io.Writer) erro
 	if cfg.Builtin == nil {
 		return errors.New("MUMBLE_HOST is set: the import is for Kallisti's built-in Mumble server")
 	}
-	src, err := sql.Open("sqlite", "file:"+*from+"?mode=ro")
+	abs, err := filepath.Abs(*from)
+	if err != nil {
+		return err
+	}
+	src, err := sql.Open("sqlite", (&url.URL{Scheme: "file", Path: abs, RawQuery: "mode=ro"}).String())
 	if err != nil {
 		return err
 	}
@@ -85,7 +90,11 @@ func importMurmur(args []string, getenv func(string) string, out io.Writer) erro
 	}
 	var cert *murmur.Server
 	if *withCert {
+		if cfg.Builtin.CertFile != "" {
+			return errors.New("-cert: MUMBLE_CERT_FILE is set, so the server would not use the imported certificate")
+		}
 		cert = &servers[0]
+		fmt.Fprintf(out, "Certificate: server %d's\n", cert.ID)
 		if cert.CertPEM == "" || cert.KeyPEM == "" {
 			return fmt.Errorf("server %d has no certificate of its own (Murmur's ini file has it: set MUMBLE_CERT_FILE and MUMBLE_KEY_FILE to those files)", cert.ID)
 		}
@@ -142,10 +151,17 @@ func importMurmur(args []string, getenv func(string) string, out io.Writer) erro
 func installCert(dir, certPEM, keyPEM string, out io.Writer) error {
 	stamp := time.Now().Format("20060102-150405")
 	kept := false
-	for _, f := range []struct {
+	files := []struct {
 		name, data string
 		mode       os.FileMode
-	}{{"cert.pem", certPEM, 0o644}, {"key.pem", keyPEM, 0o600}} {
+	}{{"cert.pem", certPEM, 0o644}, {"key.pem", keyPEM, 0o600}}
+	// Both written first: a failure leaves the old pair.
+	for _, f := range files {
+		if err := os.WriteFile(filepath.Join(dir, f.name+".new"), []byte(f.data), f.mode); err != nil {
+			return err
+		}
+	}
+	for _, f := range files {
 		path := filepath.Join(dir, f.name)
 		if _, err := os.Stat(path); err == nil {
 			if err := os.Rename(path, path+".before-murmur-import-"+stamp); err != nil {
@@ -153,7 +169,7 @@ func installCert(dir, certPEM, keyPEM string, out io.Writer) error {
 			}
 			kept = true
 		}
-		if err := os.WriteFile(path, []byte(f.data), f.mode); err != nil {
+		if err := os.Rename(path+".new", path); err != nil {
 			return err
 		}
 	}

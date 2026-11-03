@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -72,7 +73,7 @@ func TestRead(t *testing.T) {
 	if strings.Join(s.NoCert, ",") != "carol" {
 		t.Errorf("no cert %v", s.NoCert)
 	}
-	if len(s.Bans) != 1 || s.Bans[0].Prefix != netip.MustParsePrefix("10.0.0.0/8") || s.Bans[0].Hash != "ee" || s.Bans[0].Start.Year() != 2026 || s.Bans[0].Duration.Hours() != 1 {
+	if len(s.Bans) != 1 || s.Bans[0].Prefix != netip.MustParsePrefix("10.0.0.0/8") || s.Bans[0].Hash != "ee" || s.Bans[0].Start.Year() != 2019 || s.Bans[0].Duration.Hours() != 1 {
 		t.Errorf("bans %+v", s.Bans)
 	}
 	if s.Skipped.Emails != 1 || s.Skipped.Passwords != 1 || s.Skipped.UserLimits != 1 || s.Skipped.Listeners != 1 {
@@ -139,5 +140,44 @@ func TestPlanAllServers(t *testing.T) {
 	}
 	if !strings.Contains(rep.Notes(), "Kick") {
 		t.Errorf("notes %q", rep.Notes())
+	}
+}
+
+// Murmur writes UTC dates with a Z, or without; anything else: now.
+func TestBanStart(t *testing.T) {
+	for _, v := range []string{"2019-01-02T03:04:05Z", "2019-01-02T03:04:05", "2019-01-02T03:04:05.000Z"} {
+		if got := banStart(v); got.Year() != 2019 || got.Hour() != 3 {
+			t.Errorf("%s: %v", v, got)
+		}
+	}
+	if got := banStart(""); time.Since(got) > time.Minute {
+		t.Errorf("empty: %v", got)
+	}
+}
+
+// One certificate twice in one server, a name with an @, the name
+// SuperUser, a channel whose parent is gone.
+func TestPlanOddData(t *testing.T) {
+	s := Server{ID: 1, Name: "S", Root: mumbled.Channel{Groups: map[string]*mumbled.Group{}}, Channels: []mumbled.Channel{{ID: 5, Parent: 9, Name: "Orphan"}},
+		Users: []mumbled.ImportUser{{ID: 1, Name: "a", CertHash: "x"}, {ID: 2, Name: "b", CertHash: "x"}, {ID: 3, Name: "me@home", CertHash: "y"}, {ID: 4, Name: "SuperUser", CertHash: "z"}}}
+	imp, rep := Plan([]Server{s}, false)
+	names := map[string]bool{}
+	for _, u := range imp.Users {
+		names[u.Name] = true
+	}
+	if len(imp.Users) != 3 || !names["me-home"] || !names["SuperUser-2"] || rep.Merged != 1 {
+		t.Errorf("users %+v %+v", imp.Users, rep)
+	}
+	if imp.Channels[1].Parent != imp.Channels[0].ID {
+		t.Errorf("orphan under %d, server channel %d", imp.Channels[1].Parent, imp.Channels[0].ID)
+	}
+	imp, _ = Plan([]Server{s}, true)
+	if len(imp.Users) != 3 || imp.Channels[0].Parent != 0 {
+		t.Errorf("whole: %+v %+v", imp.Users, imp.Channels)
+	}
+	// Two servers of one name: two channels of two names.
+	imp, _ = Plan([]Server{s, s}, false)
+	if imp.Channels[0].Name == imp.Channels[2].Name {
+		t.Errorf("same names %q", imp.Channels[0].Name)
 	}
 }

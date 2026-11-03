@@ -120,9 +120,9 @@ func mustChannels(t *testing.T, db *DB) []Channel {
 // lobby (no General added), and the moderator role comes back at the next
 // start.
 func TestImportWithTheServersRoot(t *testing.T) {
-	db := testDB(t) // before the first start
+	db := started(t) // the ids move: root's links must follow
 	imp := importData()
-	imp.Root = &Channel{ACLs: []ACL{{ApplyHere: true, ApplySubs: true, Group: "admin", Allow: Write}}, Groups: map[string]*Group{"admin": newGroup("admin")}, Description: "welcome"}
+	imp.Root = &Channel{ACLs: []ACL{{ApplyHere: true, ApplySubs: true, Group: "admin", Allow: Write}}, Groups: map[string]*Group{"admin": newGroup("admin")}, Description: "welcome", Links: map[uint32]bool{3: true}}
 	imp.ServerName = "Old server"
 	imp.Channels = imp.Channels[1:]
 	imp.Channels[0].Parent, imp.Channels[1].Parent = 0, 0
@@ -139,6 +139,9 @@ func TestImportWithTheServersRoot(t *testing.T) {
 		t.Error("a General was added")
 	}
 	root := NewState("Root", mustChannels(t, db)).Channels[0]
+	if len(root.Links) != 1 || !root.Links[cs["Games"].ID] {
+		t.Errorf("root links %v, Games %d", root.Links, cs["Games"].ID)
+	}
 	if root.Description != "welcome" || root.Groups["moderator"] == nil || root.Groups["admin"] == nil {
 		t.Errorf("root %+v", root)
 	}

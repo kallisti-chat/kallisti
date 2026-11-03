@@ -16,7 +16,7 @@ type Report struct {
 	Servers []Server
 	Whole   bool // one server as the whole server
 	Renamed []Rename
-	Merged  int // users of several servers with one certificate
+	Merged  int // users whose certificate an earlier user has (one user now)
 }
 
 // rootOnly works in root only: on a server's channel it does nothing.
@@ -30,20 +30,23 @@ func Plan(servers []Server, whole bool) (mumbled.Import, Report) {
 	var imp mumbled.Import
 	rep := Report{Servers: servers, Whole: whole}
 	byHash := map[string]uint32{}
-	taken := map[string]bool{}
+	taken := map[string]bool{names.Key("SuperUser"): true}
+	tops := map[string]bool{}
 	nextUser, nextChan := uint32(1), uint32(1)
 	for _, s := range servers {
 		users := map[uint32]uint32{0: 0} // SuperUser is ours too
 		var mine []int                   // indexes in imp.Users from this server
 		for _, u := range s.Users {
-			if id, ok := byHash[u.CertHash]; ok && !whole {
+			if id, ok := byHash[u.CertHash]; ok {
 				users[u.ID] = id
 				rep.Merged++
 				continue
 			}
-			name := u.Name
+			// "name@host" is an account from another server here.
+			base := strings.ReplaceAll(u.Name, "@", "-")
+			name := base
 			for n := 2; taken[names.Key(name)]; n++ {
-				name = fmt.Sprintf("%s-%d", u.Name, n)
+				name = fmt.Sprintf("%s-%d", base, n)
 			}
 			if name != u.Name {
 				rep.Renamed = append(rep.Renamed, Rename{Server: serverName(s), From: u.Name, To: name})
@@ -72,9 +75,16 @@ func Plan(servers []Server, whole bool) (mumbled.Import, Report) {
 			imp.Root = &root
 		} else {
 			root.Parent, root.Name = 0, serverName(s)
+			if tops[root.Name] {
+				root.Name = fmt.Sprintf("%s (%d)", root.Name, s.ID)
+			}
+			tops[root.Name] = true
 			imp.Channels = append(imp.Channels, root)
 		}
 		for _, c := range s.Channels {
+			if _, ok := chans[c.Parent]; !ok {
+				c.Parent = 0 // its parent is gone: under the server's root
+			}
 			imp.Channels = append(imp.Channels, remap(c, chans, users))
 		}
 		for _, i := range mine {
@@ -168,6 +178,13 @@ func (r Report) Notes() string {
 	}
 	if !r.Whole && len(r.Servers) > 0 {
 		add("each server is a channel now: its admins manage that channel; Kallisti's admins (Server settings) manage everything")
+		bans := 0
+		for _, s := range r.Servers {
+			bans += len(s.Bans)
+		}
+		if bans > 0 && len(r.Servers) > 1 {
+			add("%d bans of the servers apply to the whole Kallisti server now", bans)
+		}
 	}
 	if sk.Passwords > 0 {
 		add("%d passwords not imported: those users log in with their certificate", sk.Passwords)
@@ -182,10 +199,10 @@ func (r Report) Notes() string {
 		add("%d channel listeners not imported", sk.Listeners)
 	}
 	if r.Merged > 0 {
-		add("%d users were on several servers with one certificate: one user each now", r.Merged)
+		add("%d users had the certificate of another user (on another server, or twice): one user now", r.Merged)
 	}
 	for _, n := range r.Renamed {
-		add("%s: %s is %s now (the name was taken by another server's user)", n.Server, n.From, n.To)
+		add("%s: %s is %s now (the name was taken, or had an @)", n.Server, n.From, n.To)
 	}
 	return strings.Join(out, "\n")
 }

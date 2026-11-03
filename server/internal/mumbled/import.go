@@ -65,6 +65,23 @@ func (d *DB) Import(imp Import) error {
 		return c + last
 	}
 	next := last
+	if imp.Root != nil {
+		// The server's root, as a lobby (see InitLobby, which then adds no
+		// General); the moderator role at the next start (InitRoles).
+		root := *imp.Root
+		root.ID, root.Parent, root.Name = 0, 0, "Root"
+		root.ACLs = append(slices.Clone(root.ACLs), ACL{ApplyHere: true, Group: "all", Deny: Speak})
+		root.Links = nil // with the others, below
+		if err := saveChannel(tx, &root); err != nil {
+			return err
+		}
+		if err := setMetaTx(tx, "lobby", 1); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`DELETE FROM mumble_meta WHERE key = 'roles'`); err != nil {
+			return err
+		}
+	}
 	for _, c := range imp.Channels {
 		c.ID, c.Parent = id(c.ID), id(c.Parent)
 		links := map[uint32]bool{}
@@ -77,8 +94,12 @@ func (d *DB) Import(imp Import) error {
 		}
 		next = max(next, c.ID)
 	}
-	// Links to channels saved later: again, now that all exist.
-	for _, c := range imp.Channels {
+	// Links to channels saved later (and root's): again, now that all exist.
+	linked := imp.Channels
+	if imp.Root != nil {
+		linked = append(slices.Clone(linked), Channel{ID: 0, Links: imp.Root.Links})
+	}
+	for _, c := range linked {
 		for l := range c.Links {
 			a, b := min(id(c.ID), id(l)), max(id(c.ID), id(l))
 			if _, err := tx.Exec(`INSERT OR IGNORE INTO mumble_channel_links (a, b) VALUES (?, ?)`, a, b); err != nil {
@@ -88,22 +109,6 @@ func (d *DB) Import(imp Import) error {
 	}
 	if err := setMetaTx(tx, "last_channel_id", next); err != nil {
 		return err
-	}
-	if imp.Root != nil {
-		// The server's root, as a lobby (see InitLobby, which then adds no
-		// General); the moderator role at the next start (InitRoles).
-		root := *imp.Root
-		root.ID, root.Parent, root.Name = 0, 0, "Root"
-		root.ACLs = append(slices.Clone(root.ACLs), ACL{ApplyHere: true, Group: "all", Deny: Speak})
-		if err := saveChannel(tx, &root); err != nil {
-			return err
-		}
-		if err := setMetaTx(tx, "lobby", 1); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`DELETE FROM mumble_meta WHERE key = 'roles'`); err != nil {
-			return err
-		}
 	}
 	now := time.Now().UnixMilli()
 	for _, u := range imp.Users {
@@ -181,9 +186,17 @@ func freshCheck(tx *sql.Tx) (general uint32, err error) {
 	}
 	var own []string
 	for _, c := range all {
+		auto := lobby != 0 && general == 0 && c.parent == 0 && c.name == "General"
+		if auto {
+			has, err := hasACLs(tx, c.id)
+			if err != nil {
+				return 0, err
+			}
+			auto = !has
+		}
 		switch {
 		case mirror[c.id]:
-		case lobby != 0 && general == 0 && c.parent == 0 && c.name == "General" && !hasACLs(tx, c.id):
+		case auto:
 			general = c.id
 		default:
 			own = append(own, c.name)
@@ -196,10 +209,10 @@ func freshCheck(tx *sql.Tx) (general uint32, err error) {
 	return general, nil
 }
 
-func hasACLs(tx *sql.Tx, channel uint32) bool {
+func hasACLs(tx *sql.Tx, channel uint32) (bool, error) {
 	var n int
 	err := tx.QueryRow(`SELECT (SELECT count(*) FROM mumble_acl WHERE channel_id = ?) + (SELECT count(*) FROM mumble_groups WHERE channel_id = ?)`, channel, channel).Scan(&n)
-	return err != nil || n > 0
+	return n > 0, err
 }
 
 func setMetaTx(tx *sql.Tx, key string, value uint32) error {
