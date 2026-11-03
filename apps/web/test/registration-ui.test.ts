@@ -21,7 +21,7 @@ const input = (selector: string, value: string) => {
   flushSync();
 };
 
-const login = (closed: boolean | undefined, token?: string, federated = false, extra: Record<string, unknown> = {}) => {
+const login = (closed: boolean | undefined, token?: string, federated = false, extra: Record<string, unknown> = {}, refuse = false) => {
   if (token) history.replaceState(null, "", `/register#${token}`);
   const requests: { path: string; body: Record<string, unknown> }[] = [];
   const fetcher = (async (url: string, init: RequestInit) => {
@@ -32,6 +32,7 @@ const login = (closed: boolean | undefined, token?: string, federated = false, e
     if (url === "/api/fedi") result = { enabled: "keep" in extra };
     if (url === "/api/fedi/start") result = { url: "https://home.example/oauth" };
     if (url === "/api/fedi/signup") result = init.body ? { name: "alice" } : { name: "alice", handle: "@alice@home.example", remote: "alice@home.example" };
+    if (url === "/api/accounts" && refuse) return new Response(JSON.stringify({ error: "needs an invitation", code: "invite_required" }), { status: 403 });
     if (url === "/api/accounts") result = { name: "alice" };
     if (url === "/api/me") result = { name: "alice", temporary: false };
     return new Response(JSON.stringify(result));
@@ -83,6 +84,25 @@ describe("invite-only user interface", () => {
     await vi.waitFor(() => expect(onConnect).toHaveBeenCalled());
     expect(requests.find((r) => r.path === "/api/fedi/signup" && "invite" in r.body)?.body).toEqual({ name: "", invite: token });
     expect(sessionStorage.getItem("kallisti-account-invite")).toBeFalsy(); // once
+  });
+
+  it("shows the invitation field when the server asks for one", async () => {
+    login(undefined, undefined, false, {}, true); // the policy unknown (an older server, a failed read)
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Friends"));
+    [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Create account")!.click();
+    flushSync();
+    expect(document.querySelector('input[placeholder="Paste your invitation link"]')).toBeNull();
+    input('input[autocomplete="username"]', "alice");
+    input('input[autocomplete="new-password"]', "longpassword");
+    document.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(document.querySelector('input[placeholder="Paste your invitation link"]')).not.toBeNull());
+  });
+
+  it("drops an older kept invitation when a link brings a newer one", async () => {
+    sessionStorage.setItem("kallisti-account-invite", "o".repeat(32));
+    login(true, "n".repeat(32));
+    await vi.waitFor(() => expect(document.querySelector<HTMLInputElement>('input[placeholder="Paste your invitation link"]')?.value).toContain("n".repeat(32)));
+    expect(sessionStorage.getItem("kallisti-account-invite")).toBeFalsy();
   });
 
   it("creates single-use invitations by default and shows the returned link", async () => {

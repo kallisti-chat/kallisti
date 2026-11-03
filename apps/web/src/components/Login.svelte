@@ -6,7 +6,7 @@
   import { parseInviteLink } from "../lib/invites";
   import UserName from "./UserName.svelte";
   import { serverOrigin } from "../lib/serverList";
-  import { modeForError, type Account, type AccountsApi } from "../lib/accounts";
+  import { inviteRequired, modeForError, type Account, type AccountsApi } from "../lib/accounts";
   import { solveInWorker } from "../lib/captcha";
   import { formatFingerprint, isDesktop, serverHint, type CertificateProblem } from "../lib/desktop";
   import type { Credentials } from "../lib/connection.svelte";
@@ -70,10 +70,9 @@
     ["create", "Create account"],
     ["guest", "Guest"],
   ];
-  // An account invitation opens signup; a guest who tried an account's
-  // name gets the Log in tab right away.
-  // From the address, or kept over a fediverse login (see fediLogin), once.
-  const keptInvite = () => {
+  // An account invitation: from the address, or kept over a fediverse
+  // login (see fediLogin); the kept one is taken once either way.
+  const takeKeptAccountInvite = () => {
     const kept = safeGet(tabStorage(), "kallisti-account-invite") ?? "";
     if (kept) safeSet(tabStorage(), "kallisti-account-invite", "");
     return kept;
@@ -81,8 +80,16 @@
   let accountInvite = $state(untrack(() => {
     if (desktop) return "";
     const origin = api.base || location.origin;
-    return registrationToken(location.href, origin) ?? registrationToken(keptInvite(), origin) ?? "";
+    const kept = takeKeptAccountInvite();
+    return registrationToken(location.href, origin) ?? registrationToken(kept, origin) ?? "";
   }));
+  // It belongs to its server: another one (desktop: Change) starts empty.
+  let inviteBase = untrack(() => api.base);
+  $effect.pre(() => {
+    if (api.base === inviteBase) return;
+    inviteBase = api.base;
+    accountInvite = "";
+  });
   let inviteOnly = $state(false);
   const inviteToken = () => {
     if (!accountInvite.trim()) return undefined;
@@ -94,7 +101,13 @@
     accountInvite = "";
     if (location.pathname === "/register") history.replaceState(history.state, "", "/");
   };
+  // An invitation opens signup; a guest who tried an account's name gets
+  // the Log in tab right away.
   let mode = $state<Mode>(untrack(() => accountInvite ? "create" : modeForError(error)));
+  // Invite-only: no Guest tab (also when a refusal tells us).
+  $effect.pre(() => {
+    if (inviteOnly && mode === "guest") mode = "login";
+  });
   let username = $state(safeGet(localStore(), "username") ?? "");
   let password = $state("");
   let serverPassword = $state("");
@@ -179,6 +192,7 @@
       connectAs(result.name, true);
     } catch (err) {
       apiError = err instanceof Error ? err.message : String(err);
+      if (inviteRequired(err)) inviteOnly = true; // the field shows
     } finally {
       busy = false;
     }
@@ -198,7 +212,6 @@
     void used.serverInfo().then((info) => {
       if (!current(used, at)) return;
       inviteOnly = info.inviteOnly === true;
-      if (inviteOnly && mode === "guest") mode = "login";
       askServerPassword = info.password;
       serverName = info.name;
       logo = info.logo && iconHref(api.base, 192, info.logo);
@@ -274,6 +287,7 @@
       connectAs(made, true);
     } catch (err) {
       apiError = err instanceof Error ? err.message : String(err);
+      if (inviteRequired(err)) inviteOnly = true;
       // Its remote name is taken here: the name step (other errors show).
       if (!chooseName && err instanceof Error && "status" in err && err.status === 409) {
         chooseName = true;

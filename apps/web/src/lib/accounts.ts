@@ -228,6 +228,8 @@ export type AccountsApi = ReturnType<typeof createAccountsApi>;
 
 // The server wants a fresh fediverse login before the first password.
 export const needsReauth = (err: unknown) => err instanceof ApiError && err.code === "reauth";
+// The server is invite-only (also when its policy was not known here).
+export const inviteRequired = (err: unknown) => err instanceof ApiError && err.code === "invite_required";
 // An API error's HTTP status (undefined: not one).
 export const apiStatus = (err: unknown) => (err instanceof ApiError ? err.status : undefined);
 
