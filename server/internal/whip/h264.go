@@ -81,9 +81,10 @@ func (a *avc) unit(au []byte) (picture, error) {
 	return p, nil
 }
 
-// bSlice: the slice header's slice_type is B (1, or 6: all slices B).
+// bSlice: the slice header's slice_type is B (1, or 6: all slices B). Its
+// first bytes hold it: not the whole slice is copied.
 func bSlice(nal []byte) bool {
-	r := &bits{b: unescape(nal[1:])}
+	r := &bits{b: unescape(nal[1:min(len(nal), 17)])}
 	r.ue() // first_mb_in_slice
 	t := r.ue()
 	return r.err == nil && t%5 == 1

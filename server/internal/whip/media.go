@@ -143,7 +143,8 @@ type feed struct {
 	previewAt  time.Time
 	previewing atomic.Bool
 	// warn tells the owner about a problem of the stream (nil: nobody);
-	// bWarned: about B-frames, once (the pictures').
+	// bWarned: about B-frames, once (the pictures'), also if no web app of
+	// the owner was there to show it (then the log has it).
 	warn    func(session uint32, text string)
 	bWarned bool
 	// done ends a preview in the making when the stream stops (a late one
