@@ -32,4 +32,12 @@ helm template kallisti deploy/kubernetes/chart -n <namespace> -f /secure/path/ka
 helm upgrade --install kallisti deploy/kubernetes/chart -n <namespace> --create-namespace -f /secure/path/kallisti-values.yaml
 ```
 
-Helm uninstallation retains both PVCs to avoid accidental data loss. It does not roll back database migrations or remove stored data. Read [the deployment guide](../../docs/deploy/kubernetes.md) for checks, updates and recovery. No cluster changes were made when writing this template.
+## Optional separate uploads PVC
+
+By default, uploads and media previews live at `/data/uploads` on the app PVC. To store them separately, uncomment the uploads PVC example at the end of [`templates/storage.yaml`](chart/templates/storage.yaml) and both uploads blocks (the app container's `volumeMounts` and the Pod's `volumes`) in [`templates/deployment.yaml`](chart/templates/deployment.yaml). Choose the uploads capacity and, optionally, its own `storageClassName` in the example. The app PVC still holds SQLite, local database backups and Mumble certificates; Caddy's storage is unchanged. No application setting changes are needed.
+
+The uploads PVC must be mountable on the same node as the other claims and writable by UID/GID 1000, using a storage driver that honors `fsGroup` or pre-provisioned ownership. Run `helm lint` and review `helm template` output after editing. These are local chart customizations; preserve them when updating the chart.
+
+For an existing installation, back up the data, stop Kallisti (scale the Deployment to zero), and copy the **contents** of the app PVC's `uploads` directory into the root of the new uploads PVC before starting with the new mount. Use your cluster's volume migration procedure and preserve ownership. An empty uploads mount hides the original files; it does not migrate them. If reverting to shared storage later, stop Kallisti and copy any new uploads back first. Back up and restore the separate uploads PVC alongside app and Caddy data: the built-in SQLite backups do not include uploaded files.
+
+Helm uninstallation retains the app and Caddy PVCs, plus the optional uploads PVC, to avoid accidental data loss. It does not roll back database migrations or remove stored data. Read [the deployment guide](../../docs/deploy/kubernetes.md) for checks, updates and recovery. No cluster changes were made when writing this template.
