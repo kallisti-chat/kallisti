@@ -2638,3 +2638,12 @@ A user's request, Discord's three features. When a chat comes into view (opened,
 ## nosniff on every response (PR #13)
 
 From cortexobscura's PR #13, for finding 2 of the security audit in #10: a wrapper around the mux sets `X-Content-Type-Options: nosniff` on every response (the API, OAuth, redirects, WebSocket upgrades), with the original writer passed on, so streaming and upgrades work. Pages, assets, uploads, emoji, avatars and previews had it already, and our bundled Caddyfiles set it too, but chat.kallisti.chat sits behind another Caddy and `/api/server` had none.
+
+## Security audit #10
+
+SHSauler's audit (GitHub #10) found nothing exploitable; hardening items, worked through:
+
+- CI: every action is pinned to a full commit SHA (the version in a comment); `.github/dependabot.yml` sends one grouped update a week. helm, voice and test had no permissions block: the repository default (read) applied, but scanners count that as write-all; now `contents: read`. desktop and android keep `contents: write` (they make the release).
+- Helper images: health checks (Caddy DNS-01: its admin endpoint on localhost; cert-sync: a synced certificate exists, 5 minutes to start). No non-root USER: in Compose, Caddy runs as root and its storage (with the certificate, mode 0600) belongs to root, and cert-sync must read it and hand the copy to the app's user; a USER would break the certificate sync of every existing install. Kubernetes runs both as 1000 already. Built and checked with podman on the NAS.
+- nosniff on all responses: PR #13.
+- Confirmed: production ALLOWED_ORIGINS is exactly https://chat.kallisti.chat (other origins get Allow-Origin for token calls, never credentials); session cookies are Secure on HTTPS (direct TLS or X-Forwarded-Proto from a trusted proxy) with the __Host- prefix; SHA-1 is the Mumble protocol's (certificate and blob hashes); math/rand picks replacement words and runs in dev tools only; the exported Android activity is the launcher (required); glib 0.18 and proc-macro-error come with Tauri's gtk 0.18 on Linux and wait for Tauri.
