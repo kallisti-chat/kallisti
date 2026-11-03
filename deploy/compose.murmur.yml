@@ -43,6 +43,9 @@ services:
     read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop: [ALL]
+    # Bind low ports and read operator-owned private Caddyfiles.
+    cap_add: [NET_BIND_SERVICE, DAC_OVERRIDE]
     ports:
       - "80:80"
       - "443:443"

@@ -1,10 +1,11 @@
 FROM docker.io/library/alpine:3.21
 RUN apk add --no-cache openssl
 COPY deploy/docker/sync-certificate.sh /usr/local/bin/sync-certificate
-RUN chmod 0755 /usr/local/bin/sync-certificate
-# Healthy once a certificate is synced (the first one can take minutes).
+COPY deploy/docker/cert-sync-health.sh /usr/local/bin/cert-sync-health
+RUN chmod 0755 /usr/local/bin/sync-certificate /usr/local/bin/cert-sync-health
+# Check progress, including normal waiting for the first certificate.
 # Root in Compose: it reads Caddy's root-owned certificate and hands the
 # copy to the app's user (Kubernetes runs it as 1000, see the chart).
-HEALTHCHECK --interval=60s --timeout=5s --start-period=5m \
-  CMD test -s "${APP_DATA_DIR:-/app-data}/mumble-tls/current/mumble.crt" || exit 1
+HEALTHCHECK --interval=60s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["/usr/local/bin/cert-sync-health"]
 ENTRYPOINT ["/usr/local/bin/sync-certificate"]
