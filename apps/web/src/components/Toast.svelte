@@ -1,10 +1,12 @@
 <script lang="ts">
-  // A short notice at the bottom, gone after 5 seconds. Re-create (with a
-  // {#key} block) to show the next one.
+  import { toastMs } from "../lib/toast";
+
+  // A notice at the bottom, gone after a while (longer for a longer text).
+  // Re-create (with a {#key} block) to show the next one.
   let { text }: { text: string } = $props();
   let visible = $state(true);
   $effect(() => {
-    const timer = setTimeout(() => (visible = false), 5000);
+    const timer = setTimeout(() => (visible = false), toastMs(text));
     return () => clearTimeout(timer);
   });
 </script>
