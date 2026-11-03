@@ -28,4 +28,3 @@
 - [ ] [Log in with a QR code](issues/qr-login.md)
   - [ ] [QR login: the apps' scanner](issues/qr-login-apps.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
-- [ ] [Invite-only registration](issues/invite-only-registration.md) (PR #11)

@@ -345,3 +345,4 @@
 - [x] [Older messages load while scrolling up](issues/infinite-scroll-history.md)
 - [x] [Long names break the chat on phones](issues/long-names-on-phones.md)
 - [x] [Three pictures: a gap in the grid](issues/picture-grid-gap.md)
+- [x] [Invite-only registration](issues/invite-only-registration.md)
