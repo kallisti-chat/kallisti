@@ -350,3 +350,4 @@
 - [x] [OBS: tell the streamer about B-frames](issues/obs-bframes-warning.md)
 - [x] [Unread line, jump to unread, mark unread](issues/unread-bar.md)
 - [x] [Security audit (GitHub #10)](issues/security-audit-10.md)
+- [x] [Import a Murmur server](issues/murmur-import.md)
