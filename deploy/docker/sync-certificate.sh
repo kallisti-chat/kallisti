@@ -17,6 +17,8 @@ if [ "$(id -u)" -eq 0 ]; then
   chown "$owner:$group" "$target"
 fi
 chmod 0700 "$target"
+# A previous container's successful pass must not mask a failed startup.
+rm -f "$target/.status" "$target/.status.tmp"
 staging_dir=''
 
 cleanup_staging() {
@@ -72,15 +74,26 @@ sync_certificate_from() {
 
 while :; do
   found=0
+  status=waiting
   for cert in "$caddy_data"/caddy/certificates/*/"$DOMAIN"/"$DOMAIN".crt; do
+    if [ -f "$cert" ] || [ -f "${cert%.crt}.key" ]; then
+      status=rejected
+    fi
     if [ -f "$cert" ] && [ -f "${cert%.crt}.key" ] && sync_certificate_from "$cert"; then
       found=1
+      status=current
       break
     fi
   done
   if [ "$found" -eq 0 ]; then
     echo 'No valid Caddy certificate for DOMAIN yet; retrying in 60 seconds' >&2
   fi
+  # Publish the result only after the pass completes, even before first issuance.
+  printf '%s\n' "$status" > "$target/.status.tmp"
+  if [ "$(id -u)" -eq 0 ]; then
+    chown "$owner:$group" "$target/.status.tmp"
+  fi
+  mv -f "$target/.status.tmp" "$target/.status"
   if [ "${SYNC_ONCE:-0}" = 1 ]; then
     [ "$found" -eq 1 ]
     exit

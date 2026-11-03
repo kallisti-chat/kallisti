@@ -37,6 +37,10 @@ docker compose -f deploy/compose.yml up -d --remove-orphans
   warning persists after HTTPS is working. The copier needs read-only
   access to Caddy's private key and write access to Kallisti's data; keep
   Docker access restricted to trusted administrators.
+- `docker compose -f deploy/compose.yml ps` shows the copier's health with
+  recent cert-sync images. Waiting for Caddy's first certificate is normal;
+  rejected certificates or a stalled copier are unhealthy. See the
+  [healthcheck details](deploy/docker.md#operations) for diagnosis.
 - Behind a reverse proxy that already runs in Docker, use
   `deploy/compose.behind-proxy.yml`: set `PROXY_NETWORK` to the proxy's
   Docker network and point the proxy at `kallisti:8080`. This file has its
