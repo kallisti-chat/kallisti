@@ -16,7 +16,7 @@ const registrationTables = `CREATE TABLE IF NOT EXISTS registration_policy (
 );
 INSERT OR IGNORE INTO registration_policy (id, invite_only) VALUES (1, 0);
 CREATE TABLE IF NOT EXISTS registration_invites (
-	id INTEGER PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT, -- not used again (a stale revoke)
 	token_hash TEXT NOT NULL UNIQUE,
 	creator TEXT NOT NULL,
 	created_at INTEGER NOT NULL,

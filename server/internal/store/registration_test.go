@@ -231,3 +231,26 @@ func TestRegistrationInviteStateSurvivesRestart(t *testing.T) {
 		t.Fatalf("single-use limit after restart: %v", err)
 	}
 }
+
+// A stale revoke (another admin's old list) must not hit a newer link.
+func TestRegistrationInviteIdsAreNotReused(t *testing.T) {
+	s := open(t)
+	now := time.Now()
+	add := func(token string) int64 {
+		if err := s.AddRegistrationInvite(token, RegistrationInvite{Creator: "admin", Created: now.UnixMilli()}); err != nil {
+			t.Fatal(err)
+		}
+		list, err := s.RegistrationInvites()
+		if err != nil || len(list) == 0 {
+			t.Fatal(list, err)
+		}
+		return list[0].ID
+	}
+	old := add("old")
+	if err := s.DeleteRegistrationInvite(old); err != nil {
+		t.Fatal(err)
+	}
+	if id := add("new"); id == old {
+		t.Fatalf("id %d used again", id)
+	}
+}
