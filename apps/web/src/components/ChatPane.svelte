@@ -66,6 +66,7 @@
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
+  import { firstUnread, unreadBar } from "../lib/unread";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
   import Avatar from "./Avatar.svelte";
@@ -120,6 +121,9 @@
     onPin,
     jumpTarget = null,
     onJumped,
+    unreadAfter = null,
+    onMarkUnread,
+    onMarkRead,
     mayEdit,
     mayDelete,
     onEdit,
@@ -205,6 +209,11 @@
     onPin?: (id: number, on: boolean) => void;
     jumpTarget?: number | null;
     onJumped?: () => void;
+    // Stored chats: the "New" line after this read mark (see lib/unread),
+    // mark unread from a message on, mark all read (also after we send).
+    unreadAfter?: number | null;
+    onMarkUnread?: (id: number) => void;
+    onMarkRead?: () => void;
     // Stored messages: who may change which (the server checks again).
     mayEdit?: (m: DisplayMessage) => boolean;
     mayDelete?: (m: DisplayMessage) => boolean;
@@ -329,7 +338,14 @@
   let list: HTMLElement | undefined = $state();
   // "Today at" must turn into "Yesterday at" after midnight.
   let now = $state(Date.now());
-  const items = $derived(chatItems(messages, blockedUsers.has));
+  // The "New" line: before the first unread message of others, once it is
+  // loaded (all history loaded: the first loaded one).
+  const mine = (m: ChatMessage | DisplayMessage) => m.actorName === me && !("webhook" in m && m.webhook);
+  const unread = $derived(
+    unreadBar(messages, unreadAfter, mine, (at) => formatTimestamp(at, Date.now(), undefined, settings.value.timeFormat).replace(/^(Today|Yesterday)/, (w) => w.toLowerCase())),
+  );
+  const lineAt = $derived(unread?.first ?? (unread && !more ? firstUnread(messages, unreadAfter, mine) : null));
+  const items = $derived(chatItems(messages, blockedUsers.has, lineAt));
   const target = $derived(kind === "dm" ? `@${title}` : kind === "text" ? `#${title}` : title);
 
   $effect(() => {
@@ -583,10 +599,12 @@
         drafts.value = done.drafts;
         if (ok && replying?.id === sent.reply) replying = null;
       });
+      onMarkRead?.();
       return;
     }
     if (!text || !onSend) return;
     onSend(withRefs(text), replying?.id, replying ? !replying.ping : undefined);
+    onMarkRead?.(); // as in Discord: sending reads the chat
     sentAway ||= away;
     replying = null;
     draft = "";
@@ -865,6 +883,7 @@
       ...(may && canThread(may.id) ? [{ label: "Create thread", icon: "thread" as const, run: done(() => onCreateThread?.(may.id, refsAsNames(text))) }] : []),
       ...(text ? [{ label: "Copy text", icon: "copy" as const, run: done(() => copy(refsAsNames(text), "Text copied")) }] : []),
       ...(may && linkTo ? [{ label: "Copy link", icon: "copy" as const, run: done(() => copy(linkTo(may.id), "Link copied")) }] : []),
+      ...(may && onMarkUnread ? [{ label: "Mark unread", icon: "unread" as const, run: done(() => onMarkUnread?.(may.id)) }] : []),
       ...("source" in m && m.source ? [{ label: "Info", icon: "info" as const, run: done(() => showInfo(m)) }] : []),
       ...(may?.canPin
         ? [{ label: may.pinned ? "Unpin message" : "Pin message", icon: "pin" as const, run: done(() => onPin?.(may.id, !may.pinned)) }]
@@ -1010,6 +1029,34 @@
       void tick().then(() => jumpTo(id));
     }
   });
+
+  // The unread bar: while the "New" line is above the view (or not loaded
+  // yet). Jump pages back to it as other jumps do (see jumpStep).
+  let lineAbove = $state(false);
+  const checkLine = () => {
+    const line = list?.querySelector(".new-line");
+    lineAbove = !line || !list || line.getBoundingClientRect().bottom < list.getBoundingClientRect().top + 4;
+  };
+  $effect(() => {
+    void [items, unread];
+    void tick().then(checkLine);
+  });
+  let seekUnread = $state(false);
+  let unreadPages = 0;
+  $effect(() => {
+    if (!seekUnread) return;
+    const step = jumpStep({ loaded: lineAt !== null, more: more && !!onLoadOlder, loading: loadingOlder || messages !== incoming, pages: unreadPages });
+    if (step === "load") {
+      unreadPages++;
+      onLoadOlder?.();
+    } else if (step !== "wait") {
+      seekUnread = false;
+      unreadPages = 0;
+      const id = lineAt;
+      if (id !== null) void tick().then(() => jumpTo(id));
+      else if (list) list.scrollTop = 0; // too far back: as far as it went
+    }
+  });
 </script>
 
 <main
@@ -1135,6 +1182,15 @@
   </header>
   {@render stage?.()}
 
+  {#if unread && lineAbove && !seekUnread}
+    <!-- Over the top of the list (the anchor takes no height). -->
+    <div class="unread-anchor">
+      <div class="unread-bar" role="status">
+        <button type="button" class="unread-jump" onclick={() => (seekUnread = true)}>{unread.text}<span>Jump</span></button>
+        {#if onMarkRead}<button type="button" onclick={onMarkRead}>Mark as read</button>{/if}
+      </div>
+    </div>
+  {/if}
   <!-- Clicks on "#name" links open the channel, clicks on spoilers show
        or hide them (see markdown). -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -1142,7 +1198,7 @@
     class="scroller"
     inert={lost}
     bind:this={list}
-    onscroll={() => ((lastScroll = performance.now()), trackBottom())}
+    onscroll={() => ((lastScroll = performance.now()), trackBottom(), unread && checkLine())}
     ontouchstart={() => (touching = byTouch = true)}
     onwheel={() => (byTouch = false)}
     onmousedown={() => (byTouch = false)}
@@ -1151,6 +1207,9 @@
       if ((e.key === "Enter" || e.key === " ") && toggleSpoiler(e.target as Element)) e.preventDefault();
     }}
     onclick={(e) => {
+      // Alt+click on a stored message: unread from there (as in Discord).
+      const marked = e.altKey && onMarkUnread ? (e.target as Element).closest<HTMLElement>("[data-message]")?.dataset.message : undefined;
+      if (marked) return void onMarkUnread?.(Number(marked));
       // A click that ends a text selection does not hide a spoiler.
       if (!document.getSelection()?.toString() && toggleSpoiler(e.target as Element)) return e.preventDefault();
       const href = (e.target as Element).closest("a[href]")?.getAttribute("href");
@@ -1785,6 +1844,9 @@
           {#if linkTo}
             <button type="button" aria-label="Copy link to message" title="Copy link" onclick={() => copy(linkTo(id), "Link copied")}>Link</button>
           {/if}
+          {#if onMarkUnread}
+            <button type="button" aria-label="Mark unread from here" title="Mark unread (Alt+click)" onclick={() => onMarkUnread?.(id)}>Unread</button>
+          {/if}
           <button type="button" aria-label="Message info" title="Sent, edited, reactions" onclick={() => showInfo(m)}>Info</button>
           {#if canEdit}
             <button type="button" aria-label="Edit message" title="Edit" onclick={() => startEdit(m)}>Edit</button>
@@ -2123,6 +2185,44 @@
   }
   .new-line span {
     padding: 0 4px 0 8px;
+  }
+  .unread-anchor {
+    position: relative;
+    z-index: 3;
+    height: 0;
+  }
+  .unread-bar {
+    position: absolute;
+    top: 0;
+    right: 16px;
+    left: 16px;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    border-radius: 0 0 8px 8px;
+    background: var(--accent-strong); /* as the "Jump to present" bar */
+    color: #fff;
+    font-size: 14px;
+  }
+  .unread-bar button {
+    padding: 6px 12px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .unread-bar .unread-jump {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: left;
+  }
+  .unread-bar button:hover {
+    background: rgb(255 255 255 / 0.15);
   }
   .line {
     display: flex;

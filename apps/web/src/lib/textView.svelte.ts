@@ -173,10 +173,6 @@ export const createTextView = (
       lines = { ...lines, [id]: message - 1 };
       connection().markUnread(id, message);
     },
-    // We sent a message there: the line goes (as in Discord).
-    clearLine: (id: number) => {
-      if (id in lines) lines = without(lines, id);
-    },
     // The mark the chat's "New" line follows (null: none).
     lineAfter: (id: number | null) => (id === null ? null : (lines[id] ?? null)),
     loadOlder: (id: number | null) => {
