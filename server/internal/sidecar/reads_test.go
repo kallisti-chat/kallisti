@@ -150,3 +150,33 @@ func TestSearchTextHasALimit(t *testing.T) {
 		t.Fatalf("long search: %v", m)
 	}
 }
+
+// Mark unread: the mark goes back (to the message before), the account's
+// sessions follow; guests and chats one may not read: nothing.
+func TestMarkUnread(t *testing.T) {
+	h := newHub(t, "general")
+	general := strconv.FormatInt(h.channels[0].ID, 10)
+	tab1 := joinAs(t, h, mumble.Identity{Session: 1, Name: "Alice", Registered: true, UserID: 3})
+	tab2 := joinAs(t, h, mumble.Identity{Session: 2, Name: "Alice", Registered: true, UserID: 3})
+	guest := joinAs(t, h, mumble.Identity{Session: 4, Name: "guest"})
+	if err := h.store.SetReadMark(3, h.channels[0].ID, 20); err != nil {
+		t.Fatal(err)
+	}
+	drain(tab1, tab2, guest)
+	tab1.Handle([]byte(`{"type":"mark-unread","channel":` + general + `,"message":12}`))
+	for _, tab := range []*Conn{tab1, tab2} {
+		if m := next(t, tab); m["type"] != "read" || jsonNum(m["channel"]) != general || m["message"] != float64(11) || m["back"] != true {
+			t.Fatalf("tab got %v", m)
+		}
+	}
+	if m, _ := h.store.ReadMarks(3); m[h.channels[0].ID] != 11 {
+		t.Fatalf("marks %v", m)
+	}
+	guest.Handle([]byte(`{"type":"mark-unread","channel":` + general + `,"message":12}`))
+	tab1.Handle([]byte(`{"type":"mark-unread","channel":99999,"message":12}`))
+	empty(t, guest)
+	empty(t, tab1)
+	if m, _ := h.store.ReadMarks(0); len(m) != 0 {
+		t.Fatalf("guest marks %v", m)
+	}
+}

@@ -153,7 +153,7 @@ func (h *Hub) UserMoved(session, from, to uint32) {
 		last := h.lastMessage(v.in)
 		v.seen[v.in] = last
 		if v.user.Registered && last > 0 {
-			h.setReadMark(v.user.UserID, v.in, last)
+			h.setReadMark(v.user.UserID, v.in, last, false)
 		}
 		v.in = 0
 	}

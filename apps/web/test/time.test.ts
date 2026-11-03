@@ -107,3 +107,18 @@ describe("groupMessages by name", () => {
     expect(groupMessages([a, b])).toHaveLength(2);
   });
 });
+
+describe("chatItems with the unread line", () => {
+  it("puts the line before the first unread message and starts a group there", () => {
+    const t = at(2026, 10, 14, 9);
+    const stored = (id: number, min: number) => ({ ...msg(1, t + min * 60_000), source: { id } }) as ChatMessage;
+    const items = chatItems([stored(1, 0), stored(2, 1), stored(3, 2)], undefined, 2);
+    expect(items.map((i) => (i.kind === "group" ? `group:${i.group.messages.map((m) => ("source" in m ? (m.source as { id: number }).id : 0))}` : i.kind))).toEqual([
+      "day",
+      "group:1",
+      "new",
+      "group:2,3",
+    ]);
+    expect(chatItems([stored(1, 0)], undefined, 9).map((i) => i.kind)).toEqual(["day", "group"]);
+  });
+});

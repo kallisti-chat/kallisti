@@ -348,3 +348,4 @@
 - [x] [Invite-only registration](issues/invite-only-registration.md)
 - [x] [OBS: how to turn off B-frames](issues/obs-bframes-hint.md)
 - [x] [OBS: tell the streamer about B-frames](issues/obs-bframes-warning.md)
+- [x] [Unread line, jump to unread, mark unread](issues/unread-bar.md)

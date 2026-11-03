@@ -1322,6 +1322,14 @@ func (s *Store) SetReadMark(userID uint32, channel, message int64) error {
 	return err
 }
 
+// ResetReadMark sets a user's read mark in a channel, also back (mark
+// unread).
+func (s *Store) ResetReadMark(userID uint32, channel, message int64) error {
+	_, err := s.db.Exec(`INSERT INTO read_marks_by_user (user_id, channel_id, message_id) VALUES (?, ?, ?)
+		ON CONFLICT (user_id, channel_id) DO UPDATE SET message_id = excluded.message_id`, userID, channel, message)
+	return err
+}
+
 // ReadMark is a user's read mark in one channel (ok false: none).
 func (s *Store) ReadMark(userID uint32, channel int64) (message int64, ok bool, err error) {
 	err = s.db.QueryRow(`SELECT message_id FROM read_marks_by_user WHERE user_id = ? AND channel_id = ?`, userID, channel).Scan(&message)

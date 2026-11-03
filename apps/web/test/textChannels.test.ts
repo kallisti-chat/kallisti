@@ -6,6 +6,7 @@ import {
   historyRequest,
   initialTextState,
   markReadRequest,
+  markUnreadRequest,
   linkify,
   pageAnswered,
   manageRequest,
@@ -642,6 +643,17 @@ describe("read state from the server", () => {
 
   it("builds the mark-read request", () => {
     expect(JSON.parse(markReadRequest(1, 9))).toEqual({ type: "mark-read", channel: 1, message: 9 });
+  });
+
+  it("takes a mark that goes back (mark unread) as it is, and notes it", () => {
+    const s = reduceText(initialTextState, { type: "read", channel: 1, message: 9 });
+    const ev = parseServerEvent(JSON.stringify({ type: "read", channel: 1, message: 4, back: true }));
+    expect(ev).toEqual({ type: "read", channel: 1, message: 4, back: true });
+    const back = reduceText(s, ev!);
+    expect(back.reads).toEqual({ 1: 4 });
+    expect(back.backs).toEqual({ 1: { message: 4, n: 1 } });
+    expect(reduceText(back, ev!).backs[1]!.n).toBe(2);
+    expect(JSON.parse(markUnreadRequest(1, 5))).toEqual({ type: "mark-unread", channel: 1, message: 5 });
   });
 });
 

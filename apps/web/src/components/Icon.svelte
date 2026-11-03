@@ -25,6 +25,7 @@
     sticker: "M4 4h16v9l-7 7H4zM20 13h-5a2 2 0 0 0-2 2v5",
     copy: "M9 9h11v11H9zM5 15H4V4h11v1",
     info: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5v.5",
+  unread: "M4 6h16v12H4zM4 7l8 6 8-6",
     search: "M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.9-4.9",
     back: "M20 12H4M10 6l-6 6 6 6",
     chevron: "M9 6l6 6-6 6",
