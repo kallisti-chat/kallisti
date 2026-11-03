@@ -115,6 +115,15 @@ describe("reduceText", () => {
     expect(reduceText(failed, { type: "error", message: "x", about: "manage" }).notice?.n).toBe(2);
   });
 
+  it("shows a notice from the server (a problem of our OBS stream)", () => {
+    const ev = parseServerEvent(JSON.stringify({ type: "notice", message: "B-frames" }));
+    expect(ev).toEqual({ type: "notice", message: "B-frames" });
+    expect(parseServerEvent(JSON.stringify({ type: "notice" }))).toBeNull();
+    const s = reduceText(ready, ev!);
+    expect(s.notice).toEqual({ text: "B-frames", n: 1 });
+    expect(s.lastError).toBeNull();
+  });
+
   it("reads the topic of an error", () => {
     expect(parseServerEvent('{"type":"error","message":"m","about":"manage"}')).toEqual({ type: "error", message: "m", about: "manage" });
     expect(parseServerEvent('{"type":"error","message":"m","about":"other"}')).toEqual({ type: "error", message: "m" });

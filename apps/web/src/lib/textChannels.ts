@@ -264,6 +264,8 @@ export type ServerEvent =
   // Messages of a channel were deleted (the server sends one as
   // "message-deleted").
   | { type: "messages-deleted"; channel: number; ids: number[] }
+  // Something for us from the server (a problem of our OBS stream).
+  | { type: "notice"; message: string }
   | { type: "search-results"; text: string; messages: TextMessage[]; threads?: Thread[] }
   // A session of our account (also this one) read a chat up to a message.
   | { type: "read"; channel: number; message: number }
@@ -793,6 +795,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         : null;
     case "message-deleted":
       return isNum(v.channel) && isNum(v.id) ? { type: "messages-deleted", channel: v.channel, ids: [v.id] } : null;
+    case "notice":
+      return isStr(v.message) ? { type: "notice", message: v.message } : null;
     case "messages-deleted":
       return isNum(v.channel) && Array.isArray(v.ids) && v.ids.every(isNum) ? { type: "messages-deleted", channel: v.channel, ids: v.ids } : null;
     case "search-results":
@@ -1116,6 +1120,8 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       if (!msgs) return { ...state, search, pins };
       return { ...state, search, pins, messages: { ...state.messages, [event.channel]: drop(msgs) } };
     }
+    case "notice":
+      return { ...state, notice: { text: event.message, n: (state.notice?.n ?? 0) + 1 } };
     case "error":
       return event.about === "manage"
         ? { ...state, notice: { text: event.message, n: (state.notice?.n ?? 0) + 1 } }
