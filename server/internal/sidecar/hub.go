@@ -193,6 +193,16 @@ func (h *Hub) StreamPreview(s LiveStream) {
 	h.sendTo(chat{voice: s.Channel, isVoice: true}, map[string]any{"type": "stream-preview", "session": s.Session, "image": s.Preview})
 }
 
+// Notice tells one voice session's connection something (a problem of its
+// stream from OBS); the web app shows it for a moment.
+func (h *Hub) Notice(session uint32, text string) {
+	h.eachReady(func(c *Conn, id mumble.Identity) {
+		if id.Session == session {
+			c.send(map[string]any{"type": "notice", "message": text})
+		}
+	})
+}
+
 // liveStreams for one user: previews only of channels it may enter.
 func (h *Hub) liveStreams(id mumble.Identity) []LiveStream {
 	out := []LiveStream{}

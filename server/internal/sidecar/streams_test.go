@@ -54,3 +54,15 @@ func TestStreamPreviewsFollowChannelAccess(t *testing.T) {
 		t.Fatalf("preview in the list for all: %v", s)
 	}
 }
+
+// A notice (a problem of an OBS stream) reaches only its owner's session.
+func TestNoticeReachesOneSession(t *testing.T) {
+	h := newHub(t, "general")
+	h.SetVoice(&fakeVoice{}, "")
+	owner, other := readyAs(t, h, 1, "owner"), readyAs(t, h, 3, "other")
+	h.Notice(1, "B-frames")
+	if m := next(t, owner); m["type"] != "notice" || m["message"] != "B-frames" {
+		t.Fatalf("notice %v", m)
+	}
+	empty(t, other)
+}

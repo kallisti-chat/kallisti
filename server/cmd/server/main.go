@@ -280,6 +280,7 @@ func run() error {
 				slog.Error("streams from OBS are off", "err", err)
 			} else {
 				defer wh.Close()
+				wh.Warn = hub.Notice // B-frames: the owner's app says how to turn them off
 				mux.Handle(whip.Path, wh)
 				mux.Handle(whip.Path+"/", wh)
 			}
