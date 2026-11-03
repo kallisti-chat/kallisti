@@ -753,6 +753,43 @@ func TestHostOnlyCookiesOverHTTPS(t *testing.T) {
 	}
 }
 
+// HTTPS in ALLOWED_ORIGINS is not proof of the request's transport.
+// Forwarded headers affect cookies only when proxy trust is enabled.
+func TestSessionCookieProxyTrust(t *testing.T) {
+	for _, tc := range []struct {
+		name, proto string
+		trust       bool
+	}{
+		{"untrusted https header", "https", false},
+		{"plain http", "", false},
+		{"trusted missing header", "", true},
+		{"trusted http header", "http", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, srv := setup(t)
+			a.TrustForwardedFor = tc.trust
+			req, _ := http.NewRequest("POST", srv.URL+"/api/accounts", strings.NewReader(`{"name":"alice","password":"longpassword"}`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Forwarded-Proto", tc.proto)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			c := sessionCookie(resp)
+			if resp.StatusCode != http.StatusCreated || len(resp.Cookies()) != 1 || c == nil || c.Value == "" || c.Secure || !c.HttpOnly || c.Path != "/" || c.Domain != "" || c.SameSite != http.SameSiteLaxMode {
+				t.Fatalf("status %d, cookies %v", resp.StatusCode, resp.Cookies())
+			}
+			r := httptest.NewRequest("GET", "/api/me", nil)
+			r.Header.Set("X-Forwarded-Proto", tc.proto)
+			r.AddCookie(c)
+			if _, ok := a.AccountFor(r); !ok {
+				t.Fatal("the plain HTTP session cookie did not count")
+			}
+		})
+	}
+}
+
 // Sessions from before the __Host- cookies keep counting with the plain
 // name (until plainCookiesUntil: they end by then), and /api/me moves them
 // to the new name. A session made later (one a sibling subdomain could

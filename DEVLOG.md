@@ -2647,13 +2647,19 @@ SHSauler's audit (GitHub #10) found nothing exploitable; hardening items, worked
 - Dependabot's first grouped update (#14): 18 actions to new majors (mostly the Node 24 runtime; tauri-action v1 names the macOS .app.tar.gz with the version). Release notes checked against our use; all workflows green on main, also image, site, android and desktop, which pull requests do not run; the Safari voice check needed a rerun (a runner timeout).
 - Helper images: health checks (Caddy DNS-01: its admin endpoint on localhost; cert-sync: a synced certificate exists, 5 minutes to start). No non-root USER: in Compose, Caddy runs as root and its storage (with the certificate, mode 0600) belongs to root, and cert-sync must read it and hand the copy to the app's user; a USER would break the certificate sync of every existing install. Kubernetes runs both as 1000 already. Built and checked with podman on the NAS.
 - nosniff on all responses: PR #13.
-- Confirmed: production ALLOWED_ORIGINS is exactly https://chat.kallisti.chat (other origins get Allow-Origin for token calls, never credentials); session cookies are Secure on HTTPS (direct TLS or X-Forwarded-Proto from a trusted proxy) with the __Host- prefix; SHA-1 is the Mumble protocol's (certificate and blob hashes); math/rand picks replacement words and runs in dev tools only; the exported Android activity is the launcher (required); glib 0.18 and proc-macro-error come with Tauri's gtk 0.18 on Linux and wait for Tauri.
+- Confirmed: production ALLOWED_ORIGINS is exactly https://chat.kallisti.chat (other origins get Allow-Origin for token calls, never credentials); session cookies are Secure with the __Host- prefix when a trusted proxy sets X-Forwarded-Proto to https (the shipped web listener serves plain HTTP); SHA-1 is the Mumble protocol's (certificate and blob hashes); math/rand picks replacement words and runs in dev tools only; the exported Android activity is the launcher (required); glib 0.18 and proc-macro-error come with Tauri's gtk 0.18 on Linux and wait for Tauri.
 
 ## Helper-container capabilities and certificate-sync health
 
 Keep the Compose helpers' existing users and volume ownership: the copier needs to read Caddy's private key and publish it for an arbitrary app PUID:PGID. Drop all capabilities, then allow only NET_BIND_SERVICE and DAC_OVERRIDE for Caddy, and CHOWN, DAC_OVERRIDE and FOWNER for the copier. The latter needs all three even when updating an existing private certificate directory. Kubernetes already applies its own non-root security context.
 
 Replace the copier's certificate-file-exists healthcheck with the result and heartbeat of its last completed pass. Waiting for initial issuance is healthy; rejected material and stalled passes are not. Clear previous status at startup, keep the last valid certificate on validation failure, and preserve atomic renewal. Tests cover custom ownership, restricted capabilities, non-root operation, custom paths, health transitions and interrupted publication. DNS-01 tests use a disposable image tag and an offline container with private synthetic token/configuration files, without touching deployment images or requesting real certificates.
+
+## HTTPS proxy configuration warning
+
+Follow-up to audit #10, findings 4 and 5: warn at startup when an HTTPS allowed origin is configured without TRUST_FORWARDED_FOR=1. That setting also controls trust of X-Forwarded-Proto; without it, the plain HTTP web listener cannot recognize HTTPS at the proxy and login cookies lack Secure and the __Host- prefix. The warning does not reject configuration or enable trust automatically. Keep the existing wildcard warning and document the proxy and app-port isolation requirements.
+
+Regression tests cover the warning conditions, an untrusted HTTPS header, plain HTTP, missing or HTTP headers from a trusted proxy, and the fediverse state cookie over trusted HTTPS. Cookie behavior, existing sessions, and the legacy-cookie migration deadline are unchanged.
 
 ## Moving from Murmur: import-murmur
 

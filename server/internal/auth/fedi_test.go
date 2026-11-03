@@ -617,6 +617,53 @@ func TestFediStartRemovesOldPathCookies(t *testing.T) {
 	}
 }
 
+func TestFediStateCookieProxyTrust(t *testing.T) {
+	for _, tc := range []struct {
+		name, proto   string
+		trust, secure bool
+	}{
+		{"trusted https", "https", true, true},
+		{"untrusted https header", "https", false, false},
+		{"plain http", "", false, false},
+		{"trusted missing header", "", true, false},
+		{"trusted http header", "http", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, srv, inst := fediSetup(t, &fedifake.Instance{})
+			a.TrustForwardedFor = tc.trust
+			body, _ := json.Marshal(map[string]string{"instance": inst})
+			req, _ := http.NewRequest("POST", srv.URL+"/api/fedi/start", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Forwarded-Proto", tc.proto)
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("start: %d", resp.StatusCode)
+			}
+			wantName := stateCookie
+			if tc.secure {
+				wantName = "__Host-" + stateCookie
+			}
+			live := 0
+			for _, c := range resp.Cookies() {
+				if c.MaxAge < 0 {
+					continue // Legacy deletion cookies carry no credentials.
+				}
+				live++
+				if c.Name != wantName || c.Value == "" || c.MaxAge <= 0 || c.Secure != tc.secure || !c.HttpOnly || c.Path != "/" || c.Domain != "" || c.SameSite != http.SameSiteLaxMode {
+					t.Errorf("state cookie: %v", c)
+				}
+			}
+			if live != 1 {
+				t.Fatalf("got %d live cookies, want one state cookie: %v", live, resp.Cookies())
+			}
+		})
+	}
+}
+
 // An admin's lists (see package homes): a blocked home server's accounts
 // cannot start a login, nor finish one started before the block.
 func TestFediLoginFromABlockedServer(t *testing.T) {
