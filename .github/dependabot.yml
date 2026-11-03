@@ -1,0 +1,11 @@
+# Keeps the pinned GitHub Actions (commit SHAs, see the workflows) current:
+# one grouped pull request a week.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
