@@ -5,13 +5,9 @@ type Line = { source?: { id: number }; actorName: string | null; at: number };
 
 const idOf = (m: Line) => m.source?.id ?? 0;
 
-// The first message after the read mark that someone else wrote (null:
-// none, or no mark).
-export const firstUnread = <M extends Line>(messages: readonly M[], after: number | null, mine: (m: M) => boolean) =>
-  after === null ? null : (messages.find((m) => idOf(m) > after && !mine(m))?.source?.id ?? null);
-
-// The bar: how many unread messages of others are loaded, since when; "N+"
-// while the first unread one is not loaded yet (first: null).
+// The bar: the first unread message of others and how many are loaded,
+// since when; "N+" while the read mark is older than what is loaded
+// (loaded: false, first is then only the first loaded one).
 export const unreadBar = <M extends Line>(messages: readonly M[], after: number | null, mine: (m: M) => boolean, time: (at: number) => string) => {
   if (after === null) return null;
   const unread = messages.filter((m) => idOf(m) > after && !mine(m));
@@ -19,7 +15,12 @@ export const unreadBar = <M extends Line>(messages: readonly M[], after: number 
   const n = unread.length;
   const loaded = messages.some((m) => idOf(m) > 0 && idOf(m) <= after);
   const count = `${n}${loaded ? "" : "+"} new message${n === 1 && loaded ? "" : "s"}`;
-  return loaded ? { first: idOf(unread[0]!), text: `${count} since ${time(unread[0]!.at)}` } : { first: null, text: count };
+  return { first: idOf(unread[0]!), loaded, text: loaded ? `${count} since ${time(unread[0]!.at)}` : count };
+};
+
+export const sameRecord = (a: Readonly<Record<number, number>>, b: Readonly<Record<number, number>>) => {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every((k) => a[Number(k)] === b[Number(k)]);
 };
 
 // The lines by chat: set where the chat was read when it comes into view

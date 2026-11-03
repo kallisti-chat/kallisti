@@ -1,34 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { firstUnread, nextLines, unreadBar } from "../src/lib/unread";
+import { nextLines, sameRecord, unreadBar } from "../src/lib/unread";
 
 const msg = (id: number, by = "bob", at = id * 60_000) => ({ source: { id }, actorName: by, at });
 const mine = (m: { actorName: string | null }) => m.actorName === "me";
 
-describe("firstUnread", () => {
-  it("is the first message after the mark that someone else wrote", () => {
-    const ms = [msg(1), msg(2), msg(3, "me"), msg(4)];
-    expect(firstUnread(ms, 2, mine)).toBe(4);
-    expect(firstUnread(ms, 1, mine)).toBe(2);
-    expect(firstUnread(ms, 4, mine)).toBeNull();
-    expect(firstUnread(ms, null, mine)).toBeNull();
-  });
-  it("skips lines without an id (Mumble chat)", () => {
-    expect(firstUnread([{ actorName: "x", at: 0 }, msg(5)], 1, mine)).toBe(5);
-  });
-});
-
 describe("unreadBar", () => {
-  it("counts the unread messages of others since the first one", () => {
+  it("counts the unread messages of others from the first one", () => {
     const bar = unreadBar([msg(1), msg(2), msg(3, "me"), msg(4)], 1, mine, (at) => `t${at}`);
-    expect(bar).toEqual({ first: 2, text: "2 new messages since t120000" });
+    expect(bar).toEqual({ first: 2, loaded: true, text: "2 new messages since t120000" });
+    expect(unreadBar([msg(1), msg(2), msg(3, "me"), msg(4)], 2, mine, String)?.first).toBe(4);
     expect(unreadBar([msg(1), msg(2)], 1, mine, String)?.text).toBe("1 new message since 120000");
   });
-  it("says at least the loaded count when the first unread one is not loaded", () => {
-    expect(unreadBar([msg(10), msg(11)], 3, mine, String)).toEqual({ first: null, text: "2+ new messages" });
+  it("skips lines without an id (Mumble chat)", () => {
+    expect(unreadBar([{ actorName: "x", at: 0 }, msg(1), msg(5)], 1, mine, String)?.first).toBe(5);
+  });
+  it("says at least the loaded count while the read mark is older than what is loaded", () => {
+    expect(unreadBar([msg(10), msg(11)], 3, mine, String)).toEqual({ first: 10, loaded: false, text: "2+ new messages" });
   });
   it("is none without unread messages", () => {
     expect(unreadBar([msg(1, "me")], 0, mine, String)).toBeNull();
     expect(unreadBar([msg(1)], null, mine, String)).toBeNull();
+  });
+});
+
+describe("sameRecord", () => {
+  it("compares keys and values", () => {
+    expect(sameRecord({ 1: 2 }, { 1: 2 })).toBe(true);
+    expect(sameRecord({ 1: 2 }, { 1: 3 })).toBe(false);
+    expect(sameRecord({ 1: 2 }, { 1: 2, 3: 4 })).toBe(false);
   });
 });
 

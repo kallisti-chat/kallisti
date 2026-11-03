@@ -66,7 +66,7 @@
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
-  import { firstUnread, unreadBar } from "../lib/unread";
+  import { unreadBar } from "../lib/unread";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
   import Avatar from "./Avatar.svelte";
@@ -342,9 +342,9 @@
   // loaded (all history loaded: the first loaded one).
   const mine = (m: ChatMessage | DisplayMessage) => m.actorName === me && !("webhook" in m && m.webhook);
   const unread = $derived(
-    unreadBar(messages, unreadAfter, mine, (at) => formatTimestamp(at, Date.now(), undefined, settings.value.timeFormat).replace(/^(Today|Yesterday)/, (w) => w.toLowerCase())),
+    unreadBar(messages, unreadAfter, mine, (at) => formatTimestamp(at, now, undefined, settings.value.timeFormat).replace(/^(Today|Yesterday)/, (w) => w.toLowerCase())),
   );
-  const lineAt = $derived(unread?.first ?? (unread && !more ? firstUnread(messages, unreadAfter, mine) : null));
+  const lineAt = $derived(unread && (unread.loaded || !more) ? unread.first : null);
   const items = $derived(chatItems(messages, blockedUsers.has, lineAt));
   const target = $derived(kind === "dm" ? `@${title}` : kind === "text" ? `#${title}` : title);
 
@@ -1044,7 +1044,13 @@
   let seekUnread = $state(false);
   let unreadPages = 0;
   $effect(() => {
+    void chat;
+    seekUnread = false;
+    unreadPages = 0;
+  });
+  $effect(() => {
     if (!seekUnread) return;
+    if (!unread) return void (seekUnread = false); // read meanwhile
     const step = jumpStep({ loaded: lineAt !== null, more: more && !!onLoadOlder, loading: loadingOlder || messages !== incoming, pages: unreadPages });
     if (step === "load") {
       unreadPages++;
@@ -1207,9 +1213,14 @@
       if ((e.key === "Enter" || e.key === " ") && toggleSpoiler(e.target as Element)) e.preventDefault();
     }}
     onclick={(e) => {
-      // Alt+click on a stored message: unread from there (as in Discord).
-      const marked = e.altKey && onMarkUnread ? (e.target as Element).closest<HTMLElement>("[data-message]")?.dataset.message : undefined;
-      if (marked) return void onMarkUnread?.(Number(marked));
+      // Alt+click on a stored message: unread from there (as in Discord;
+      // not on its links and buttons).
+      const target = e.target as Element;
+      const marked = e.altKey && onMarkUnread && !target.closest("a, button") ? target.closest<HTMLElement>("[data-message]")?.dataset.message : undefined;
+      if (marked) {
+        e.preventDefault();
+        return void onMarkUnread?.(Number(marked));
+      }
       // A click that ends a text selection does not hide a spoiler.
       if (!document.getSelection()?.toString() && toggleSpoiler(e.target as Element)) return e.preventDefault();
       const href = (e.target as Element).closest("a[href]")?.getAttribute("href");

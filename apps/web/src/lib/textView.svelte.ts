@@ -2,7 +2,7 @@ import { untrack } from "svelte";
 import type { Connection } from "./connection.svelte";
 import { mentionCounts } from "./mentions";
 import { autoSeen, pageAnswered, unreadTextIds } from "./textChannels";
-import { nextLines } from "./unread";
+import { nextLines, sameRecord } from "./unread";
 
 // Text channel behaviour of the client view: load history once per channel,
 // page back, track what was seen. Call during component setup (it uses
@@ -72,6 +72,7 @@ export const createTextView = (
   let held = $state<Record<number, number>>({});
   let watched = new Set<number>();
   const without = (r: Record<number, number>, id: number) => {
+    if (!(id in r)) return r;
     const { [id]: _, ...rest } = r;
     return rest;
   };
@@ -84,7 +85,7 @@ export const createTextView = (
     untrack(() => {
       const fresh = autoSeen(state, ids.filter((id) => !(id in held)), read, shown);
       const next = nextLines(lines, { open: ids, watched, seen: fresh, read });
-      if (JSON.stringify(next) !== JSON.stringify(lines)) lines = next;
+      if (!sameRecord(next, lines)) lines = next;
       watched = new Set(shown ? ids.filter((id) => state.loaded[id]) : []);
       for (const [id, newest] of fresh) {
         seen = { ...seen, [id]: newest };
@@ -100,7 +101,8 @@ export const createTextView = (
     });
   });
   // A mark that went back (here or in another session): our own seen mark
-  // follows, else it would send the old one again.
+  // follows, else it would send the old one again; open here, the chat is
+  // held there too (else watching it would read it again at once).
   const backsSeen = new Map<number, number>();
   $effect(() => {
     const backs = text.backs;
@@ -111,6 +113,10 @@ export const createTextView = (
         backsSeen.set(id, b.n);
         pending.delete(id);
         if ((seen[id] ?? 0) > b.message) seen = { ...seen, [id]: b.message };
+        if (open().includes(id)) {
+          held = { ...held, [id]: b.message };
+          lines = { ...lines, [id]: b.message };
+        }
       }
     });
   });
