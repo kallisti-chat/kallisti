@@ -297,7 +297,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("cannot listen on port %d: %w", cfg.ListenPort, err)
 	}
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: nosniff(mux), ReadHeaderTimeout: 10 * time.Second}
 	slog.Info("server running", "listen", ln.Addr().String(), "mumble", upstream,
 		"db", cfg.DBPath, "text_channels", cfg.TextChannels)
 
