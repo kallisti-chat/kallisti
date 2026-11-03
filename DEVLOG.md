@@ -2626,3 +2626,7 @@ Three pictures show as one big cell (two rows high) and two small ones. The big 
 ## OBS: how to turn off B-frames
 
 A user's OBS 30.1.2 stream (x264, profile baseline) showed a white window as pink with a purple bar until they put `bframes=0` in "x264 Options". The dialog said only "no B-frames", and OBS's x264 has no field for them. Now the dialog and the docs say it per encoder: x264 `bframes=0` in "x264 Options"; NVENC, QuickSync, AMF: B-Frames 0. The server still forwards the video as it comes.
+
+## OBS: the server tells the streamer about B-frames
+
+The server forwards OBS's H.264 unchanged, and viewers decode pictures in the order they come, so B-frames break the picture (a user saw pink with a purple bar). Now the WHIP code reads each non-IDR slice's slice_type (two Exp-Golomb codes after the NAL header; 1 or 6 is B). At the first B picture of a stream it logs it and the owner's app shows for about 14 s how to turn them off (x264: bframes=0 in x264 Options; NVENC, QuickSync, AMF: B-Frames 0), once per stream. The way there: whip.Handler.Warn → sidecar Hub.Notice (a "notice" to that voice session's connection) → the notice toast. Toasts now stay 0.3 s a word (at least 5 s), so a long text can be read. Tested with hand-made slice headers, a real x264 clip with bframes=2 (testdata/bframes.h264, 6 KB) and the clip without them.

@@ -347,3 +347,4 @@
 - [x] [Three pictures: a gap in the grid](issues/picture-grid-gap.md)
 - [x] [Invite-only registration](issues/invite-only-registration.md)
 - [x] [OBS: how to turn off B-frames](issues/obs-bframes-hint.md)
+- [x] [OBS: tell the streamer about B-frames](issues/obs-bframes-warning.md)
