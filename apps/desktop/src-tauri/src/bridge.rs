@@ -203,12 +203,12 @@ type KallistiSocket = tokio_tungstenite::WebSocketStream<Box<dyn Io>>;
 struct Upstream {
     read: UpRead,
     write: UpWrite,
-    udp: Option<SocketAddr>,     // where voice goes over UDP, if anywhere
+    udp: Option<SocketAddr>,      // where voice goes over UDP, if anywhere
     cert: Option<(String, bool)>, // a Mumble server's: fingerprint, CA-valid
 }
 
 enum UpRead {
-    Tls(tokio::io::ReadHalf<tokio_rustls::client::TlsStream<TcpStream>>),
+    Tls(tokio::io::ReadHalf<tokio_rustls::client::TlsStream<TcpStream>>, Box<[u8]>),
     Ws(futures_util::stream::SplitStream<KallistiSocket>),
 }
 
@@ -220,13 +220,15 @@ enum UpWrite {
 enum UpEvent {
     Mumble(Vec<u8>),
     Text(tokio_tungstenite::tungstenite::Utf8Bytes),
+    // The server closed, maybe with a reason the client decides on.
+    Close(Option<CloseFrame>),
 }
 
 impl UpRead {
     /// The next data from the server; None at its end.
-    async fn next(&mut self, buf: &mut [u8]) -> std::io::Result<Option<UpEvent>> {
+    async fn next(&mut self) -> std::io::Result<Option<UpEvent>> {
         match self {
-            UpRead::Tls(r) => {
+            UpRead::Tls(r, buf) => {
                 let n = r.read(buf).await?;
                 Ok((n > 0).then(|| UpEvent::Mumble(buf[..n].to_vec())))
             }
@@ -234,7 +236,8 @@ impl UpRead {
                 match r.next().await {
                     Some(Ok(Message::Binary(data))) => return Ok(Some(UpEvent::Mumble(data.to_vec()))),
                     Some(Ok(Message::Text(text))) => return Ok(Some(UpEvent::Text(text))),
-                    Some(Ok(Message::Close(_))) | None => return Ok(None),
+                    Some(Ok(Message::Close(frame))) => return Ok(Some(UpEvent::Close(frame))),
+                    None => return Ok(None),
                     Some(Ok(_)) => continue, // pings: answered by tungstenite
                     Some(Err(err)) => return Err(std::io::Error::other(err)),
                 }
@@ -276,7 +279,8 @@ async fn open_upstream(
         Target::Mumble { host, port } => {
             let (stream, fp, trusted, peer) = connect_upstream(host, *port, HANDSHAKE_TIMEOUT).await?;
             let (read, write) = tokio::io::split(stream);
-            Ok(Upstream { read: UpRead::Tls(read), write: UpWrite::Tls(write), udp: Some(peer), cert: Some((fp, trusted)) })
+            let read = UpRead::Tls(read, vec![0u8; 32 * 1024].into_boxed_slice());
+            Ok(Upstream { read, write: UpWrite::Tls(write), udp: Some(peer), cert: Some((fp, trusted)) })
         }
         Target::Kallisti { url, udp } => {
             let (socket, peer) = connect_kallisti(url, origin, protocols, HANDSHAKE_TIMEOUT).await?;
@@ -299,12 +303,12 @@ async fn connect_kallisti(
 ) -> Result<(KallistiSocket, SocketAddr), Box<dyn std::error::Error + Send + Sync>> {
     tokio::time::timeout(limit, async {
         let parsed = url::Url::parse(url)?;
-        let addrs = parsed.socket_addrs(|| None)?;
-        let tcp = TcpStream::connect(&*addrs).await?;
+        let host = parsed.host_str().ok_or("no host")?.trim_start_matches('[').trim_end_matches(']');
+        let port = parsed.port_or_known_default().ok_or("no port")?;
+        let tcp = TcpStream::connect((host, port)).await?; // tokio's resolver: not on this thread
         tcp.set_nodelay(true)?;
         let peer = tcp.peer_addr()?;
         let stream: Box<dyn Io> = if parsed.scheme() == "wss" {
-            let host = parsed.host_str().ok_or("no host")?.trim_start_matches('[').trim_end_matches(']');
             let name = rustls::pki_types::ServerName::try_from(host.to_string())?;
             Box::new(web_tls().connect(name, tcp).await?)
         } else {
@@ -324,16 +328,20 @@ async fn connect_kallisti(
     .await?
 }
 
+/// The usual certificate authorities (the web PKI).
+fn web_roots() -> rustls::RootCertStore {
+    rustls::RootCertStore { roots: webpki_roots::TLS_SERVER_ROOTS.to_vec() }
+}
+
 /// TLS as browsers check it (the usual certificate authorities), over
 /// HTTP/1.1 (WebSockets need it).
 fn web_tls() -> tokio_rustls::TlsConnector {
     static CONFIG: std::sync::OnceLock<Arc<rustls::ClientConfig>> = std::sync::OnceLock::new();
     let config = CONFIG.get_or_init(|| {
-        let roots = rustls::RootCertStore { roots: webpki_roots::TLS_SERVER_ROOTS.to_vec() };
         let mut config = rustls::ClientConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
             .with_safe_default_protocol_versions()
             .expect("TLS versions")
-            .with_root_certificates(roots)
+            .with_root_certificates(web_roots())
             .with_no_client_auth();
         config.alpn_protocols = vec![b"http/1.1".to_vec()];
         Arc::new(config)
@@ -348,6 +356,9 @@ async fn relay(
     early: Vec<Message>,
     upstream: Upstream,
 ) -> std::io::Result<()> {
+    // Mumble servers echo voice to the loopback target: the empty packet
+    // that announces UDP goes to Kallisti servers only (they drop it).
+    let announce = upstream.cert.is_none();
     let Upstream { read: mut up_read, write: up_write, udp: udp_peer, .. } = upstream;
     let udp = match udp_peer {
         Some(peer) => udp_socket(peer).await.ok(),
@@ -394,14 +405,18 @@ async fn relay(
     // go to the client, so UDP voice never lands inside a TCP frame.
     let to_client = async {
         let mut splitter = Splitter::default();
-        let mut buf = vec![0u8; 32 * 1024];
-        while let Some(event) = up_read.next(&mut buf).await? {
+        let mut reason = None;
+        while let Some(event) = up_read.next().await? {
             let data = match event {
                 UpEvent::Text(text) => {
                     if ws_write.lock().await.send(Message::Text(text)).await.is_err() {
                         break;
                     }
                     continue;
+                }
+                UpEvent::Close(frame) => {
+                    reason = frame;
+                    break;
                 }
                 UpEvent::Mumble(data) => data,
             };
@@ -424,7 +439,7 @@ async fn relay(
                 break;
             }
         }
-        let _ = ws_write.lock().await.close().await;
+        let _ = ws_write.lock().await.send(Message::Close(reason)).await;
         Ok::<_, std::io::Error>(())
     };
     // UDP from the server, and pings.
@@ -458,12 +473,13 @@ async fn relay(
                             }
                         }
                         Incoming::Resync(request) => up_write.lock().await.mumble(request).await?,
-                        Incoming::Pong => {
-                            let announce = voice.lock().unwrap().announce(Instant::now());
-                            if let Some(packet) = announce {
+                        Incoming::Pong if announce => {
+                            let packet = voice.lock().unwrap().announce(Instant::now());
+                            if let Some(packet) = packet {
                                 let _ = socket.send(&packet).await;
                             }
                         }
+                        Incoming::Pong => {}
                         Incoming::Dropped => {}
                     }
                 }
@@ -550,8 +566,7 @@ fn ca_valid(
     use rustls::client::danger::ServerCertVerifier;
     static VERIFIER: std::sync::OnceLock<Option<Arc<rustls::client::WebPkiServerVerifier>>> = std::sync::OnceLock::new();
     let verifier = VERIFIER.get_or_init(|| {
-        let roots = rustls::RootCertStore { roots: webpki_roots::TLS_SERVER_ROOTS.to_vec() };
-        rustls::client::WebPkiServerVerifier::builder_with_provider(Arc::new(roots), Arc::new(rustls::crypto::ring::default_provider()))
+        rustls::client::WebPkiServerVerifier::builder_with_provider(Arc::new(web_roots()), Arc::new(rustls::crypto::ring::default_provider()))
             .build()
             .ok()
     });
@@ -754,6 +769,12 @@ mod tests {
         let mut buf = [0u8; 64];
         let n = tokio::time::timeout(std::time::Duration::from_secs(3), udp.recv(&mut buf)).await.expect("no UDP ping").unwrap();
         assert!(n > 4); // an encrypted ping
+
+        // The server's close reason reaches the client (it decides on it:
+        // "logged out" asks for a new login, no reconnect).
+        let reason = CloseFrame { code: CloseCode::Policy, reason: "logged out".into() };
+        server.close(Some(reason.clone())).await.unwrap();
+        assert_eq!(client.next().await.unwrap().unwrap(), Message::Close(Some(reason)));
     }
 
     #[test]
