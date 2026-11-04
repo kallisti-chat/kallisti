@@ -382,7 +382,9 @@
   const bridged = new Map<string, Connection>(); // by the bridge URL
   const appSocket = async (origin: string, token: string | null): Promise<Target> => {
     if (!udpPorts.has(origin) && (await hasBridge())) {
-      const { udpPort } = await apiWithToken(origin, token).serverInfo();
+      // Optional: a slow answer must not hold up the connection.
+      const late = new Promise<{ udpPort?: number }>((resolve) => setTimeout(() => resolve({}), 5000));
+      const { udpPort } = await Promise.race([apiWithToken(origin, token).serverInfo(), late]);
       if (udpPort) udpPorts.set(origin, udpPort);
     }
     const udpPort = udpPorts.get(origin);
@@ -390,7 +392,7 @@
     return target && !bridgeFailed(bridged.get(target.url)?.closeReason) ? target : kallistiSocket(origin, token);
   };
   const connectTo = (target: Target, c: Credentials) => {
-    const conn = connect(target.url, c, audio, target.protocols);
+    const conn = connect(target.url, c, audio, target.protocols, target.site);
     bridged.set(target.url, conn);
     return conn;
   };

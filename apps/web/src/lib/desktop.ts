@@ -176,7 +176,8 @@ export const kallistiSocket = (origin: string, token: string | null, voice?: { b
   const protocols = token ? ["kallisti", `kallisti.session.${token}`] : [];
   if (!voice) return { url, protocols };
   const params = new URLSearchParams({ secret: voice.bridge.secret, kallisti: url, udp: String(voice.udpPort) });
-  return { url: `ws://127.0.0.1:${voice.bridge.port}/?${params}`, protocols };
+  // site: the server's own HTTP address (uploads, streams, pictures).
+  return { url: `ws://127.0.0.1:${voice.bridge.port}/?${params}`, protocols, site: origin };
 };
 
 // The bridge could not reach the server (it has another trust store and

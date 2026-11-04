@@ -102,8 +102,9 @@ export type Connection = ReturnType<typeof connect>;
 // Thin effectful shell around the pure protocol code. Owns the audio
 // context (null: no voice support), so voice lives and dies with the socket.
 // protocols: WebSocket subprotocols (the desktop app's session token, see
-// lib/desktop kallistiSocket).
-export const connect = (url: string, credentials: Credentials, audio: AudioContext | null, protocols: string[] = []) => {
+// lib/desktop kallistiSocket); site: the server's HTTP address, when url is
+// the app's bridge.
+export const connect = (url: string, credentials: Credentials, audio: AudioContext | null, protocols: string[] = [], site?: string) => {
   let state = $state.raw<ServerState>(initialState);
   let closed = $state(false);
   // It was in at some point (see shouldReconnect).
@@ -175,7 +176,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   // Screen sharing (built-in server): its own connection, with a token
   // asked for here.
   const streamToken = () => askToken("stream-token");
-  const base = httpBase(url);
+  const base = site ?? httpBase(url);
   const streams = streamingSupported() ? createStreamClient(`${base.replace(/^http/, "ws")}/api/stream`, streamToken, audio) : null;
   const push = createMessageStream();
   const ws = protocols.length ? new WebSocket(url, protocols) : new WebSocket(url);

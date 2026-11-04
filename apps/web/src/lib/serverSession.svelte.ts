@@ -26,8 +26,9 @@ export type SessionConnection = {
 };
 
 // Where a connection goes; local: through the desktop app's own bridge
-// to a Mumble server.
-export type Target = { url: string; protocols?: string[]; local?: boolean };
+// to a Mumble server; site: the server's HTTP address when the URL is not
+// on it (a Kallisti server through the bridge).
+export type Target = { url: string; protocols?: string[]; local?: boolean; site?: string };
 
 export type SessionDeps<C> = {
   // This server's site (the Kallisti server's origin): the key of what is

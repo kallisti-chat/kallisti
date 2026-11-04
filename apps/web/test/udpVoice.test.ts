@@ -17,6 +17,8 @@ describe("voice over UDP in the apps", () => {
     const target = kallistiSocket("https://chat.example", "abc", { bridge: { port: 4567, secret: "s3cret" }, udpPort: 64738 });
     expect(target.protocols).toEqual(["kallisti", "kallisti.session.abc"]);
     expect("local" in target).toBe(false); // the server's close reasons, as without the bridge
+    // Uploads, streams and pictures still go to the server itself.
+    expect(target.site).toBe("https://chat.example");
     const url = new URL(target.url);
     expect(url.origin).toBe("ws://127.0.0.1:4567");
     expect(Object.fromEntries(url.searchParams)).toEqual({ secret: "s3cret", kallisti: "wss://chat.example/ws", udp: "64738" });
