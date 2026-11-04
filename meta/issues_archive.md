@@ -351,3 +351,4 @@
 - [x] [Unread line, jump to unread, mark unread](issues/unread-bar.md)
 - [x] [Security audit (GitHub #10)](issues/security-audit-10.md)
 - [x] [Import a Murmur server](issues/murmur-import.md)
+- [x] [Unregister deletes the web account](issues/delete-account-on-unregister.md)
