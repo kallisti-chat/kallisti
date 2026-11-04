@@ -17,7 +17,8 @@ const RESYNC_INTERVAL: Duration = Duration::from_secs(5);
 pub struct UdpVoice {
     crypt: Option<CryptState>,
     legacy: bool,
-    last_good: Option<Instant>,
+    last_good: Option<Instant>, // any packet that decrypted (resyncs)
+    last_pong: Option<Instant>, // the way up works too
     last_resync: Option<Instant>,
     ping_count: u8,
     was_usable: bool,
@@ -73,6 +74,7 @@ impl UdpVoice {
             (Some(key), Some(client), Some(server)) => {
                 self.crypt = Some(CryptState::new(key, client, server));
                 self.last_good = None;
+                self.last_pong = None;
                 self.heard = false;
                 None
             }
@@ -90,7 +92,7 @@ impl UdpVoice {
     }
 
     pub fn usable(&self, now: Instant) -> bool {
-        self.last_good.is_some_and(|t| now.saturating_duration_since(t) < UDP_TIMEOUT)
+        self.last_pong.is_some_and(|t| now.saturating_duration_since(t) < UDP_TIMEOUT)
     }
 
     /// An encrypted ping, once the keys are known.
@@ -151,6 +153,7 @@ impl UdpVoice {
             Some(b) => *b == 1,
         };
         if is_ping {
+            self.last_pong = Some(now);
             return Incoming::Pong;
         }
         self.heard = true;
@@ -235,6 +238,22 @@ mod tests {
     }
 
     #[test]
+    fn only_pongs_keep_udp_usable() {
+        // Voice from the server proves only the way down: without pongs,
+        // our voice goes back to TCP (the way up may be blocked).
+        let now = Instant::now();
+        let mut v = UdpVoice::default();
+        v.on_crypt_setup(&setup());
+        let mut server = murmur();
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(now, &server.encrypt(&ping));
+        let later = now + Duration::from_secs(13);
+        assert!(matches!(v.incoming(later, &server.encrypt(&[0, 9, 9])), Incoming::Audio(_)));
+        assert!(!v.usable(later));
+        assert!(v.outgoing(later, &[0, 1, 2]).is_none());
+    }
+
+    #[test]
     fn tells_the_server_once_when_udp_stops_working() {
         let now = Instant::now();
         let mut v = UdpVoice::default();
@@ -261,7 +280,7 @@ mod tests {
             Incoming::Audio(plain) => assert_eq!(plain, vec![0, 9, 9]),
             _ => panic!("expected audio"),
         }
-        assert!(v.usable(now), "any good packet proves UDP works");
+        assert!(!v.usable(now), "only a pong proves the way up");
     }
 
     #[test]

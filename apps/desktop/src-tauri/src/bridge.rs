@@ -406,7 +406,7 @@ async fn relay(
     let to_client = async {
         let mut splitter = Splitter::default();
         let mut reason = None;
-        while let Some(event) = up_read.next().await? {
+        'read: while let Some(event) = up_read.next().await? {
             let data = match event {
                 UpEvent::Text(text) => {
                     if ws_write.lock().await.send(Message::Text(text)).await.is_err() {
@@ -420,23 +420,27 @@ async fn relay(
                 }
                 UpEvent::Mumble(data) => data,
             };
-            let mut out = Vec::with_capacity(data.len());
-            for frame in splitter.feed(&data).map_err(std::io::Error::other)? {
-                match frame.typ {
-                    VERSION => voice.lock().unwrap().set_legacy(udp::is_legacy_server(frame.body())),
-                    CRYPT_SETUP => {
-                        let reply = CryptSetup::parse(frame.body()).and_then(|cs| voice.lock().unwrap().on_crypt_setup(&cs));
-                        if let Some(reply) = reply {
-                            up_write.lock().await.mumble(reply).await?;
+            // In pieces: a server's WebSocket message full of tiny frames
+            // must not become millions of frames at once.
+            for piece in data.chunks(32 * 1024) {
+                let mut out = Vec::with_capacity(piece.len());
+                for frame in splitter.feed(piece).map_err(std::io::Error::other)? {
+                    match frame.typ {
+                        VERSION => voice.lock().unwrap().set_legacy(udp::is_legacy_server(frame.body())),
+                        CRYPT_SETUP => {
+                            let reply = CryptSetup::parse(frame.body()).and_then(|cs| voice.lock().unwrap().on_crypt_setup(&cs));
+                            if let Some(reply) = reply {
+                                up_write.lock().await.mumble(reply).await?;
+                            }
+                            send_ping(&udp, &voice).await; // find out at once if UDP works
                         }
-                        send_ping(&udp, &voice).await; // find out at once if UDP works
+                        _ => {}
                     }
-                    _ => {}
+                    out.extend_from_slice(&frame.raw);
                 }
-                out.extend_from_slice(&frame.raw);
-            }
-            if !out.is_empty() && ws_write.lock().await.send(Message::Binary(out.into())).await.is_err() {
-                break;
+                if !out.is_empty() && ws_write.lock().await.send(Message::Binary(out.into())).await.is_err() {
+                    break 'read;
+                }
             }
         }
         let _ = ws_write.lock().await.send(Message::Close(reason)).await;
