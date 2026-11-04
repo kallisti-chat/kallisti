@@ -9,6 +9,8 @@
   import { browserPushSupport, pushIsOn, turnOffPush, turnOnPush, type PushPrefs } from "../lib/push";
   import { needsReauth, type AccountActions } from "../lib/accounts";
   import { handleHost } from "../lib/fedi";
+  import { i18n, t } from "../lib/i18n.svelte";
+  import { LOCALE_NAMES, LOCALES, type Language } from "../lib/i18n";
   import { keyLabel, meterPercent, METER_MIN_DB, type Settings, type ThemeSetting } from "../lib/settings";
   import type { TimeFormat } from "../lib/chat";
   import { isDesktop } from "../lib/desktop";
@@ -553,6 +555,16 @@
         </label>
       {/if}
     {:else if id === "appearance"}
+      <label>
+        {t("settings.language")}
+        <select value={i18n.language} onchange={(e) => void i18n.setLanguage(e.currentTarget.value as Language)}>
+          <option value="auto">{t("settings.languageAuto")}</option>
+          {#each LOCALES as locale (locale)}
+            <option value={locale} lang={locale}>{LOCALE_NAMES[locale]}</option>
+          {/each}
+        </select>
+      </label>
+
       <label>
         Theme
         <select value={settings.theme} onchange={(e) => onChange({ theme: e.currentTarget.value as ThemeSetting })}>
