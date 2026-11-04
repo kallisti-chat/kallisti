@@ -1,21 +1,20 @@
-# Unregister deletes the web account
+# Delete users: also their web account
 
 ## Summary
 
 Server settings → Users → Unregister removed only the Mumble registration.
 The web account stayed, so the user logged in again with the same name and
-password and got a new registration (a user's report). For a registration
-of a web account the button is "Delete account…": the account goes with
-its sessions (open tabs log out). Messages stay under the old name.
+password and got a new registration (a user's report). The list has one
+action now, "Delete user…": a web account goes with its registration and
+sessions (open tabs log out); a Mumble-only user loses the registration, as
+before. Messages stay under the old name. Rename is gone from the list.
 
-Only admins (Write in root) delete accounts; moderators keep Unregister for
-Mumble-only registrations. Built-in server only (Murmur has no accounts of
-ours).
+Only admins (Write in root) delete users and see the list. Built-in server
+only (Murmur has no accounts of ours).
 
 ## Acceptance Criteria
 
-- Unregistering an account's registration deletes the account and ends
-  its logins; the user cannot log in again.
-- A moderator cannot delete an account.
-- The Users list shows "Delete account…" for accounts, with a clear
-  confirmation.
+- Deleting an account's registration deletes the account and ends its
+  logins; the user cannot log in again.
+- Moderators cannot delete users.
+- The list shows "Delete user…" with a clear confirmation, and no Rename.
