@@ -374,10 +374,16 @@
   // A server from last time: looked at again at once.
   untrack(() => desktop && (desktopServer ? void chooseServer(desktopServer) : (checking = false)));
 
+  // A Kallisti server in the apps: through the bridge, which sends voice
+  // over UDP, when the server has a Mumble port for it; else straight.
+  const appSocket = async (origin: string, token: string | null): Promise<Target> => {
+    const udpPort = (await hasBridge()) ? (await apiWithToken(origin, token).serverInfo()).udpPort : undefined;
+    return udpPort ? kallistiSocket(origin, token, { bridge: await getBridge(), udpPort }) : kallistiSocket(origin, token);
+  };
   // local: through the desktop app's own bridge (a Mumble server).
   const urlFor = async (credentials: Credentials): Promise<Target> => {
     if (!desktop) return { url: PROXY_URL };
-    if (kallisti) return kallistiSocket(kallisti, sessionStore(kallisti).get());
+    if (kallisti) return appSocket(kallisti, sessionStore(kallisti).get());
     const server = parseAddress(credentials.server ?? "");
     if (!server) throw new Error(t("client.enterServer"));
     return { url: bridgeUrl(await getBridge(), server), local: true };
@@ -413,7 +419,7 @@
     open: (origin, name, token) => {
       const s = createServerSession<Connection>({
         site: () => origin,
-        urlFor: async () => kallistiSocket(origin, token),
+        urlFor: async () => (desktop ? appSocket(origin, token) : kallistiSocket(origin, token)),
         connect: (target, c) => connect(target.url, c, audio, target.protocols),
         tabStorage,
       });

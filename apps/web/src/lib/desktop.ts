@@ -169,7 +169,12 @@ export const isKallisti = async (origin: string, fetchFn: typeof fetch = fetch, 
 
 // The server's WebSocket (voice and text), with the session token as a
 // subprotocol (browsers cannot send headers there; see the server's auth).
-export const kallistiSocket = (origin: string, token: string | null) => ({
-  url: `${origin.replace(/^http/, "ws")}/ws`,
-  protocols: token ? ["kallisti", `kallisti.session.${token}`] : [],
-});
+// With voice: through the app's bridge, which sends voice over UDP to the
+// server's Mumble port while UDP works (better on bad networks).
+export const kallistiSocket = (origin: string, token: string | null, voice?: { bridge: BridgeInfo; udpPort: number }) => {
+  const url = `${origin.replace(/^http/, "ws")}/ws`;
+  const protocols = token ? ["kallisti", `kallisti.session.${token}`] : [];
+  if (!voice) return { url, protocols };
+  const params = new URLSearchParams({ secret: voice.bridge.secret, kallisti: url, udp: String(voice.udpPort) });
+  return { url: `ws://127.0.0.1:${voice.bridge.port}/?${params}`, protocols, local: true };
+};

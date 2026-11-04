@@ -167,9 +167,17 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     // its logo's version (null: not known, with Murmur or an older server;
     // no logo).
     serverInfo: async () => {
-      const v = (await call("/api/server").catch(() => ({}))) as { password?: boolean; name?: unknown; logo?: unknown; inviteOnly?: boolean };
+      const v = (await call("/api/server").catch(() => ({}))) as { password?: boolean; name?: unknown; logo?: unknown; inviteOnly?: boolean; udpPort?: unknown };
       const text = (x: unknown) => (typeof x === "string" && x ? x : null);
-      return { password: v.password !== false, name: text(v.name), logo: text(v.logo), ...(typeof v.inviteOnly === "boolean" && { inviteOnly: v.inviteOnly }) };
+      // udpPort: the Mumble port, for voice over UDP in the apps.
+      const port = typeof v.udpPort === "number" && Number.isInteger(v.udpPort) && v.udpPort > 0 && v.udpPort < 65536 ? v.udpPort : null;
+      return {
+        password: v.password !== false,
+        name: text(v.name),
+        logo: text(v.logo),
+        ...(typeof v.inviteOnly === "boolean" && { inviteOnly: v.inviteOnly }),
+        ...(port !== null && { udpPort: port }),
+      };
     },
     // Fediverse logins (see lib/fedi): on for this server?
     fediEnabled: async () => (await call("/api/fedi").catch(() => ({}) as Answer & { enabled?: boolean })).enabled === true,
