@@ -225,8 +225,6 @@ export type ServerEvent =
   | { type: "captcha"; level: CaptchaLevel }
   | { type: "invite-only"; on: boolean }
   | { type: "registration-invites"; invites: Invite[] }
-  // Registered user ids of web accounts (staff, for the users list).
-  | { type: "account-users"; ids: number[] }
   | { type: "registration-invite-created"; token: string }
   // Admins renamed the server (the state has it as the root channel's
   // name: the confirmation only).
@@ -340,7 +338,6 @@ export type TextState = {
   captcha: CaptchaLevel;
   inviteOnly: boolean | null; // null: older server or external Murmur
   registrationInvites: readonly Invite[] | null;
-  accountUsers: readonly number[] | null; // once asked for (staff)
   // The server's logo's version (null: none, undefined: not known before
   // ready; see lib/serverLogo).
   logo: string | null | undefined;
@@ -430,7 +427,6 @@ export const initialTextState: TextState = {
   captcha: "off",
   inviteOnly: null,
   registrationInvites: null,
-  accountUsers: null,
   logo: undefined,
   connections: null,
   messageRules: null,
@@ -706,8 +702,6 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       return typeof v.on === "boolean" ? { type: "invite-only", on: v.on } : null;
     case "registration-invites":
       return Array.isArray(v.invites) && v.invites.every(isInvite) ? { type: "registration-invites", invites: v.invites } : null;
-    case "account-users":
-      return Array.isArray(v.ids) && v.ids.every(isNum) ? { type: "account-users", ids: v.ids } : null;
     case "registration-invite-created":
       return isStr(v.token) ? { type: "registration-invite-created", token: v.token } : null;
     case "invite-created":
@@ -910,7 +904,6 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
         captcha: event.captcha ?? "off",
         inviteOnly: event.inviteOnly ?? null,
         registrationInvites: null,
-        accountUsers: null,
         logo: event.logo ?? null,
         directs: { ...state.directs, ...Object.fromEntries((event.directs ?? []).map((d) => [d.channel, d.peer])) },
         streams: event.streams ?? [],
@@ -988,8 +981,6 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       return { ...state, inviteOnly: event.on };
     case "registration-invites":
       return { ...state, registrationInvites: event.invites };
-    case "account-users":
-      return { ...state, accountUsers: event.ids };
     case "server-name":
       return state; // the root channel's name (Mumble)
     case "logo":
@@ -1286,7 +1277,6 @@ export type ManageAction =
   | { captcha: CaptchaLevel }
   | { inviteOnly: boolean }
   | { registrationInvites: true }
-  | { accountUsers: true }
   | { createRegistrationInvite: true; seconds: number; uses: number }
   | { deleteRegistrationInvite: number }
   | { serverName: string }
@@ -1340,7 +1330,6 @@ const manageBody = (a: ManageAction) => {
   if ("guestsReadOnly" in a) return { type: "set-guests-read-only", on: a.guestsReadOnly };
   if ("inviteOnly" in a) return { type: "set-invite-only", on: a.inviteOnly };
   if ("registrationInvites" in a) return { type: "registration-invites" };
-  if ("accountUsers" in a) return { type: "account-users" };
   if ("createRegistrationInvite" in a) return { type: "create-registration-invite", seconds: a.seconds, uses: a.uses };
   if ("deleteRegistrationInvite" in a) return { type: "delete-registration-invite", invite: a.deleteRegistrationInvite };
   if ("captcha" in a) return { type: "set-captcha", level: a.captcha };

@@ -42,7 +42,6 @@
     escapeHtml,
     queryBans,
     queryRegistered,
-    renameRegistered,
     setBans,
     unregister,
     privateMessagesWith,
@@ -2080,20 +2079,13 @@
   <ModerationDialog
     bans={server.bans}
     registered={server.registered}
-    accountUsers={text.voiceChats ? text.accountUsers : []}
     rights={moderation}
-    onLoad={(what) => {
-      if (what === "bans") return connection.send(queryBans());
-      connection.send(queryRegistered());
-      if (text.voiceChats) connection.request({ accountUsers: true }).catch(() => {});
-    }}
+    onLoad={(what) => connection.send(what === "bans" ? queryBans() : queryRegistered())}
     onSetBans={(bans) => {
       // Done once the list asked for again has the new length.
       const before = server.bans;
       return connection.sendAwait([setBans(bans), queryBans()], (s) => s.bans !== before && s.bans?.length === bans.length);
     }}
-    onRename={(id, name) =>
-      connection.sendAwait([renameRegistered(id, name), queryRegistered()], (s) => s.registered?.find((u) => u.userId === id)?.name === name)}
     onUnregister={(id) =>
       connection.sendAwait([unregister(id), queryRegistered()], (s) => !!s.registered && !s.registered.some((u) => u.userId === id))}
     emoji={customEmoji.list}

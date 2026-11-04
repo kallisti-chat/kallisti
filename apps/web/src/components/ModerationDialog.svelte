@@ -36,20 +36,17 @@
   import RegistrationSettings from "./RegistrationSettings.svelte";
   import type { Invite } from "../lib/invites";
   import SaveStatus from "./SaveStatus.svelte";
-  import { registeredActions } from "../lib/moderation";
 
-  // Server settings for moderators and admins: the ban list, the
-  // registered users, the custom emoji, the finished channel recordings,
-  // and for admins the guests settings, the message rules and the
+  // Server settings for moderators and admins: the ban list, the custom
+  // emoji, the finished channel recordings, and for admins the registered
+  // users, the guests settings, the message rules and the
   // connections (the server checks every change again).
   let {
     bans,
     registered,
-    accountUsers = null,
     rights,
     onLoad,
     onSetBans,
-    onRename,
     onUnregister,
     emoji,
     onAddEmoji,
@@ -92,13 +89,9 @@
   }: {
     bans: readonly Ban[] | null;
     registered: readonly Registered[] | null;
-    // Registered user ids of web accounts (null: not known yet, so no
-    // changes offered; external Murmur: none).
-    accountUsers?: readonly number[] | null;
-    rights: { bans: boolean; editBans: boolean; users: boolean; deleteAccounts?: boolean; emoji: boolean };
+    rights: { bans: boolean; editBans: boolean; users: boolean; emoji: boolean };
     onLoad: (what: "bans" | "users") => void;
     onSetBans: (bans: Ban[]) => Promise<void>;
-    onRename: (userId: number, name: string) => Promise<void>;
     onUnregister: (userId: number) => Promise<void>;
     emoji: readonly CustomEmoji[];
     onAddEmoji: (name: string, file: File) => Promise<void>;
@@ -173,7 +166,6 @@
     }),
   );
   let section = $state<ServerSectionId | null>(null);
-  let renaming = $state<{ id: number; name: string } | null>(null);
   let confirming = $state<number | null>(null);
   // Each change waits for the server (see lib/saveFeedback); a checkbox or
   // select goes back to the server's value when refused.
@@ -548,50 +540,23 @@
       <ul>
         {#each registered as user (user.userId)}
           <li>
-            {#if renaming?.id === user.userId}
-              <form
-                class="rename"
-                onsubmit={(e) => {
-                  e.preventDefault();
-                  const name = renaming?.name.trim();
-                  if (name) saves.users.run(() => onRename(user.userId, name).then(() => (renaming = null)));
-                  else renaming = null;
-                }}
-              >
-                <input bind:value={renaming.name} aria-label="New name for {user.name}" />
-                <button type="submit" disabled={saves.users.busy}>{busyLabel(saves.users.state, "Save")}</button>
-                <button type="button" onclick={() => (renaming = null)}>Cancel</button>
-              </form>
-            {:else}
-              {@const account = accountUsers ? accountUsers.includes(user.userId) : null}
-              {@const actions = registeredActions(account, rights.deleteAccounts ?? false)}
-              <div class="what">
-                <strong>{user.name}</strong>
-                <span class="detail">
-                  #{user.userId}{account ? " · web account" : ""}{confirming === user.userId && account
-                    ? " · logs out for good; messages stay"
-                    : ""}
-                </span>
-              </div>
-              {#if user.userId !== 0}
-                {#if confirming === user.userId}
-                  <button
-                    type="button"
-                    class="danger"
-                    disabled={saves.users.busy}
-                    onclick={() => (saves.users.run(() => onUnregister(user.userId)), (confirming = null))}
-                  >
-                    {actions.remove}
-                  </button>
-                  <button type="button" onclick={() => (confirming = null)}>Cancel</button>
-                {:else}
-                  {#if actions.rename}
-                    <button type="button" onclick={() => (renaming = { id: user.userId, name: user.name })}>Rename</button>
-                  {/if}
-                  {#if actions.remove}
-                    <button type="button" onclick={() => (confirming = user.userId)}>{actions.remove}…</button>
-                  {/if}
-                {/if}
+            <div class="what">
+              <strong>{user.name}</strong>
+              <span class="detail">#{user.userId}{confirming === user.userId ? " · account and roles go; messages stay" : ""}</span>
+            </div>
+            {#if user.userId !== 0}
+              {#if confirming === user.userId}
+                <button
+                  type="button"
+                  class="danger"
+                  disabled={saves.users.busy}
+                  onclick={() => (saves.users.run(() => onUnregister(user.userId)), (confirming = null))}
+                >
+                  Delete user
+                </button>
+                <button type="button" onclick={() => (confirming = null)}>Cancel</button>
+              {:else}
+                <button type="button" onclick={() => (confirming = user.userId)}>Delete user…</button>
               {/if}
             {/if}
           </li>
@@ -635,20 +600,6 @@
   li .danger {
     background: var(--danger);
     color: white;
-  }
-  .rename {
-    display: flex;
-    flex: 1;
-    gap: 6px;
-  }
-  .rename input {
-    flex: 1;
-    padding: 6px 8px;
-    border: none;
-    border-radius: 4px;
-    background: var(--bg-rail);
-    color: var(--text);
-    font: inherit;
   }
   .note {
     color: var(--text-muted);
