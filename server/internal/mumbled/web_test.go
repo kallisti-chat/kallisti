@@ -442,4 +442,16 @@ func TestWebSessionsGetVoiceOverUDP(t *testing.T) {
 			t.Fatalf("stats %+v", st)
 		}
 	}
+	// A listener's bridge announces UDP with an empty voice packet to the
+	// loopback target once its pings come back: it then hears over UDP
+	// too, and nobody hears the packet.
+	listener := joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("127.0.0.1")}, "listener"))
+	listener.openUDP(addr)
+	listener.sendUDP([]byte{0x00, 0x08, 31})
+	native.conn.Write(mumble.EncodeFrame(mumble.TypeUDPTunnel, audio(5, []byte{0xfc, 5})))
+	if h := parseAudio(t, listener.readUDP()); h.sender != native.session || h.frame != 5 {
+		t.Fatalf("listener heard %+v", h)
+	}
+	web.expectNone(mumble.TypeUDPTunnel)
+	native.expectNone(mumble.TypeUDPTunnel)
 }
