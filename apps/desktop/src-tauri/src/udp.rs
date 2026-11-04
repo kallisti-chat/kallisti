@@ -21,6 +21,7 @@ pub struct UdpVoice {
     last_resync: Option<Instant>,
     ping_count: u8,
     was_usable: bool,
+    announced: bool,
 }
 
 pub enum Incoming {
@@ -54,6 +55,12 @@ fn ping_body(legacy: bool, timestamp: u8) -> Vec<u8> {
     if legacy { vec![0x20, timestamp] } else { vec![0x01, 0x08, timestamp] }
 }
 
+// Voice to the loopback target (31) without sound: Opus with sequence 0
+// and length 0, or the protobuf format with only the target.
+fn empty_voice(legacy: bool) -> Vec<u8> {
+    if legacy { vec![0x9f, 0x00, 0x00] } else { vec![0x00, 0x08, 31] }
+}
+
 impl UdpVoice {
     pub fn set_legacy(&mut self, legacy: bool) {
         self.legacy = legacy;
@@ -65,6 +72,7 @@ impl UdpVoice {
             (Some(key), Some(client), Some(server)) => {
                 self.crypt = Some(CryptState::new(key, client, server));
                 self.last_good = None;
+                self.announced = false;
                 None
             }
             (None, None, Some(server)) => {
@@ -99,7 +107,23 @@ impl UdpVoice {
         let usable = self.usable(now);
         let stopped = self.was_usable && !usable;
         self.was_usable = usable;
+        if stopped {
+            self.announced = false;
+        }
         stopped.then(|| make_frame(UDP_TUNNEL, &ping_body(self.legacy, 0)))
+    }
+
+    /// Call after a pong. Once UDP works (again), a packet for the server:
+    /// it sends voice over UDP only to clients that sent voice over UDP, so
+    /// a listener would hear over TCP. Voice without sound to the loopback
+    /// target: servers drop it, and nobody hears it.
+    pub fn announce(&mut self, now: Instant) -> Option<Vec<u8>> {
+        if self.announced || !self.usable(now) {
+            return None;
+        }
+        let packet = self.crypt.as_mut()?.encrypt(&empty_voice(self.legacy));
+        self.announced = true;
+        Some(packet)
     }
 
     /// The encrypted packet for a UDPTunnel body, or None to keep it on TCP.
@@ -170,6 +194,37 @@ mod tests {
 
         // Without pongs for a while, voice goes back to TCP.
         assert!(!v.usable(now + Duration::from_secs(13)));
+    }
+
+    #[test]
+    fn announces_udp_once_it_works_so_the_server_answers_over_udp() {
+        let now = Instant::now();
+        let mut v = UdpVoice::default();
+        v.on_crypt_setup(&setup());
+        assert!(v.announce(now).is_none(), "no pong yet");
+        let mut server = murmur();
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(now, &server.encrypt(&ping));
+        // An empty voice packet to the loopback target: the server drops
+        // it, but sends voice over UDP from now on.
+        let announce = v.announce(now).unwrap();
+        assert_eq!(server.decrypt(&announce).unwrap(), vec![0x00, 0x08, 31]);
+        assert!(v.announce(now).is_none(), "once");
+        // UDP stops and works again: announced again.
+        let later = now + Duration::from_secs(13);
+        assert!(v.check(now).is_none());
+        assert!(v.check(later).is_some());
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(later, &server.encrypt(&ping));
+        assert!(v.announce(later).is_some());
+
+        let mut legacy = UdpVoice::default();
+        legacy.set_legacy(true);
+        legacy.on_crypt_setup(&setup());
+        let mut server = murmur();
+        let ping = server.decrypt(&legacy.ping().unwrap()).unwrap();
+        legacy.incoming(now, &server.encrypt(&ping));
+        assert_eq!(server.decrypt(&legacy.announce(now).unwrap()).unwrap(), vec![0x9f, 0x00, 0x00]);
     }
 
     #[test]

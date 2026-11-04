@@ -458,7 +458,13 @@ async fn relay(
                             }
                         }
                         Incoming::Resync(request) => up_write.lock().await.mumble(request).await?,
-                        Incoming::Pong | Incoming::Dropped => {}
+                        Incoming::Pong => {
+                            let announce = voice.lock().unwrap().announce(Instant::now());
+                            if let Some(packet) = announce {
+                                let _ = socket.send(&packet).await;
+                            }
+                        }
+                        Incoming::Dropped => {}
                     }
                 }
             }
