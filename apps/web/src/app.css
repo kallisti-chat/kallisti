@@ -40,6 +40,12 @@
   --safe-left: env(safe-area-inset-left, 0px);
 }
 
+/* Japanese breaks lines between phrases, not inside words (Chrome; others
+   keep breaking between any two characters). */
+:lang(ja) {
+  word-break: auto-phrase;
+}
+
 /* The keyboard covers the home indicator (lib/keyboard.ts). */
 :root[data-keyboard] {
   --safe-bottom: 0px;
