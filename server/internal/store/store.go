@@ -1444,20 +1444,26 @@ type Account struct {
 	Temporary bool
 }
 
-func createAccount(db interface {
-	Exec(string, ...any) (sql.Result, error)
-}, a Account, at time.Time) (Account, error) {
-	res, err := db.Exec(`INSERT INTO accounts (name, name_key, password_hash, cert_pem, key_pem, created_at, temporary) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		a.Name, names.Key(a.Name), a.PasswordHash, a.CertPEM, a.KeyPEM, at.UnixMilli(), a.Temporary)
+// createAccount adds an account in tx. Ids are never given twice (other
+// servers know accounts by id, see auth.Provider), so the highest id ever
+// given is kept in store_meta.
+func createAccount(tx *sql.Tx, a Account, at time.Time) (Account, error) {
+	err := tx.QueryRow(`INSERT INTO store_meta (key, value) VALUES ('last_account_id', (SELECT coalesce(max(id), 0) FROM accounts) + 1)
+		ON CONFLICT (key) DO UPDATE SET value = max(value, (SELECT coalesce(max(id), 0) FROM accounts)) + 1
+		RETURNING value`).Scan(&a.ID)
+	if err != nil {
+		return Account{}, err
+	}
+	_, err = tx.Exec(`INSERT INTO accounts (id, name, name_key, password_hash, cert_pem, key_pem, created_at, temporary) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		a.ID, a.Name, names.Key(a.Name), a.PasswordHash, a.CertPEM, a.KeyPEM, at.UnixMilli(), a.Temporary)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return Account{}, ErrNameTaken
 		}
 		return Account{}, err
 	}
-	a.ID, err = res.LastInsertId()
 	a.CreatedAt = at
-	return a, err
+	return a, nil
 }
 
 const accountColumns = `a.id, a.name, a.password_hash, a.cert_pem, a.key_pem, a.created_at, a.temporary`

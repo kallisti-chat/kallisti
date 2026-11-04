@@ -279,3 +279,28 @@ func TestRegistrationOpenIgnoresInvite(t *testing.T) {
 		t.Fatalf("used %d", list[0].Uses)
 	}
 }
+
+// Account ids are never given twice: other servers know accounts by id
+// (see auth.Provider), so a new account must not get a deleted one's.
+func TestAccountIDsAreNotReused(t *testing.T) {
+	s := open(t)
+	acc := func(name string) Account {
+		t.Helper()
+		a, err := s.CreateAccount(Account{Name: name, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return a
+	}
+	acc("alice")
+	bob := acc("bob")
+	if err := s.DeleteAccount(bob.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateAccount(Account{Name: "alice", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), ""); !errors.Is(err, ErrNameTaken) {
+		t.Fatalf("taken: %v", err)
+	}
+	if carol := acc("carol"); carol.ID != bob.ID+1 {
+		t.Fatalf("carol %d, bob was %d", carol.ID, bob.ID)
+	}
+}
