@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"os/signal"
 	"slices"
@@ -61,14 +62,30 @@ func main() {
 	}
 }
 
+// The web listener serves plain HTTP; only a trusted proxy can tell it
+// that the browser used HTTPS. Warn without changing existing setups.
+func warnConfig(cfg config.Config, logger *slog.Logger) {
+	if slices.Contains(cfg.AllowedOrigins, "*") {
+		logger.Warn("ALLOWED_ORIGINS is *: every origin can connect (development only)")
+	}
+	if cfg.TrustForwardedFor {
+		return
+	}
+	for _, origin := range cfg.AllowedOrigins {
+		u, err := url.Parse(origin)
+		if err == nil && u.Scheme == "https" && u.Host != "" {
+			logger.Warn("ALLOWED_ORIGINS includes HTTPS but TRUST_FORWARDED_FOR is not 1: login cookies will lack Secure and the __Host- prefix; this setting also controls trust of X-Forwarded-Proto. Enable it only behind a trusted reverse proxy that sets the headers, with direct access to the app port blocked (see docs/configuration.md)")
+			return
+		}
+	}
+}
+
 func run() error {
 	cfg, err := config.Parse(os.Getenv)
 	if err != nil {
 		return err
 	}
-	if slices.Contains(cfg.AllowedOrigins, "*") {
-		slog.Warn("ALLOWED_ORIGINS is *: every origin can connect (development only)")
-	}
+	warnConfig(cfg, slog.Default())
 
 	// A copy before the database is opened: updates migrate it (one-way).
 	if cfg.BackupDir != "" {

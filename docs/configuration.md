@@ -28,6 +28,14 @@ brackets.
   It also trusts `X-Forwarded-Proto` for HTTPS: secure login cookies (with
   the `__Host-` prefix) need the proxy to set it (Caddy does; nginx:
   `proxy_set_header X-Forwarded-Proto $scheme;`).
+  The web listener itself serves plain HTTP. If `ALLOWED_ORIGINS` includes
+  an HTTPS address without `TRUST_FORWARDED_FOR=1`, startup logs a warning:
+  login cookies will lack `Secure` and the `__Host-` prefix. Startup still
+  succeeds. Enable trust only when the proxy sets these headers and clients
+  cannot reach the app port directly; otherwise clients can forge both
+  their IP and the HTTPS indication. The supplied Compose and Kubernetes
+  configurations already enable trust; check network access to the app port
+  separately, including access from other pods in Kubernetes.
 - `MAX_CONNECTIONS` (100) and `MAX_CONNECTIONS_PER_IP` (10): web connections. Per-address limits
   (also login attempts) count an IPv6 /64 as one address: devices on one
   network that share a /64 share the limit.
