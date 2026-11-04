@@ -16,5 +16,5 @@ only (Murmur has no accounts of ours).
 
 - Deleting an account's registration deletes the account and ends its
   logins; the user cannot log in again.
-- Moderators cannot delete users.
+- Moderators cannot delete users; only SuperUser deletes admins.
 - The list shows "Delete user…" with a clear confirmation, and no Rename.
