@@ -416,7 +416,8 @@ func (s *Server) sendUserNames(c *client, ids []uint32) {
 
 // userListMsg lists registered users, or renames (name given) and
 // unregisters (no name) them. It needs Register in root; unregistering
-// (deleting the user, with its web account) needs Write too (admins).
+// (deleting the user, with its web account) needs Write too (admins), and
+// deleting an admin SuperUser (see SetAdmin).
 func (s *Server) userListMsg(c *client, m *pb.UserList) {
 	s.mu.Lock()
 	u := s.state.Users[c.session]
@@ -451,7 +452,9 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 		id := e.GetUserId()
 		s.mu.Lock()
 		admin := s.state.Has(u, 0, Write)
-		protected := s.state.isStaff(&User{Registered: true, UserID: id}) && !admin
+		target := &User{Registered: true, UserID: id}
+		protected := s.state.isStaff(target) && !admin
+		targetAdmin := s.state.aclPermissions(target, 0)&Write != 0
 		s.mu.Unlock()
 		if protected {
 			c.denyPerm(Write, 0)
@@ -469,6 +472,8 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 			err = db.RenameUser(id, e.GetName())
 		} else if !admin {
 			refused = "Only admins can delete users."
+		} else if targetAdmin && !isSuperUser(u) {
+			refused = "Only SuperUser can delete admins."
 		} else if account != "" && s.cfg.DeleteAccount != nil {
 			if err = s.cfg.DeleteAccount(account); err == nil {
 				err = db.UnregisterUser(id)

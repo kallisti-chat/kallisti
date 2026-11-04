@@ -243,3 +243,24 @@ func TestOnlySuperUserEditsRootACL(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 }
+
+// Admins cannot delete each other (as they cannot remove each other's
+// role); SuperUser can.
+func TestOnlySuperUserDeletesAdmins(t *testing.T) {
+	s, addr := rolesServer(t)
+	su := superUser(t, addr)
+	alice, aliceID := registered(t, addr, "alice")
+	_, bobID := registered(t, addr, "bob")
+	for _, id := range []uint32{aliceID, bobID} {
+		if err := s.SetAdmin(su.session, id, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	alice.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(bobID)}}})
+	alice.expectDenied(pb.PermissionDenied_Text)
+	if r, _ := s.cfg.DB.UserByID(bobID); r == nil {
+		t.Fatal("an admin deleted an admin")
+	}
+	su.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(bobID)}}})
+	eventually(t, func() bool { r, _ := s.cfg.DB.UserByID(bobID); return r == nil })
+}
