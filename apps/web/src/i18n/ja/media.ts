@@ -145,4 +145,6 @@ export default {
   "media.stickerDescriptionLength": "説明は最大 100 文字です",
   "media.stickerPackLength": "パック名は最大 32 文字です",
   "media.stickerEmojiInvalid": "関連絵文字が絵文字ではありません",
+  "media.streamConnectFailed": "配信用に接続できません。",
+  "media.cannotEncode": "このブラウザーは配信用の動画をエンコードできません。",
 } satisfies Translation<typeof en>;

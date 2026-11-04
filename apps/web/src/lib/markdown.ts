@@ -28,7 +28,8 @@ const CUSTOM_EMOJI = new RegExp(`${PERSONAL_REF.replace("<", "&lt;").replace(">"
 // ||text|| (also over lines): hidden until clicked (see ChatPane).
 const SPOILER = /\|\|([^|][\s\S]*?)\|\|/g;
 const attr = (text: string) => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-const spoilerHtml = () => `<span class="spoiler" role="button" tabindex="0" aria-expanded="false" aria-label="${attr(t("chat.spoiler"))}">$1</span>`;
+const spoilerHtml = (_: string, inner: string) =>
+  `<span class="spoiler" role="button" tabindex="0" aria-expanded="false" aria-label="${attr(t("chat.spoiler"))}">${inner}</span>`;
 
 // For plain text that shows the message (reply quotes, notifications,
 // search results). Also an open spoiler at the end: the server cuts reply
@@ -41,7 +42,7 @@ export const withoutSpoilers = (text: string) => text.replace(SPOILER, " ");
 
 const inline = (s: string) =>
   s
-    .replace(SPOILER, spoilerHtml())
+    .replace(SPOILER, spoilerHtml)
     .replace(/\*\*\*(?=\S)([^\n]*?\S)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(?=\S)([^\n]*?\S)\*\*/g, "<strong>$1</strong>")
     .replace(/~~(?=\S)([^\n]*?\S)~~/g, "<del>$1</del>")

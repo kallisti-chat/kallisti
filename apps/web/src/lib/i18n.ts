@@ -36,6 +36,13 @@ const localeOf = (tag: string): Locale | null => {
 export const pickLocale = (saved: string | null, languages: readonly string[]): Locale =>
   isLocale(saved) ? saved : (languages.map(localeOf).find((l) => l !== null) ?? "en");
 
+// The tag for dates and numbers (Intl): the browser's own tag when it is
+// the language in use (en-GB), else ours. With "auto" and none of our
+// languages in the browser, the browser's: English texts, its formats.
+export const formatLocale = (locale: Locale, language: Language, languages: readonly string[]): string =>
+  languages.find((tag) => localeOf(tag) === locale) ??
+  (language === "auto" && languages.length > 0 && languages.every((tag) => localeOf(tag) === null) ? languages[0]! : locale);
+
 export const parseLanguage = (raw: string | null): Language => {
   try {
     const v: unknown = JSON.parse(raw ?? "null");

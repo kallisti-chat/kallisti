@@ -145,4 +145,6 @@ export default {
   "media.stickerDescriptionLength": "描述最多 100 个字符",
   "media.stickerPackLength": "贴纸包名称最多 32 个字符",
   "media.stickerEmojiInvalid": "相关表情不是有效的表情",
+  "media.streamConnectFailed": "无法连接以进行直播。",
+  "media.cannotEncode": "此浏览器无法为直播编码视频。",
 } satisfies Translation<typeof en>;

@@ -165,4 +165,9 @@ export default {
   "client.serverHintBridge": "Kallisti サーバー、または任意の Mumble サーバー (voice.example.org:64738)。",
   "client.serverHint": "Kallisti サーバーのアドレス (chat.example.org)。",
   "client.notKallisti": "{address} は Kallisti サーバーではないか、接続できません。このアプリは Kallisti サーバーにのみ接続できます。",
+  "client.noServerAnswer": "サーバーから応答がありません。",
+  "client.uploadStarting": "アップロードはすでに開始中です。",
+  "client.uploadNoToken": "サーバーがアップロードを受け付けませんでした。",
+  "client.uploadFailed": "アップロードに失敗しました。",
+  "client.pushUnavailable": "このサーバーはプッシュ通知に対応していません。",
 } satisfies Translation<typeof en>;

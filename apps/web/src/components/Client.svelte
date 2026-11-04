@@ -417,7 +417,7 @@
       lastPanel = p;
       await tick();
       if (p === "chat") {
-        const button = closed === "channels" ? `button[aria-label=${JSON.stringify(t("chat.channelsMenu"))}]` : ".members-toggle";
+        const button = closed === "channels" ? ".channels-toggle" : ".members-toggle";
         if (closed !== "chat") layoutEl?.querySelector<HTMLElement>(button)?.focus({ preventScroll: true });
         return;
       }
@@ -2437,7 +2437,7 @@
       onOpen={(m) => openMessage({ chat: m.channel, message: m.id })}
       onClose={() => {
         openSide("members");
-        layoutEl?.querySelector<HTMLInputElement>(`input[aria-label=${JSON.stringify(t("chat.searchMessages"))}]`)?.focus();
+        layoutEl?.querySelector<HTMLInputElement>("input.message-search")?.focus();
       }}
     />
   {:else if side === "pins" && chatId !== null}

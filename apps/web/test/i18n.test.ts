@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { around, parseLanguage, pickLocale, translate } from "../src/lib/i18n";
+import { around, formatLocale, parseLanguage, pickLocale, translate } from "../src/lib/i18n";
 
 describe("pickLocale", () => {
   it("takes the saved choice, else the first browser language we have", () => {
@@ -50,5 +50,20 @@ describe("around", () => {
     expect(around("Read the {link} first.", "link")).toEqual(["Read the ", " first."]);
     expect(around("{link} zuerst lesen.", "link")).toEqual(["", " zuerst lesen."]);
     expect(around("No placeholder", "link")).toEqual(["No placeholder", ""]);
+  });
+});
+
+describe("formatLocale", () => {
+  it("takes the browser's region for the language in use", () => {
+    expect(formatLocale("en", "auto", ["en-GB", "de"])).toBe("en-GB");
+    expect(formatLocale("de", "de", ["en-GB", "de-AT"])).toBe("de-AT");
+    expect(formatLocale("de", "de", ["en-GB"])).toBe("de");
+    expect(formatLocale("zh-Hant", "auto", ["zh-TW"])).toBe("zh-TW");
+    expect(formatLocale("zh-Hans", "zh-Hans", ["zh-TW"])).toBe("zh-Hans");
+  });
+
+  it("keeps the browser's formats when it has none of our languages", () => {
+    expect(formatLocale("en", "auto", ["nl-NL", "it"])).toBe("nl-NL");
+    expect(formatLocale("en", "en", ["nl-NL"])).toBe("en");
   });
 });

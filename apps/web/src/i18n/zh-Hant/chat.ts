@@ -168,7 +168,6 @@ export default {
 
   "chat.searchResults": "搜尋結果",
   "chat.closeSearchResults": "關閉搜尋結果",
-  "chat.closePanel": "關閉{panel}",
   "chat.noMessagesFound": "找不到訊息。",
   "chat.searching": "正在搜尋…",
   "chat.searchResultsFor": { other: "「{text}」的 {count} 個結果" },

@@ -157,4 +157,6 @@ export default {
   "media.stickerDescriptionLength": "A description has at most 100 characters",
   "media.stickerPackLength": "A pack name has at most 32 characters",
   "media.stickerEmojiInvalid": "The related emoji is not an emoji",
+  "media.streamConnectFailed": "Cannot connect for streaming.",
+  "media.cannotEncode": "This browser cannot encode video for streaming.",
 } as const satisfies Messages;

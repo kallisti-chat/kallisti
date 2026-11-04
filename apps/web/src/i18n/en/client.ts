@@ -177,4 +177,9 @@ export default {
   "client.serverHintBridge": "A Kallisti server, or any Mumble server (voice.example.org:64738).",
   "client.serverHint": "The address of a Kallisti server (chat.example.org).",
   "client.notKallisti": "{address} is not a Kallisti server, or it cannot be reached. This app connects to Kallisti servers only.",
+  "client.noServerAnswer": "No answer from the server.",
+  "client.uploadStarting": "An upload is already starting.",
+  "client.uploadNoToken": "The server did not accept the upload.",
+  "client.uploadFailed": "The upload failed.",
+  "client.pushUnavailable": "This server has no push notifications.",
 } as const satisfies Messages;

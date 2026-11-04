@@ -193,7 +193,6 @@ export default {
   "chat.searchResults": "Search results",
   "chat.closeSearchResults": "Close search results",
   // {panel}: the list's name ("Pinned messages").
-  "chat.closePanel": "Close {panel}",
   "chat.noMessagesFound": "No messages found.",
   "chat.searching": "Searching…",
   "chat.searchResultsFor": { one: "{count} result for “{text}”", other: "{count} results for “{text}”" },

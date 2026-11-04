@@ -125,7 +125,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   const tokenWaiters: Record<TokenType, ((token: string) => void)[]> = { "stream-token": [], "recording-token": [] };
   const askToken = (type: TokenType) =>
     new Promise<string>((resolve, reject) => {
-      if (ws.readyState !== WebSocket.OPEN) return reject(new Error("not connected"));
+      if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
       const waiters = tokenWaiters[type];
       const waiter = (t: string) => {
         clearTimeout(timeout);
@@ -133,7 +133,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       };
       const timeout = setTimeout(() => {
         waiters.splice(waiters.indexOf(waiter), 1);
-        reject(new Error(`no ${type} from the server`));
+        reject(new Error(t("client.noServerAnswer")));
       }, 10_000);
       waiters.push(waiter);
       ws.send(JSON.stringify({ type }));
@@ -316,12 +316,12 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
 
   // Uploads: tokens over the WebSocket (one request), then the files over HTTP.
   const uploadTokens = (tokenRequest: string, emoji: boolean) => {
-    if (ws.readyState !== WebSocket.OPEN) throw new Error("not connected");
-    if (tokenWaiter) throw new Error("an upload is already starting");
+    if (ws.readyState !== WebSocket.OPEN) throw new Error(t("client.notConnected"));
+    if (tokenWaiter) throw new Error(t("client.uploadStarting"));
     return new Promise<string[]>((resolve, reject) => {
       // The server may answer with an error instead (rate limit): give up
       // after a while, so the next upload can try again.
-      const timeout = setTimeout(() => done(() => reject(new Error("no upload token from the server"))), 10_000);
+      const timeout = setTimeout(() => done(() => reject(new Error(t("client.uploadNoToken")))), 10_000);
       const done = (settle: () => void) => {
         clearTimeout(timeout);
         tokenWaiter = null;
@@ -555,12 +555,12 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     // with sendConfirmed; onFile: before each.
     uploadFiles: async (files: readonly File[], onFile?: (index: number) => void): Promise<string[]> => {
       const tokens = await uploadTokens(uploadTokenRequest(files.length), false);
-      if (tokens.length < files.length) throw new Error("too few upload tokens from the server");
+      if (tokens.length < files.length) throw new Error(t("client.uploadNoToken"));
       const keys = [];
       for (const [i, file] of files.entries()) {
         onFile?.(i);
         const body = await sendFile("/api/upload", file, tokens[i]!);
-        if (!body.key) throw new Error("upload failed");
+        if (!body.key) throw new Error(t("client.uploadFailed"));
         keys.push(body.key);
       }
       return keys;

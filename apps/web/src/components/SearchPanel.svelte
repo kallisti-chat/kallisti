@@ -39,7 +39,7 @@
   } = $props();
   const now = Date.now();
   const shownLabel = $derived(label ?? t("chat.searchResults"));
-  const shownClose = $derived(closeLabel ?? (label === undefined ? t("chat.closeSearchResults") : t("chat.closePanel", { panel: label })));
+  const shownClose = $derived(closeLabel ?? t("chat.closeSearchResults"));
   let closeButton: HTMLButtonElement | undefined = $state();
   $effect(() => closeButton?.focus());
 </script>

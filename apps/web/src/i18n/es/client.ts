@@ -165,4 +165,9 @@ export default {
   "client.serverHintBridge": "Un servidor de Kallisti o cualquier servidor de Mumble (voice.example.org:64738).",
   "client.serverHint": "La dirección de un servidor de Kallisti (chat.example.org).",
   "client.notKallisti": "{address} no es un servidor de Kallisti o no se puede conectar con él. Esta app solo se conecta a servidores de Kallisti.",
+  "client.noServerAnswer": "No hay respuesta del servidor.",
+  "client.uploadStarting": "Ya se está iniciando una subida.",
+  "client.uploadNoToken": "El servidor no aceptó la subida.",
+  "client.uploadFailed": "La subida falló.",
+  "client.pushUnavailable": "Este servidor no tiene notificaciones push.",
 } satisfies Translation<typeof en>;

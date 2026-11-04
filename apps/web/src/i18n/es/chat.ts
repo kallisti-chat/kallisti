@@ -188,7 +188,6 @@ export default {
 
   "chat.searchResults": "Resultados de búsqueda",
   "chat.closeSearchResults": "Cerrar resultados de búsqueda",
-  "chat.closePanel": "Cerrar {panel}",
   "chat.noMessagesFound": "No se encontraron mensajes.",
   "chat.searching": "Buscando…",
   "chat.searchResultsFor": {

@@ -165,4 +165,9 @@ export default {
   "client.serverHintBridge": "Ein Kallisti-Server oder ein beliebiger Mumble-Server (voice.example.org:64738).",
   "client.serverHint": "Die Adresse eines Kallisti-Servers (chat.example.org).",
   "client.notKallisti": "{address} ist kein Kallisti-Server oder nicht erreichbar. Diese App verbindet sich nur mit Kallisti-Servern.",
+  "client.noServerAnswer": "Keine Antwort vom Server.",
+  "client.uploadStarting": "Ein Upload startet schon.",
+  "client.uploadNoToken": "Der Server hat den Upload nicht angenommen.",
+  "client.uploadFailed": "Der Upload ist fehlgeschlagen.",
+  "client.pushUnavailable": "Dieser Server hat keine Push-Benachrichtigungen.",
 } satisfies Translation<typeof en>;

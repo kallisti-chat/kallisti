@@ -165,4 +165,9 @@ export default {
   "client.serverHintBridge": "Kallisti 服务器，或任意 Mumble 服务器（voice.example.org:64738）。",
   "client.serverHint": "Kallisti 服务器的地址（chat.example.org）。",
   "client.notKallisti": "{address} 不是 Kallisti 服务器，或无法连接。此应用只能连接 Kallisti 服务器。",
+  "client.noServerAnswer": "服务器没有响应。",
+  "client.uploadStarting": "已有上传正在开始。",
+  "client.uploadNoToken": "服务器未接受此次上传。",
+  "client.uploadFailed": "上传失败。",
+  "client.pushUnavailable": "此服务器不支持推送通知。",
 } satisfies Translation<typeof en>;

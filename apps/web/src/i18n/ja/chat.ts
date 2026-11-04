@@ -168,7 +168,6 @@ export default {
 
   "chat.searchResults": "検索結果",
   "chat.closeSearchResults": "検索結果を閉じる",
-  "chat.closePanel": "{panel}を閉じる",
   "chat.noMessagesFound": "メッセージが見つかりませんでした。",
   "chat.searching": "検索中…",
   "chat.searchResultsFor": { other: "「{text}」の検索結果 {count} 件" },

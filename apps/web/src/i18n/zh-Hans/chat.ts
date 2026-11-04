@@ -168,7 +168,6 @@ export default {
 
   "chat.searchResults": "搜索结果",
   "chat.closeSearchResults": "关闭搜索结果",
-  "chat.closePanel": "关闭{panel}",
   "chat.noMessagesFound": "未找到消息。",
   "chat.searching": "正在搜索…",
   "chat.searchResultsFor": { other: "“{text}”的搜索结果：{count} 条" },

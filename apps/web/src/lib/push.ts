@@ -84,10 +84,10 @@ const send = async (t: Target, method: "POST" | "DELETE", body: unknown) => {
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `request failed (${res.status})`);
 };
 
-const serverKey = async (t: Target): Promise<string> => {
-  const res = await fetch(`${t.base}/api/push`, request(t));
+const serverKey = async (target: Target): Promise<string> => {
+  const res = await fetch(`${target.base}/api/push`, request(target));
   const key = res.ok ? ((await res.json().catch(() => ({}))) as { publicKey?: unknown }).publicKey : null;
-  if (typeof key !== "string" || !key) throw new Error("this server has no push notifications");
+  if (typeof key !== "string" || !key) throw new Error(t("client.pushUnavailable"));
   return key;
 };
 

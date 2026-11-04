@@ -167,4 +167,9 @@ export default {
   "client.serverHint": "L'adresse d'un serveur Kallisti (chat.example.org).",
   "client.notKallisti":
     "{address} n'est pas un serveur Kallisti, ou il est injoignable. Cette appli se connecte seulement aux serveurs Kallisti.",
+  "client.noServerAnswer": "Pas de réponse du serveur.",
+  "client.uploadStarting": "Un envoi est déjà en cours de démarrage.",
+  "client.uploadNoToken": "Le serveur n’a pas accepté l’envoi.",
+  "client.uploadFailed": "L’envoi a échoué.",
+  "client.pushUnavailable": "Ce serveur n’a pas de notifications push.",
 } satisfies Translation<typeof en>;

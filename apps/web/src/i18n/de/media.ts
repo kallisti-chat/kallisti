@@ -145,4 +145,6 @@ export default {
   "media.stickerDescriptionLength": "Eine Beschreibung hat höchstens 100 Zeichen",
   "media.stickerPackLength": "Ein Paketname hat höchstens 32 Zeichen",
   "media.stickerEmojiInvalid": "Das zugehörige Emoji ist kein Emoji",
+  "media.streamConnectFailed": "Keine Verbindung zum Streamen möglich.",
+  "media.cannotEncode": "Dieser Browser kann kein Video zum Streamen kodieren.",
 } satisfies Translation<typeof en>;
