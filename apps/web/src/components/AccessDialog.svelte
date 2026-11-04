@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { readerRow, type ReaderGroup } from "../lib/members";
+  import { t } from "../lib/i18n.svelte";
+  import { readerGroupLabel, readerRow, type ReaderGroup } from "../lib/members";
 
   // Who has access to a private channel, for its members (read-only; staff
   // and the channel's moderators change it in the Members dialog): its
@@ -12,13 +13,13 @@
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="access-dialog-title">
   <header>
-    <h2 id="access-dialog-title">Members of {name}</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="access-dialog-title">{t("settings.accessTitle", { name })}</h2>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
-  <p class="note">Only members, admins and moderators see this channel.</p>
+  <p class="note">{t("settings.accessNote")}</p>
   {#each groups as g (g.title)}
-    <h3>{g.title} — {g.rows.length}</h3>
-    <ul aria-label={g.title}>
+    <h3>{t("settings.accessGroupHeading", { group: readerGroupLabel(g.title), count: g.rows.length })}</h3>
+    <ul aria-label={readerGroupLabel(g.title)}>
       {#each g.rows as r (readerRow(r).key)}
         <li class:offline={"offline" in r}><span class="ellipsis">{readerRow(r).name}</span></li>
       {/each}

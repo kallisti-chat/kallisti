@@ -1,4 +1,6 @@
 import type { PlayoutConfig } from "./schedule";
+import type { Key } from "../../i18n/en";
+import { t } from "../i18n.svelte";
 
 // How long playback waits at the start of a stream (see schedule.ts): more
 // absorbs worse jitter, at the cost of delay. Music gets at least 500 ms:
@@ -6,7 +8,8 @@ import type { PlayoutConfig } from "./schedule";
 export type PlaybackBuffer = "low" | "medium" | "high";
 export const BUFFER_MS: Record<PlaybackBuffer, number> = { low: 60, medium: 120, high: 250 };
 export const BUFFERS: readonly PlaybackBuffer[] = ["low", "medium", "high"];
-export const bufferLabel = (b: PlaybackBuffer) => `${b[0]!.toUpperCase()}${b.slice(1)} (${BUFFER_MS[b]} ms)`;
+const BUFFER_KEY: Record<PlaybackBuffer, Key> = { low: "client.bufferLow", medium: "client.bufferMedium", high: "client.bufferHigh" };
+export const bufferLabel = (b: PlaybackBuffer) => t(BUFFER_KEY[b], { ms: BUFFER_MS[b] });
 const MUSIC_MS = 500;
 // The queue may grow this much beyond the start delay before chunks are
 // dropped (a burst after a stall, or clock drift).

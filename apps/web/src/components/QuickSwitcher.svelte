@@ -9,6 +9,7 @@
   import { IS_MAC, matchPlaces, MOD, navAction } from "../lib/switcher";
   import Avatar from "./Avatar.svelte";
   import Icon from "./Icon.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // Ctrl/Cmd+K: find a channel or a person by name and go there.
   let { places, onClose }: { places: Place[]; onClose: () => void } = $props();
@@ -32,15 +33,15 @@
   };
 </script>
 
-<dialog bind:this={dialog} onclose={onClose} aria-label="Quick switcher">
+<dialog bind:this={dialog} onclose={onClose} aria-label={t("sidebar.quickSwitcher")}>
   <input
     type="text"
     role="combobox"
     aria-expanded="true"
     aria-controls="switcher-list"
     aria-activedescendant={found[active] && `switcher-${found[active]!.key}`}
-    aria-label="Where to?"
-    placeholder="Where would you like to go?"
+    aria-label={t("sidebar.whereTo")}
+    placeholder={t("sidebar.wherePlaceholder")}
     bind:value={query}
     aria-autocomplete="list"
     oninput={() => (chosen = 0)}
@@ -59,20 +60,20 @@
       }
     }}
   />
-  <ul id="switcher-list" role="listbox" aria-label="Places">
+  <ul id="switcher-list" role="listbox" aria-label={t("sidebar.places")}>
     {#each found as p, i (p.key)}
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <li id="switcher-{p.key}" role="option" aria-selected={i === active} onclick={() => open(p)} onmousemove={() => (chosen = i)}>
         {#if p.kind === "dm"}<Avatar name={p.name} registered size={20} />{:else}<Icon name={p.kind === "text" ? "hash" : p.kind === "thread" ? "thread" : "speaker"} size={20} />{/if}
         <span class="ellipsis">{p.name}</span>
-        {#if p.locked}<span class="lock"><Icon name="lock" size={14} /><span class="sr-only">(private)</span></span>{/if}
+        {#if p.locked}<span class="lock"><Icon name="lock" size={14} /><span class="sr-only">{t("sidebar.privateMark")}</span></span>{/if}
         {#if p.category}<span class="hint">{p.category}</span>{/if}
-        {#if p.kind === "voice"}<span class="hint">join</span>{/if}
+        {#if p.kind === "voice"}<span class="hint">{t("sidebar.joinHint")}</span>{/if}
       </li>
     {/each}
   </ul>
-  {#if !found.length}<p class="none">Nothing found.</p>{/if}
-  <p class="keys">↑↓ to choose, Enter to go, Esc to close. {MOD}+/ for all shortcuts.</p>
+  {#if !found.length}<p class="none">{t("sidebar.nothingFound")}</p>{/if}
+  <p class="keys">{t("sidebar.switcherKeys", { mod: MOD })}</p>
 </dialog>
 
 <style>

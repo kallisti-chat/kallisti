@@ -6,6 +6,7 @@ import type { Challenge, Proof } from "./captcha";
 import type { FediLink } from "./fedi";
 import { type SavedServer, savedServers } from "./serverList";
 import { parseFriends, type Friend } from "./friends";
+import { t } from "./i18n.svelte";
 
 // A logged-in account; temporary: a guest account without a password (the
 // server deletes it after a day without a visit). password false: made
@@ -36,7 +37,7 @@ export type QrState = { state: "waiting" | "scanned" | "approved" | "refused" | 
 export type SessionStore = { get: () => string | null; set: (token: string | null) => void };
 
 // A token kept in memory only.
-export const memoryStore = (token: string | null = null): SessionStore => ({ get: () => token, set: (t) => void (token = t) });
+export const memoryStore = (token: string | null = null): SessionStore => ({ get: () => token, set: (next) => void (token = next) });
 
 export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, session?: SessionStore) => {
   type Answer = Partial<QrStart> & { state?: string; claim?: string; device?: string } & { name?: string; mumble?: boolean; temporary?: boolean; token?: string } & Partial<Challenge> &
@@ -62,7 +63,7 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     // The server no longer knows the token (not: a wrong password); only
     // if it is still the one sent (a new login may have come meanwhile).
     if (res.status === 401 && path === "/api/me") clearIf(token);
-    if (!res.ok) throw new ApiError(data.error ?? `request failed (${res.status})`, res.status, data.code);
+    if (!res.ok) throw new ApiError(data.error ?? t("login.requestFailed", { status: res.status }), res.status, data.code);
     if (data.token) session?.set(data.token);
     return data;
   };
@@ -181,7 +182,7 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
         ...(linkPassword !== undefined && { link: true, password: linkPassword }),
         ...(handoff && { handoff: true, ...(handoff.to && { to: handoff.to }) }),
       });
-      if (!url) throw new Error("No answer from the server. Please try again.");
+      if (!url) throw new Error(t("login.noAnswer"));
       return url;
     },
     // After a login with an unlinked fediverse account: the suggested name
@@ -195,7 +196,7 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     // A fresh login with the linked account, for the first password.
     fediReauth: async (instance: string) => {
       const { url } = await call("/api/fedi/start", { instance, purpose: "reauth" });
-      if (!url) throw new Error("No answer from the server. Please try again.");
+      if (!url) throw new Error(t("login.noAnswer"));
       return url;
     },
     // handoff: its token waits for the popup (see Connect), no session here.

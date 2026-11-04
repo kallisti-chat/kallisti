@@ -1,5 +1,6 @@
 <script lang="ts">
   import Client from "./components/Client.svelte";
+  import { t } from "./lib/i18n.svelte";
   import Login from "./components/Login.svelte";
   import Authorize from "./components/Authorize.svelte";
   import QrLinkDialog from "./components/QrLinkDialog.svelte";
@@ -87,9 +88,9 @@
       const text = await scanCode();
       if (text === null) return;
       const link = parseQrLink(text);
-      if (!link) return void (loginNote = "This is not a Kallisti login code.");
+      if (!link) return void (loginNote = t("client.notLoginCode"));
       if (link.origin !== kallisti) {
-        if (account) return void (loginNote = `This code is for ${new URL(link.origin).host}, not for this server.`);
+        if (account) return void (loginNote = t("client.codeForOtherServer", { host: new URL(link.origin).host }));
         await chooseServer(link.origin);
         if (kallisti !== link.origin) return;
       }
@@ -236,7 +237,7 @@
         if (ended !== null) void api.check().then((acc) => acc === null && hub.endLoginTokens(ended));
         account = null;
         void stopPush();
-        leave("You were logged out.", false);
+        leave(t("client.loggedOut"), false);
       });
   });
   // This browser's push notifications end with the login (see lib/push).
@@ -256,10 +257,10 @@
         // the added servers' tokens are that login's.
         hub.detach();
         account = null;
-        return leave("Another login is active in this browser now.", false);
+        return leave(t("client.otherLogin"), false);
       }
       if (ok) account = null;
-      leave(ok ? null : "Logging out did not finish: you may still be logged in.");
+      leave(ok ? null : t("client.logoutUnfinished"));
     },
     logoutAll: async () => {
       void stopPush();
@@ -267,7 +268,7 @@
       await api.logoutAll();
       if (mine !== authGeneration) return;
       account = null;
-      leave("Logged out on all devices.");
+      leave(t("client.loggedOutEverywhere"));
     },
     changePassword: async (old, next) => {
       await api.changePassword(old, next);
@@ -332,7 +333,7 @@
     const kind = origin === null ? "other" : await isKallisti(origin);
     if (mine !== choices) return;
     if (kind === "unreachable") {
-      loginNote = `Cannot reach ${address}. Check the address, or try again.`;
+      loginNote = t("client.cannotReach", { address });
       checking = false;
       return;
     }
@@ -378,7 +379,7 @@
     if (!desktop) return { url: PROXY_URL };
     if (kallisti) return kallistiSocket(kallisti, sessionStore(kallisti).get());
     const server = parseAddress(credentials.server ?? "");
-    if (!server) throw new Error("Enter a server address, for example voice.example.org or voice.example.org:64738");
+    if (!server) throw new Error(t("client.enterServer"));
     return { url: bridgeUrl(await getBridge(), server), local: true };
   };
   // This server's connection, its reconnects and what goes with it (see
@@ -466,7 +467,7 @@
   const friends = createFriends({
     owner: () => (owner !== null && account ? account.name : null),
     remote: (name) => ({ load: () => api.friends(name), add: (f) => api.addFriend(f, name), remove: (o, u) => api.removeFriend(o, u, name) }),
-    onError: () => (friendsNotice = "Your friends list could not be saved."),
+    onError: () => (friendsNotice = t("client.friendsNotSaved")),
   });
   // At once on another login (no account sees another's list), and when
   // the home server is in.
@@ -502,7 +503,7 @@
         ? [{ origin, name, online: c.text.online, users: c.state.users, voiceName: (id) => (id === 0 ? null : (c.state.channels[id]?.name ?? null)) }]
         : [];
     return friendPresence(friends.list, [
-      ...(homeFriends ? view(homeOrigin(), connection, railServers[0]?.name ?? "Home") : []),
+      ...(homeFriends ? view(homeOrigin(), connection, railServers[0]?.name ?? t("client.homeServer")) : []),
       ...hub.servers.flatMap((a, i) => view(a.origin, a.session?.connection ?? null, railServers[i + 1]?.name ?? new URL(a.origin).host)),
     ]);
   });
@@ -524,7 +525,7 @@
     active: hub.shown === (id || null),
   });
   const railServers = $derived<RailServer[]>([
-    railEntry("", connection, "Home"),
+    railEntry("", connection, t("client.homeServer")),
     ...hub.servers.map((a) => railEntry(a.origin, a.session?.connection ?? null, new URL(a.origin).host)),
   ]);
   // A dialog open in the client that goes out of sight would keep the page
@@ -576,7 +577,7 @@
   $effect(() => {
     if (joinUrl && connection?.state.status === "synced" && ownerKnown && (hub.listed || owner === null))
       untrack(() => {
-        if (!openInvite(joinUrl!)) fediNotice = inviteOf(joinUrl!) ? "Log in with an account (not as a guest) to join other servers." : "This is not an invite link.";
+        if (!openInvite(joinUrl!)) fediNotice = inviteOf(joinUrl!) ? t("client.guestCannotJoin") : t("client.notInvite");
         joinUrl = null;
       });
   });
@@ -654,7 +655,7 @@
       await trustServer(server, certificate.fingerprint);
     } catch (err) {
       session.drop();
-      loginNote = `Could not trust the certificate: ${err instanceof Error ? err.message : String(err)}`;
+      loginNote = t("client.certificateUntrusted", { error: err instanceof Error ? err.message : String(err) });
       return;
     }
     await start(credentials);
@@ -696,7 +697,7 @@
     loginNote = null;
     // A consent page (see Authorize): the login only, no chat (a guest or a
     // Mumble registration cannot answer it).
-    if (authorizeQuery) return void (credentials.account || (loginNote = "Log in with an account of this server to answer this request."));
+    if (authorizeQuery) return void (credentials.account || (loginNote = t("client.authorizeLogIn")));
     // The old connection closes at once (before the address is known).
     const started = session.start(credentials);
     closeAudio(audio);
@@ -749,11 +750,11 @@
              sign, then the banner (see lossNotice). -->
         {#if shown && s.lost && s.notice === "banner"}
           <div class="reconnecting" role="status">
-            Connection lost. Reconnecting…
-            <button type="button" onclick={() => void s.tryNow()}>Retry now</button>
+            {t("client.connectionLostBanner")}
+            <button type="button" onclick={() => void s.tryNow()}>{t("client.retryNow")}</button>
           </div>
         {:else if shown && s.lost && s.notice === "sign"}
-          <div class="reconnecting quiet" role="status">Reconnecting…</div>
+          <div class="reconnecting quiet" role="status">{t("client.reconnecting")}</div>
         {/if}
         <!-- While lost, the old view stays readable but takes no input (it would be lost); the rail does. -->
         {#key s.connection}
@@ -773,14 +774,14 @@
       {#snippet added()}
         {@const host = new URL(a.origin).host}
         <div class="connecting">
-          <p>{!s ? `Log in to ${host} on this device.` : s.error ? `${host}: ${s.error}` : `Connecting to ${host}…`}</p>
+          <p>{!s ? t("client.logInToServer", { host }) : s.error ? `${host}: ${s.error}` : t("client.connectingTo", { host })}</p>
           <p class="actions">
             {#if !s && owner !== null}
-              <button type="button" onclick={() => (addingFor = { owner: owner!, server: { origin: a.origin, name: a.name } })}>Log in</button>
+              <button type="button" onclick={() => (addingFor = { owner: owner!, server: { origin: a.origin, name: a.name } })}>{t("client.logIn")}</button>
             {:else if s?.error}
-              <button type="button" onclick={() => void s.retry().catch(() => {})}>Try again</button>
+              <button type="button" onclick={() => void s.retry().catch(() => {})}>{t("common.retry")}</button>
             {/if}
-            <button type="button" onclick={() => hub.remove(a.origin)}>Remove this server</button>
+            <button type="button" onclick={() => hub.remove(a.origin)}>{t("client.removeServer")}</button>
           </p>
         </div>
       {/snippet}
@@ -815,7 +816,7 @@
     {@render withRail(login)}
   {:else if connection.state.status !== "synced"}
     {#snippet connectingHome()}
-      <div class="connecting">Connecting…</div>
+      <div class="connecting">{t("client.connecting")}</div>
     {/snippet}
     {@render withRail(connectingHome)}
   {/if}
@@ -860,9 +861,9 @@
 
 {#if updateReady && !updateClosed}
   <div class="update" role="status">
-    A new version of Kallisti is available.
-    <button type="button" onclick={() => location.reload()}>Reload</button>
-    <button type="button" class="close" aria-label="Close" onclick={() => (updateClosed = true)}>×</button>
+    {t("client.updateAvailable")}
+    <button type="button" onclick={() => location.reload()}>{t("client.reload")}</button>
+    <button type="button" class="close" aria-label={t("common.close")} onclick={() => (updateClosed = true)}>×</button>
   </div>
 {/if}
 

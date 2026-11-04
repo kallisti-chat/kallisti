@@ -1,5 +1,7 @@
 <script lang="ts">
   import { EMOJI_TYPES, emojiNameFromFile } from "../lib/customEmoji";
+  import type { Key } from "../i18n/en";
+  import { t } from "../lib/i18n.svelte";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import { MAX_STICKER_BYTES, STICKER_SIZE, bulkNames, stickerForm, type Sticker, type StickerFields } from "../lib/stickers";
@@ -30,12 +32,12 @@
   // files, the other fields for all of them.
   let files = $state<File[]>([]);
   const file = $derived(files.length === 1 ? files[0]! : null);
-  let progress = $state("");
+  let progress = $state<{ done: number; total: number } | null>(null);
   let editing = $state<({ id: number } & StickerFields) | null>(null);
   let confirming = $state<number | null>(null);
   let fileInput: HTMLInputElement | undefined = $state();
   let image: EmojiImage | undefined = $state();
-  let done = $state("Deleted");
+  let done = $state<Key>("admin.deleted");
 
   const addMany = async (f: StickerFields) => {
     const names = bulkNames(
@@ -44,19 +46,19 @@
     );
     const failed: string[] = [];
     for (const [i, x] of files.entries()) {
-      progress = `${i + 1} of ${files.length}`;
+      progress = { done: i + 1, total: files.length };
       try {
         const out = await fitSticker(x);
-        if (out.size > MAX_STICKER_BYTES) throw new Error("over 512 KB");
+        if (out.size > MAX_STICKER_BYTES) throw new Error(t("admin.stickerOverLimit"));
         await onAdd({ ...f, name: names[i]! }, out);
       } catch (err) {
         failed.push(`${x.name} (${(err as Error).message})`);
       }
     }
-    progress = "";
+    progress = null;
     files = [];
     if (fileInput) fileInput.value = "";
-    if (failed.length) throw new Error(`Not added: ${failed.join(", ")}`);
+    if (failed.length) throw new Error(t("admin.stickersNotAdded", { list: failed.join(", ") }));
   };
   const submit = (e: SubmitEvent) => {
     e.preventDefault();
@@ -74,8 +76,8 @@
       if (problem) throw new Error(problem);
       // Checked as uploaded: still images are scaled down first.
       const out = (await image?.output()) ?? null;
-      if (!out) throw new Error("Choose an image.");
-      if (out.size > MAX_STICKER_BYTES) throw new Error("A sticker has at most 512 KB.");
+      if (!out) throw new Error(t("admin.chooseImage"));
+      if (out.size > MAX_STICKER_BYTES) throw new Error(t("admin.stickerTooBig"));
       await onAdd(f, out);
       fields = blank();
       files = [];
@@ -88,7 +90,7 @@
     const { id, ...rest } = editing;
     const f = trimmed(rest);
     const problem = stickerForm(f, list, id);
-    done = "Saved";
+    done = "common.saved";
     change.run(async () => {
       if (problem) throw new Error(problem);
       await onEdit(id, f);
@@ -97,11 +99,19 @@
   };
 </script>
 
-{#snippet fieldInputs(f: StickerFields, what: string)}
-  <input bind:value={f.name} placeholder="name" aria-label="{what} name" maxlength="32" />
-  <input bind:value={f.emoji} placeholder="emoji" aria-label="{what} related emoji" class="short" />
-  <input bind:value={f.pack} placeholder="pack" aria-label="{what} pack" maxlength="32" />
-  <input bind:value={f.description} placeholder="description or credit" aria-label="{what} description" maxlength="100" class="wide" />
+<!-- sticker: the one edited (null: a new one), for the labels. -->
+{#snippet fieldInputs(f: StickerFields, sticker: string | null)}
+  {@const label = (fresh: Key, named: Key) => (sticker === null ? t(fresh) : t(named, { name: sticker }))}
+  <input bind:value={f.name} placeholder={t("admin.namePlaceholder")} aria-label={label("admin.newStickerName", "admin.stickerName")} maxlength="32" />
+  <input bind:value={f.emoji} placeholder={t("admin.stickerEmojiPlaceholder")} aria-label={label("admin.newStickerEmoji", "admin.stickerEmoji")} class="short" />
+  <input bind:value={f.pack} placeholder={t("admin.stickerPackPlaceholder")} aria-label={label("admin.newStickerPack", "admin.stickerPack")} maxlength="32" />
+  <input
+    bind:value={f.description}
+    placeholder={t("admin.stickerDescriptionPlaceholder")}
+    aria-label={label("admin.newStickerDescription", "admin.stickerDescription")}
+    maxlength="100"
+    class="wide"
+  />
 {/snippet}
 
 <form class="fields" onsubmit={submit}>
@@ -110,30 +120,31 @@
     type="file"
     disabled={add.busy}
     accept={EMOJI_TYPES.join(",")}
-    aria-label="Sticker images"
+    aria-label={t("admin.stickerImages")}
     multiple
     onchange={(e) => {
       files = [...(e.currentTarget.files ?? [])];
       if (file && !fields.name) fields.name = emojiNameFromFile(file.name);
     }}
   />
-  {@render fieldInputs(fields, "Sticker")}
+  {@render fieldInputs(fields, null)}
   <button type="submit" disabled={add.busy}
-    >{busyLabel(add.state, files.length > 1 ? `Add ${files.length}` : "Add", progress ? `Adding ${progress}…` : "Adding…")}</button
+    >{busyLabel(
+      add.state,
+      files.length > 1 ? t("admin.addCount", { count: files.length }) : t("common.add"),
+      progress ? t("admin.addingProgress", progress) : t("admin.adding"),
+    )}</button
   >
-  <SaveStatus save={add.state} done="Added" />
+  <SaveStatus save={add.state} done={t("admin.added")} />
 </form>
-<p class="note">
-  PNG, GIF, WebP or JPEG, at most 512 KB; still images are scaled to fit {STICKER_SIZE}×{STICKER_SIZE} px. The emoji and pack are
-  optional: the picker groups by pack and finds stickers by their emoji. Put a licence's credit in the description.
-</p>
+<p class="note">{t("admin.stickerNote", { size: STICKER_SIZE })}</p>
 {#if files.length > 1}
-  <p class="note">{files.length} files: each is named after its file; the emoji, pack and description go with all of them.</p>
+  <p class="note">{t("admin.stickerFilesNote", { count: files.length })}</p>
 {:else}
   <EmojiImage bind:this={image} {file} name={fields.name.trim()} max={STICKER_SIZE} limit="512 KB" />
 {/if}
 {#if list.length === 0}
-  <p class="note">This server has no stickers yet.</p>
+  <p class="note">{t("admin.noStickers")}</p>
 {:else}
   <ul>
     {#each list as s (s.id)}
@@ -142,8 +153,8 @@
         {#if editing?.id === s.id}
           <form class="fields" onsubmit={save}>
             {@render fieldInputs(editing, s.name)}
-            <button type="submit" disabled={change.busy}>Save</button>
-            <button type="button" onclick={() => (editing = null)}>Cancel</button>
+            <button type="submit" disabled={change.busy}>{t("common.save")}</button>
+            <button type="button" onclick={() => (editing = null)}>{t("common.cancel")}</button>
           </form>
         {:else}
           <div class="what">
@@ -155,25 +166,25 @@
               type="button"
               class="danger"
               disabled={change.busy}
-              onclick={() => ((done = "Deleted"), change.run(() => onDelete(s.id)), (confirming = null))}
+              onclick={() => ((done = "admin.deleted"), change.run(() => onDelete(s.id)), (confirming = null))}
             >
-              Delete
+              {t("common.delete")}
             </button>
-            <button type="button" onclick={() => (confirming = null)}>Cancel</button>
+            <button type="button" onclick={() => (confirming = null)}>{t("common.cancel")}</button>
           {:else}
             <button
               type="button"
               onclick={() => (editing = { id: s.id, name: s.name, description: s.description ?? "", emoji: s.emoji ?? "", pack: s.pack ?? "" })}
-              >Edit</button
+              >{t("common.edit")}</button
             >
-            <button type="button" onclick={() => (confirming = s.id)}>Delete…</button>
+            <button type="button" onclick={() => (confirming = s.id)}>{t("admin.deleteAsk")}</button>
           {/if}
         {/if}
       </li>
     {/each}
   </ul>
 {/if}
-<SaveStatus save={change.state} {done} />
+<SaveStatus save={change.state} done={t(done)} />
 
 <style>
   .fields {

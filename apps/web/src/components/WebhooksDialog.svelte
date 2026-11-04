@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { i18n, t } from "../lib/i18n.svelte";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import type { Webhook } from "../lib/webhooks";
@@ -57,7 +58,7 @@
     const r = renaming;
     if (r?.name.trim()) changes.run(() => onRename(r.id, r.name.trim()).then(() => (renaming = null)));
   };
-  const when = (at: number) => new Date(at).toLocaleDateString();
+  const when = (at: number) => new Date(at).toLocaleDateString(i18n.locale);
   // A new picture under the same address: shown anew.
   let version = $state(0);
   const choosePicture = (id: number, el: HTMLInputElement) => {
@@ -69,38 +70,35 @@
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="webhooks-dialog-title">
   <header>
-    <h2 id="webhooks-dialog-title">Webhooks of {name}</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="webhooks-dialog-title">{t("admin.webhooksTitle", { name })}</h2>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
-  <p class="note">
-    A webhook URL posts messages into this channel. Tools with a Discord webhook setting (Gitea, GitHub Actions, Grafana, Uptime Kuma and others) can use it as it
-    is.
-  </p>
+  <p class="note">{t("admin.webhooksNote")}</p>
   <!-- Until it is deleted. -->
   {#if created && (webhooks === null || webhooks.some((w) => w.id === created.id))}
     <div class="row">
-      <input readonly value={created.url} aria-label="New webhook URL" onfocus={(e) => e.currentTarget.select()} />
-      <button type="button" class="action" onclick={() => copy(created.url)}>{copied ? "Copied" : "Copy"}</button>
+      <input readonly value={created.url} aria-label={t("admin.newWebhookUrl")} onfocus={(e) => e.currentTarget.select()} />
+      <button type="button" class="action" onclick={() => copy(created.url)}>{copied ? t("common.copied") : t("common.copy")}</button>
     </div>
-    <p class="note">Copy it now: it is shown only once. Keep it secret: everyone with it can post here.</p>
+    <p class="note">{t("admin.webhookCopyNow")}</p>
   {/if}
   <form class="row" onsubmit={create}>
-    <input bind:value={newName} maxlength="80" placeholder="Name, e.g. CI" aria-label="Name of a new webhook" />
-    <button type="submit" class="action" disabled={changes.busy || !newName.trim()}>{busyLabel(changes.state, "Create", "Working…")}</button>
+    <input bind:value={newName} maxlength="80" placeholder={t("admin.webhookNamePlaceholder")} aria-label={t("admin.webhookNameLabel")} />
+    <button type="submit" class="action" disabled={changes.busy || !newName.trim()}>{busyLabel(changes.state, t("common.create"), t("admin.working"))}</button>
   </form>
   <SaveStatus save={changes.state} />
   {#if webhooks === null}
-    <p class="note">Loading webhooks…</p>
+    <p class="note">{t("admin.loadingWebhooks")}</p>
   {:else if webhooks.length}
-    <ul aria-label="Webhooks">
+    <ul aria-label={t("admin.webhooksList")}>
       {#each webhooks as w (w.id)}
         <li>
           {#if renaming?.id === w.id}
             <form class="row" onsubmit={rename}>
               <!-- svelte-ignore a11y_autofocus -->
-              <input bind:value={renaming.name} maxlength="80" aria-label="New name of {w.name}" autofocus />
-              <button type="submit" class="action" disabled={changes.busy}>Save</button>
-              <button type="button" class="action" onclick={() => (renaming = null)}>Cancel</button>
+              <input bind:value={renaming.name} maxlength="80" aria-label={t("admin.webhookNewName", { name: w.name })} autofocus />
+              <button type="submit" class="action" disabled={changes.busy}>{t("common.save")}</button>
+              <button type="button" class="action" onclick={() => (renaming = null)}>{t("common.cancel")}</button>
             </form>
           {:else}
             {#if w.picture}
@@ -110,36 +108,36 @@
             {/if}
             <span class="what">
               <span class="ellipsis">{w.name}</span>
-              <span class="sub">by {w.creator}, {when(w.created)}</span>
+              <span class="sub">{t("admin.webhookBy", { creator: w.creator, date: when(w.created) })}</span>
             </span>
             {#if deleting === w.id}
               <button type="button" class="danger" disabled={changes.busy} onclick={() => changes.run(() => onDelete(w.id).then(() => (deleting = null)))}>
-                Delete it
+                {t("admin.deleteIt")}
               </button>
-              <button type="button" onclick={() => (deleting = null)}>Keep</button>
+              <button type="button" onclick={() => (deleting = null)}>{t("admin.keep")}</button>
             {:else}
               <label class="file">
-                Picture
+                {t("admin.picture")}
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/gif,image/webp"
-                  aria-label="Picture of {w.name}"
+                  aria-label={t("admin.pictureOf", { name: w.name })}
                   disabled={changes.busy}
                   onchange={(e) => choosePicture(w.id, e.currentTarget)}
                 />
               </label>
               {#if w.picture}
-                <button type="button" aria-label="Remove the picture of {w.name}" onclick={() => changes.run(() => onRemovePicture(w.id))}>No picture</button>
+                <button type="button" aria-label={t("admin.removePictureOf", { name: w.name })} onclick={() => changes.run(() => onRemovePicture(w.id))}>{t("admin.noPicture")}</button>
               {/if}
-              <button type="button" onclick={() => ((renaming = { id: w.id, name: w.name }), (deleting = null))}>Rename</button>
-              <button type="button" onclick={() => ((deleting = w.id), (renaming = null))} aria-label="Delete {w.name}">Delete</button>
+              <button type="button" onclick={() => ((renaming = { id: w.id, name: w.name }), (deleting = null))}>{t("common.rename")}</button>
+              <button type="button" onclick={() => ((deleting = w.id), (renaming = null))} aria-label={t("admin.deleteNamed", { name: w.name })}>{t("common.delete")}</button>
             {/if}
           {/if}
         </li>
       {/each}
     </ul>
   {:else}
-    <p class="note">No webhooks yet.</p>
+    <p class="note">{t("admin.noWebhooks")}</p>
   {/if}
 </dialog>
 

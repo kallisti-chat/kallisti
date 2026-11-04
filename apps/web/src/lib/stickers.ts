@@ -1,4 +1,5 @@
 import { CUSTOM_NAME, emojiNameFromFile } from "./customEmoji";
+import { t } from "./i18n.svelte";
 
 // Stickers: large pictures sent as a message of their own (see the server's
 // sidecar/stickers.go). A sticker message carries the sticker's id and
@@ -63,11 +64,11 @@ const EMOJI = /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Com
 // Why the fields cannot be saved (null: they can); self: the sticker
 // being renamed.
 export const stickerForm = (f: StickerFields, list: readonly Sticker[], self?: number): string | null => {
-  if (!NAME.test(f.name)) return "A name has 2 to 32 lower case letters, digits or _";
-  if (list.some((s) => s.name === f.name && s.id !== self)) return "A sticker with this name exists";
-  if ([...f.description].length > 100) return "A description has at most 100 characters";
-  if ([...f.pack].length > 32) return "A pack name has at most 32 characters";
-  if (f.emoji && !EMOJI.test(f.emoji)) return "The related emoji is not an emoji";
+  if (!NAME.test(f.name)) return t("media.stickerNameRule");
+  if (list.some((s) => s.name === f.name && s.id !== self)) return t("media.stickerNameTaken");
+  if ([...f.description].length > 100) return t("media.stickerDescriptionLength");
+  if ([...f.pack].length > 32) return t("media.stickerPackLength");
+  if (f.emoji && !EMOJI.test(f.emoji)) return t("media.stickerEmojiInvalid");
   return null;
 };
 

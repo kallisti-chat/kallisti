@@ -1,6 +1,7 @@
 <script lang="ts">
   import { downloadUrl, formatDuration, mediaRatio, onlyOne, releaseOnDestroy, shownLength, videoPreload } from "../lib/media";
   import { formatSize } from "../lib/textChannels";
+  import { t } from "../lib/i18n.svelte";
 
   // A video attachment: a play button and the length until it starts, then
   // the browser's controls; the file below.
@@ -61,7 +62,7 @@
     }}
   ></video>
   {#if !started}
-    <button class="play" aria-label="Play {name}" onclick={start}>
+    <button class="play" aria-label={t("media.playFile", { name })} onclick={start}>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z" /></svg>
     </button>
     {#if shownLength(duration, length)}<span class="length">{formatDuration(shownLength(duration, length))}</span>{/if}
@@ -69,7 +70,7 @@
   <div class="file">
     <a class="name ellipsis" href={url} target="_blank" rel="noopener noreferrer">{name}</a>
     <span class="size">{formatSize(size)}</span>
-    <a class="download" href={downloadUrl(url)} download={name} aria-label="Download {name}" title="Download">
+    <a class="download" href={downloadUrl(url)} download={name} aria-label={t("media.downloadFile", { name })} title={t("media.download")}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
         ><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg
       >

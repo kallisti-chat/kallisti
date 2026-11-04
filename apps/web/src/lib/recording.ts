@@ -1,4 +1,5 @@
 import { may, Perm, selfOf, type ServerState } from "@kallisti/protocol";
+import { t } from "./i18n.svelte";
 import { formatDuration } from "./media";
 import { roleOf } from "./roles";
 import type { TextState } from "./textChannels";
@@ -52,7 +53,7 @@ export const mayRecord = (server: ServerState, text: TextState) => {
 export const describeRecording = (r: FinishedRecording) => ({
   length: formatDuration((r.stopped - r.started) / 1000),
   size: `${(r.size / 1024 / 1024).toFixed(1)} MB`,
-  speakers: r.tracks.length ? r.tracks.map((t) => t.name).join(", ") : "nobody spoke",
+  speakers: r.tracks.length ? r.tracks.map((t) => t.name).join(", ") : t("admin.recordingNobodySpoke"),
 });
 
 // The download (a token for one download, from the server).

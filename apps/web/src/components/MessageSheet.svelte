@@ -18,6 +18,7 @@
   import Emoji from "./Emoji.svelte";
   import EmojiPicker from "./EmojiPicker.svelte";
   import IconView from "./Icon.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // Phones: a message's actions, from a long press. Quick reactions and
   // "+" (all emoji) when reacting is allowed (onReact), then the actions.
@@ -54,22 +55,22 @@
 </script>
 
 {#snippet react(emoji: string)}
-  <button type="button" class:mine={mine(emoji)} aria-label="React with {emoji}" onclick={() => onReact?.(emoji)}><Emoji text={emoji} /></button>
+  <button type="button" class:mine={mine(emoji)} aria-label={t("chat.reactWith", { emoji })} onclick={() => onReact?.(emoji)}><Emoji text={emoji} /></button>
 {/snippet}
 
-<BottomSheet label="Message actions" {onClose} bind:this={sheet}>
+<BottomSheet label={t("chat.messageActions")} {onClose} bind:this={sheet}>
   {#if confirming}
     <p class="question">{confirming.confirm}</p>
     <button type="button" class="sheet-item danger" onclick={() => confirming && run(confirming)}>{confirming.label}</button>
-    <button type="button" class="sheet-item" onclick={() => confirm(null)}>Cancel</button>
+    <button type="button" class="sheet-item" onclick={() => confirm(null)}>{t("common.cancel")}</button>
   {:else}
     {#if onReact}
-      <div class="quick" role="group" aria-label="Reactions">
+      <div class="quick" role="group" aria-label={t("chat.reactions")}>
         {#each quick.first as emoji (emoji)}{@render react(emoji)}{/each}
         <button
           type="button"
           class="more"
-          aria-label="More emoji"
+          aria-label={t("chat.moreEmoji")}
           onclick={(e) => (picker = e.currentTarget.getBoundingClientRect())}><IconView name="plus" size={22} /></button
         >
         {#each quick.second as emoji (emoji)}{@render react(emoji)}{/each}
@@ -87,7 +88,7 @@
   {/if}
 </BottomSheet>
 {#if picker && onReact}
-  <EmojiPicker anchor={picker} label="Add a reaction" selected={mine} onPick={onReact} onClose={() => (picker = null)} />
+  <EmojiPicker anchor={picker} label={t("chat.addReaction")} selected={mine} onPick={onReact} onClose={() => (picker = null)} />
 {/if}
 
 <style>

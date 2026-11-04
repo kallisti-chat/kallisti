@@ -1,4 +1,5 @@
 import type { FediLink, FediResult } from "./fedi";
+import { t } from "./i18n.svelte";
 
 // The popup in which a Kallisti page adds this server (see Connect): the
 // home server that asked (?kallisti-connect=, kept in the tab as mark over
@@ -14,7 +15,7 @@ export const popupLogin = (s: { asked: string | null; mark: string | null; back:
   const phase: ConnectPhase = !home
     ? null
     : !s.kept
-      ? { error: "This browser keeps no data for this window. Log in with a password there instead." }
+      ? { error: t("login.popupNoStorage") }
       : resumed || s.back?.kind === "register"
         ? null
         : !s.back

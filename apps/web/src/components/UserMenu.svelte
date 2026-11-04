@@ -9,6 +9,7 @@
   import Avatar from "./Avatar.svelte";
   import RoleTag from "./RoleTag.svelte";
   import ContextMenu from "./ContextMenu.svelte";
+  import { t } from "../lib/i18n.svelte";
   import { htmlToLines } from "../lib/htmlText";
   import { untrack } from "svelte";
 
@@ -99,13 +100,13 @@
   };
 </script>
 
-<ContextMenu {x} {y} label="Actions for {user.name}" {onClose}>
+<ContextMenu {x} {y} label={t("sidebar.actionsFor", { name: user.name })} {onClose}>
   <div class="who">
     <Avatar name={user.name} size={32} status={status?.presence} registered={byId} />
     <span class="names">
       <span class="line"><span><UserName name={user.name} /></span><RoleTag {role} /></span>
       {#if handle}
-        <span class="handle" title="Verified: linked with a fediverse login"><span aria-hidden="true">✓</span> {handle}</span>
+        <span class="handle" title={t("sidebar.verifiedHandle")}><span aria-hidden="true">✓</span> {handle}</span>
       {/if}
       {#if status?.custom}
         <span class="custom"><Emoji text={status.custom.emoji} /> {status.custom.text}</span>
@@ -115,17 +116,17 @@
   {#if bio}<p class="bio">{bio}</p>{/if}
   <div class="sep"></div>
   {#if isMe}
-    <button onclick={act(onSettings)}>Settings</button>
+    <button onclick={act(onSettings)}>{t("common.settings")}</button>
   {:else}
     {#if onMessage || friend}
-      {#if onMessage}<button onclick={act(onMessage)}>Message</button>{/if}
-      {#if friend}<button onclick={act(friend.onToggle)}>{friend.is ? "Remove friend" : "Add friend"}</button>{/if}
+      {#if onMessage}<button onclick={act(onMessage)}>{t("sidebar.message")}</button>{/if}
+      {#if friend}<button onclick={act(friend.onToggle)}>{t(friend.is ? "sidebar.removeFriend" : "sidebar.addFriend")}</button>{/if}
       <div class="sep"></div>
     {/if}
     {#if !byId}
       <label class="volume">
         <span class="row">
-          User volume <span class="value">{Math.round(audio.volume * 100)}%</span>
+          {t("sidebar.userVolume")} <span class="value">{Math.round(audio.volume * 100)}%</span>
         </span>
         <input
           type="range"
@@ -142,12 +143,12 @@
         aria-checked={audio.muted}
         onclick={() => onAudio({ muted: !audio.muted })}
       >
-        Mute
+        {t("sidebar.muteUser")}
         <span class="box" class:on={audio.muted} aria-hidden="true"></span>
       </button>
     {/if}
     <button role="switch" aria-checked={blocked} onclick={onBlock}>
-      Block messages
+      {t("sidebar.blockMessages")}
       <span class="box" class:on={blocked} aria-hidden="true"></span>
     </button>
     {#if (moderator && onModerator) || (admin && onAdmin)}
@@ -155,71 +156,71 @@
     {/if}
     {#if moderator && onModerator}
       <button onclick={act(() => onModerator(moderator === "make"))}>
-        {moderator === "make" ? "Make moderator" : "Remove moderator"}
+        {t(moderator === "make" ? "sidebar.makeModerator" : "sidebar.removeModerator")}
       </button>
     {/if}
     {#if admin && onAdmin}
       <button onclick={act(() => onAdmin(admin === "make"))}>
-        {admin === "make" ? "Make admin" : "Remove admin"}
+        {t(admin === "make" ? "sidebar.makeAdmin" : "sidebar.removeAdmin")}
       </button>
     {/if}
     {#if timedOutUntil !== null}
-      <p class="note">Timed out until {untilText(timedOutUntil)}</p>
+      <p class="note">{t("sidebar.timedOutUntil", { time: untilText(timedOutUntil) })}</p>
     {/if}
     {#if channelTimeout?.until != null}
-      <p class="note">Timed out in {channelTimeout.name} until {untilText(channelTimeout.until)}</p>
+      <p class="note">{t("sidebar.timedOutInUntil", { channel: channelTimeout.name, time: untilText(channelTimeout.until) })}</p>
     {/if}
     {#if moderation && onModerate && onConfirm}
       <div class="sep"></div>
       {#if moderation.mute}
         <!-- A time-out keeps the user muted. -->
         <button role="switch" aria-checked={user.mute} disabled={timedOutUntil !== null} onclick={() => onModerate({ kind: "mute", on: !user.mute })}>
-          Server mute
+          {t("sidebar.serverMute")}
           <span class="box" class:on={user.mute} aria-hidden="true"></span>
         </button>
         <button role="switch" aria-checked={user.deaf} onclick={() => onModerate({ kind: "deaf", on: !user.deaf })}>
-          Server deafen
+          {t("sidebar.serverDeafen")}
           <span class="box" class:on={user.deaf} aria-hidden="true"></span>
         </button>
       {/if}
       {#if moderation.moveTo.length}
         <label class="volume">
-          Move to
+          {t("sidebar.moveTo")}
           <select value="" onchange={(e) => act(() => onModerate({ kind: "move", channel: Number(e.currentTarget.value) }))()}>
-            <option value="" disabled>Choose a voice channel…</option>
+            <option value="" disabled>{t("sidebar.chooseVoiceChannel")}</option>
             {#each moderation.moveTo as c (c.id)}<option value={String(c.id)}>{c.name}</option>{/each}
           </select>
         </label>
       {/if}
       {#if moderation.disconnect}
-        <button onclick={act(() => onModerate({ kind: "move", channel: 0 }))}>Disconnect from voice</button>
+        <button onclick={act(() => onModerate({ kind: "move", channel: 0 }))}>{t("sidebar.disconnectVoice")}</button>
       {/if}
       {#if moderation.channelTimeout !== null && channelTimeout}
         {#if channelTimeout.until !== null}
           <button onclick={act(() => onModerate({ kind: "channelTimeout", channel: moderation.channelTimeout!, seconds: 0 }))}>
-            Remove time-out in {channelTimeout.name}
+            {t("sidebar.removeTimeoutIn", { channel: channelTimeout.name })}
           </button>
         {:else}
-          <button class="danger" onclick={act(() => onConfirm("channelTimeout"))}>Time out in {channelTimeout.name}…</button>
+          <button class="danger" onclick={act(() => onConfirm("channelTimeout"))}>{t("sidebar.timeOutIn", { channel: channelTimeout.name })}</button>
         {/if}
       {/if}
       {#if moderation.timeout}
         {#if timedOutUntil !== null}
-          <button onclick={act(() => onModerate({ kind: "timeout", seconds: 0 }))}>Remove time-out</button>
+          <button onclick={act(() => onModerate({ kind: "timeout", seconds: 0 }))}>{t("sidebar.removeTimeout")}</button>
         {:else}
-          <button class="danger" onclick={act(() => onConfirm("timeout"))}>Time out…</button>
+          <button class="danger" onclick={act(() => onConfirm("timeout"))}>{t("sidebar.timeOut")}</button>
         {/if}
       {/if}
       {#if moderation.kick}
-        <button class="danger" onclick={act(() => onConfirm("kick"))}>Kick…</button>
+        <button class="danger" onclick={act(() => onConfirm("kick"))}>{t("sidebar.kick")}</button>
       {/if}
       {#if moderation.ban}
-        <button class="danger" onclick={act(() => onConfirm("ban"))}>Ban…</button>
+        <button class="danger" onclick={act(() => onConfirm("ban"))}>{t("sidebar.ban")}</button>
       {/if}
     {/if}
     {#if onDeleteMessages}
       {#if !moderation}<div class="sep"></div>{/if}
-      <button class="danger" onclick={act(onDeleteMessages)}>Delete messages…</button>
+      <button class="danger" onclick={act(onDeleteMessages)}>{t("sidebar.deleteMessages")}</button>
     {/if}
   {/if}
 </ContextMenu>

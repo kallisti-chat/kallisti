@@ -2,6 +2,7 @@ import { createStreamStats, type StreamStats } from "./stats";
 import { voiceDecoder, type VoiceDecoder } from "../voice/codec";
 import { shouldFallBack } from "../voice/fallback";
 import { createPlayout, lastDue, type Playout } from "./playout";
+import { t } from "../i18n.svelte";
 import { cannotPlay, decodeFrame, decodeWatch, encodeFrame, pickCodec, previewSize } from "./protocol";
 import { DEFAULT_LIMITS, DEFAULT_QUALITY, KINDS, cameraConstraints, encoding, nextCamera, parseLimits, sources, type Kind, type Quality } from "./quality";
 import Ticker from "./ticker.worker?worker";
@@ -245,7 +246,7 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
             chunk.copyTo(data);
             if (sock.readyState === WebSocket.OPEN) sock.send(encodeFrame(chunk.type === "key", chunk.timestamp, data, false, kind === "camera"));
           },
-          error: (e) => (error = `Video encoder failed: ${e.message}`),
+          error: (e) => (error = t("media.encoderFailed", { message: e.message })),
         });
         o.encoder.configure(encoderConfig(codec, enc));
         o.forceKey = true;

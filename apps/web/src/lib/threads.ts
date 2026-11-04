@@ -1,4 +1,6 @@
+import type { Key } from "../i18n/en";
 import { withoutSpoilers } from "./markdown";
+import { t } from "./i18n.svelte";
 
 // Threads (Kallisti server): a side conversation started from a message
 // of a text channel, a chat of its own (its id is a chat id like a
@@ -61,7 +63,7 @@ const NAME_LENGTH = 40;
 // spoilers or Markdown marks), cut at a word.
 export const defaultThreadName = (text: string) => {
   const plain = withoutSpoilers(text).replace(/[*_~`>]+/g, "").replace(/\s+/g, " ").trim();
-  if (plain.length <= NAME_LENGTH) return plain || "Thread";
+  if (plain.length <= NAME_LENGTH) return plain || t("chat.threadDefaultName");
   const cut = plain.slice(0, NAME_LENGTH);
   return `${cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : NAME_LENGTH)}…`;
 };
@@ -69,15 +71,15 @@ export const defaultThreadName = (text: string) => {
 // "5 min ago", for the last reply.
 const ago = (at: number, now: number) => {
   const min = Math.floor((now - at) / 60_000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
-  if (min < 24 * 60) return `${Math.floor(min / 60)} h ago`;
-  return `${Math.floor(min / (24 * 60))} d ago`;
+  if (min < 1) return t("chat.agoJustNow");
+  if (min < 60) return t("chat.agoMinutes", { count: min });
+  if (min < 24 * 60) return t("chat.agoHours", { count: Math.floor(min / 60) });
+  return t("chat.agoDays", { count: Math.floor(min / (24 * 60)) });
 };
 
 // The box under a start message.
-export const replyBoxText = (t: Thread, now: number) =>
-  t.replies === 0 ? "No replies yet" : `${t.replies} ${t.replies === 1 ? "reply" : "replies"} · last reply ${ago(t.last, now)}`;
+export const replyBoxText = (thread: Thread, now: number) =>
+  thread.replies === 0 ? t("chat.threadNoReplies") : t("chat.threadReplies", { count: thread.replies, ago: ago(thread.last, now) });
 
 // A channel's active threads, the newest activity first (the sidebar).
 export const activeThreads = (threads: Threads, channel: number): Thread[] =>
@@ -138,9 +140,9 @@ const threadBody = (a: ThreadAction) => {
 export const threadRequest = (a: ThreadAction) => JSON.stringify(threadBody(a));
 
 // The choices for archiving idle threads (staff).
-export const ARCHIVE_TIMES: readonly { seconds: number; label: string }[] = [
-  { seconds: 3600, label: "1 hour" },
-  { seconds: 24 * 3600, label: "1 day" },
-  { seconds: 3 * 24 * 3600, label: "3 days" },
-  { seconds: 7 * 24 * 3600, label: "1 week" },
+export const ARCHIVE_TIMES: readonly { seconds: number; label: Key }[] = [
+  { seconds: 3600, label: "chat.archiveHour" },
+  { seconds: 24 * 3600, label: "chat.archiveDay" },
+  { seconds: 3 * 24 * 3600, label: "chat.archiveThreeDays" },
+  { seconds: 7 * 24 * 3600, label: "chat.archiveWeek" },
 ];

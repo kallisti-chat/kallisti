@@ -1,4 +1,5 @@
 import { channelListRequest, type ChannelList } from "./channelList";
+import { t } from "./i18n.svelte";
 import { micInfoRequest, type MicInfo } from "./voice/micInfo";
 import { endPollRequest, voteRequest, type PollBody } from "./polls";
 import { threadRequest, type ThreadAction } from "./threads";
@@ -145,8 +146,8 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   let awaiting: Waiter[] = [];
   const wait = (check: Check, request: () => void) =>
     new Promise<void>((resolve, reject) => {
-      if (ws.readyState !== WebSocket.OPEN) return reject(new Error("Not connected"));
-      const timeout = setTimeout(() => waiter.done("No answer from the server"), ANSWER_MS);
+      if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
+      const timeout = setTimeout(() => waiter.done(t("client.noAnswer")), ANSWER_MS);
       const waiter: Waiter = {
         ...check,
         done: (error) => {
@@ -305,7 +306,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     closeReason = reason;
     clearInterval(timer);
     tokenWaiter?.reject(new Error("connection closed"));
-    awaiting.forEach((w) => w.done("Not connected"));
+    awaiting.forEach((w) => w.done(t("client.notConnected")));
     confirming.forEach((fn) => fn(null));
     voice.close(); // the audio context stays: the app may reconnect with it
     streams?.close();
@@ -403,7 +404,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     request: (action: ManageAction) => {
       const confirms = confirmsManage(action);
       if (confirms) return wait({ via: "text", confirms }, () => ws.send(manageRequest(action)));
-      if (ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Not connected"));
+      if (ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error(t("client.notConnected")));
       ws.send(manageRequest(action));
       return Promise.resolve();
     },
@@ -533,16 +534,16 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       poll?: PollBody,
     ) =>
       new Promise<void>((resolve, reject) => {
-        if (ws.readyState !== WebSocket.OPEN) return reject(new Error("Not connected"));
+        if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
         const done = (error?: string) => {
           clearTimeout(timeout);
           confirming.delete(check);
           if (error === undefined) resolve();
           else reject(new Error(error));
         };
-        const timeout = setTimeout(() => done("No answer from the server"), SEND_ANSWER_MS);
+        const timeout = setTimeout(() => done(t("client.noAnswer")), SEND_ANSWER_MS);
         const check = (ev: ServerEvent | null) => {
-          const a = ev ? sendAnswer(ev, nonce, uploads[0]?.key) : { error: "Not connected" };
+          const a = ev ? sendAnswer(ev, nonce, uploads[0]?.key) : { error: t("client.notConnected") };
           if (a) done(a.error);
         };
         confirming.add(check);

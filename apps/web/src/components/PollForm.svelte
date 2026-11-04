@@ -2,6 +2,7 @@
   import { tick } from "svelte";
   import Emoji from "./Emoji.svelte";
   import EmojiPicker from "./EmojiPicker.svelte";
+  import { t } from "../lib/i18n.svelte";
   import { emptyPollDraft, pollBody, pollProblem, POLL_ANSWER_MAX, POLL_ANSWERS_MAX, POLL_DURATIONS, POLL_QUESTION_MAX, type PollBody } from "../lib/polls";
 
   // A new poll (see lib/polls): question, answers with an emoji each,
@@ -55,51 +56,51 @@
 >
   <form onsubmit={submit}>
     <header>
-      <h2 id="poll-title">Create a poll</h2>
-      <button type="button" class="close" disabled={sending} onclick={() => dialog?.close()} aria-label="Close">×</button>
+      <h2 id="poll-title">{t("chat.createPoll")}</h2>
+      <button type="button" class="close" disabled={sending} onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
     </header>
     <label>
-      Question
+      {t("chat.pollQuestion")}
       <!-- svelte-ignore a11y_autofocus -->
-      <input bind:value={draft.question} maxlength={POLL_QUESTION_MAX} placeholder="What do you want to ask?" required autofocus />
+      <input bind:value={draft.question} maxlength={POLL_QUESTION_MAX} placeholder={t("chat.pollQuestionPlaceholder")} required autofocus />
     </label>
     <fieldset>
-      <legend>Answers</legend>
+      <legend>{t("chat.pollAnswers")}</legend>
       {#each draft.answers as answer, i (i)}
         <div class="answer">
-          <button type="button" class="emoji" aria-label={answer.emoji ? `Emoji of answer ${i + 1}: change` : `Add an emoji to answer ${i + 1}`}
+          <button type="button" class="emoji" aria-label={answer.emoji ? t("chat.pollChangeAnswerEmoji", { n: i + 1 }) : t("chat.pollAddAnswerEmoji", { n: i + 1 })}
             onclick={(e) => (picking = { i, anchor: e.currentTarget.getBoundingClientRect() })}
             >{#if answer.emoji}<Emoji text={answer.emoji} />{:else}<span class="add-emoji" aria-hidden="true">🙂</span>{/if}</button
           >
           {#if answer.emoji}
-            <button type="button" class="remove" onclick={() => (answer.emoji = undefined)} aria-label="Remove the emoji of answer {i + 1}">⌫</button>
+            <button type="button" class="remove" onclick={() => (answer.emoji = undefined)} aria-label={t("chat.pollRemoveAnswerEmoji", { n: i + 1 })}>⌫</button>
           {/if}
-          <input class="text" bind:value={answer.text} maxlength={POLL_ANSWER_MAX} placeholder="Answer {i + 1}" aria-label="Answer {i + 1}" />
+          <input class="text" bind:value={answer.text} maxlength={POLL_ANSWER_MAX} placeholder={t("chat.pollAnswerN", { n: i + 1 })} aria-label={t("chat.pollAnswerN", { n: i + 1 })} />
           {#if draft.answers.length > 2}
-            <button type="button" class="remove" onclick={() => draft.answers.splice(i, 1)} aria-label="Remove answer {i + 1}">×</button>
+            <button type="button" class="remove" onclick={() => draft.answers.splice(i, 1)} aria-label={t("chat.pollRemoveAnswer", { n: i + 1 })}>×</button>
           {/if}
         </div>
       {/each}
       {#if draft.answers.length < POLL_ANSWERS_MAX}
-        <button type="button" class="add" onclick={addAnswer}>+ Add another answer</button>
+        <button type="button" class="add" onclick={addAnswer}>{t("chat.pollAddAnswer")}</button>
       {/if}
     </fieldset>
     <label>
-      Duration
+      {t("chat.pollDuration")}
       <select bind:value={draft.hours}>
-        {#each POLL_DURATIONS as [hours, text] (hours)}
-          <option value={hours}>{text}</option>
+        {#each POLL_DURATIONS as [hours, key] (hours)}
+          <option value={hours}>{t(key)}</option>
         {/each}
       </select>
     </label>
-    <label class="check"><input type="checkbox" bind:checked={draft.multiple} /> Allow more than one answer</label>
-    <label class="check"><input type="checkbox" bind:checked={draft.anonymous} /> Anonymous votes (nobody sees who voted for what)</label>
+    <label class="check"><input type="checkbox" bind:checked={draft.multiple} /> {t("chat.pollAllowMultiple")}</label>
+    <label class="check"><input type="checkbox" bind:checked={draft.anonymous} /> {t("chat.pollAnonymous")}</label>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if picking}
       {@const at = picking.i}
       <EmojiPicker
         anchor={picking.anchor}
-        label="Emoji of answer {at + 1}"
+        label={t("chat.pollAnswerEmoji", { n: at + 1 })}
         onPick={(emoji) => {
           if (draft.answers[at]) draft.answers[at].emoji = emoji;
           picking = null;
@@ -108,8 +109,8 @@
       />
     {/if}
     <footer>
-      <button type="button" class="secondary" disabled={sending} onclick={() => dialog?.close()}>Cancel</button>
-      <button type="submit" class="primary" disabled={!!problem || sending}>{sending ? "Posting…" : "Post"}</button>
+      <button type="button" class="secondary" disabled={sending} onclick={() => dialog?.close()}>{t("common.cancel")}</button>
+      <button type="submit" class="primary" disabled={!!problem || sending}>{sending ? t("chat.pollPosting") : t("chat.pollPost")}</button>
     </footer>
   </form>
 </dialog>

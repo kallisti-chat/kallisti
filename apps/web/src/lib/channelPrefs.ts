@@ -1,3 +1,6 @@
+import type { Key } from "../i18n/en";
+import { i18n } from "./i18n.svelte";
+
 // Per text channel, per server (channel ids are the server's): which
 // messages notify, and a mute (until a time; 0: until turned off). Muted
 // channels show no unread marker and notify only for mentions, as in
@@ -7,10 +10,11 @@ export type NotifyLevel = "all" | "mentions" | "nothing";
 export type ChannelPref = { level?: NotifyLevel; mutedUntil?: number };
 export type ChannelPrefs = Readonly<Record<string, Readonly<Record<number, ChannelPref>>>>;
 
-export const LEVELS: readonly [NotifyLevel, string][] = [
-  ["all", "All messages"],
-  ["mentions", "Only @mentions"],
-  ["nothing", "Nothing"],
+// Labels are text keys (t() where they show).
+export const LEVELS: readonly [NotifyLevel, Key][] = [
+  ["all", "settings.notifyAll"],
+  ["mentions", "settings.notifyMentions"],
+  ["nothing", "settings.notifyNothing"],
 ];
 const DEFAULT_LEVEL: NotifyLevel = "mentions";
 export const levelOf = (p: ChannelPref): NotifyLevel => p.level ?? DEFAULT_LEVEL;
@@ -86,18 +90,18 @@ export const withParents = (prefs: ChannelPrefs, server: string, threads: Readon
   return taken.length ? { ...prefs, [server]: { ...Object.fromEntries(taken), ...own } } : prefs;
 };
 
-// The mute choices (minutes; 0: until turned off) and when one ends.
-export const MUTE_FOR: readonly [string, number][] = [
-  ["For 15 minutes", 15],
-  ["For 1 hour", 60],
-  ["For 8 hours", 8 * 60],
-  ["For 24 hours", 24 * 60],
-  ["Until I turn it back on", 0],
+// The mute choices (text key, minutes; 0: until turned off) and when one ends.
+export const MUTE_FOR: readonly [Key, number][] = [
+  ["settings.muteFor15Minutes", 15],
+  ["settings.muteFor1Hour", 60],
+  ["settings.muteFor8Hours", 8 * 60],
+  ["settings.muteFor24Hours", 24 * 60],
+  ["settings.muteUntilOn", 0],
 ];
 export const muteUntil = (minutes: number, now: number) => (minutes ? now + minutes * 60_000 : 0);
 // null: no end.
 export const mutedUntilText = (t: number | undefined) =>
-  t ? new Date(t).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" }) : null;
+  t ? new Date(t).toLocaleString(i18n.locale, { weekday: "short", hour: "numeric", minute: "2-digit" }) : null;
 
 export const isMuted = (p: ChannelPref, now: number) => p.mutedUntil !== undefined && (p.mutedUntil === 0 || p.mutedUntil > now);
 

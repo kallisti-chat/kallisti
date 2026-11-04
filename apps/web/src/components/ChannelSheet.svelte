@@ -2,6 +2,7 @@
   import { tick } from "svelte";
   import BottomSheet from "./BottomSheet.svelte";
   import Icon from "./Icon.svelte";
+  import { t } from "../lib/i18n.svelte";
   import { isMuted, levelOf, LEVELS, MUTE_FOR, mutedUntilText, muteUntil, type ChannelPref } from "../lib/channelPrefs";
 
   // Phones: what the chat header has on wide screens (topic, pins,
@@ -36,7 +37,7 @@
   const id = $props.id();
   let sheet: BottomSheet | undefined = $state();
   let muting = $state(false);
-  const noun = $derived(kind === "dm" ? "conversation" : "channel");
+  const dm = $derived(kind === "dm");
   // Focus back on the name first: the action may move it on (a panel).
   const act = (fn: () => void) => () => {
     sheet?.dismiss();
@@ -51,27 +52,27 @@
   };
   const actions = $derived(
     [
-      onPins && { label: "Pinned messages", icon: "pin" as const, run: onPins },
-      onThreads && { label: "Threads", icon: "thread" as const, run: onThreads },
-      onCopyLink && { label: "Copy link", icon: "copy" as const, run: onCopyLink },
-      onCopyInvite && { label: "Copy invite link (one use, 7 days)", icon: "copy" as const, run: onCopyInvite },
+      onPins && { label: t("sidebar.pinnedMessages"), icon: "pin" as const, run: onPins },
+      onThreads && { label: t("sidebar.threads"), icon: "thread" as const, run: onThreads },
+      onCopyLink && { label: t("sidebar.copyLink"), icon: "copy" as const, run: onCopyLink },
+      onCopyInvite && { label: t("sidebar.copyInviteOneUse"), icon: "copy" as const, run: onCopyInvite },
     ].filter((a) => !!a),
   );
 </script>
 
-<BottomSheet label="{kind === 'dm' ? '@' : kind === 'text' ? '#' : ''}{title} details" {onClose} bind:this={sheet}>
+<BottomSheet label={t("sidebar.channelDetails", { name: `${kind === "dm" ? "@" : kind === "text" ? "#" : ""}${title}` })} {onClose} bind:this={sheet}>
   {#if muting && notify && onNotify}
-    <h2>Mute {noun}</h2>
+    <h2>{t(dm ? "sidebar.muteConversation" : "sidebar.muteChannel")}</h2>
     <ul class="sheet-list">
       {#each MUTE_FOR as [label, minutes] (minutes)}
         <li>
           <button type="button" class="sheet-item" onclick={() => (onNotify({ mutedUntil: muteUntil(minutes, Date.now()) }), showMuting(false))}
-            >{label}</button
+            >{t(label)}</button
           >
         </li>
       {/each}
     </ul>
-    <button type="button" class="sheet-item cancel" onclick={() => showMuting(false)}>Cancel</button>
+    <button type="button" class="sheet-item cancel" onclick={() => showMuting(false)}>{t("common.cancel")}</button>
   {:else}
     <h2>
       {#if kind === "dm"}<span aria-hidden="true">@</span>{:else}<Icon name={kind === "text" ? "hash" : "speaker"} size={20} />{/if}
@@ -90,28 +91,28 @@
     {#if notify && onNotify}
       {@const muted = isMuted(notify.pref, Date.now())}
       {@const end = muted ? mutedUntilText(notify.pref.mutedUntil) : null}
-      <h3 id="{id}-notify">Notifications</h3>
+      <h3 id="{id}-notify">{t("sidebar.notifications")}</h3>
       <ul class="sheet-list" aria-labelledby="{id}-notify">
         <li>
           {#if muted}
             <button type="button" class="sheet-item" onclick={() => (onNotify({ mutedUntil: undefined }), showMuting(false))}>
-              <Icon name="bell" size={20} /><span>Unmute {noun}{#if end}<small>Muted until {end}</small>{/if}</span>
+              <Icon name="bell" size={20} /><span>{t(dm ? "sidebar.unmuteConversation" : "sidebar.unmuteChannel")}{#if end}<small>{t("sidebar.mutedUntil", { time: end })}</small>{/if}</span>
             </button>
           {:else}
-            <button type="button" class="sheet-item" onclick={() => showMuting(true)}><Icon name="bell" off size={20} />Mute {noun}</button>
+            <button type="button" class="sheet-item" onclick={() => showMuting(true)}><Icon name="bell" off size={20} />{t(dm ? "sidebar.muteConversation" : "sidebar.muteChannel")}</button>
           {/if}
         </li>
         {#if !notify.direct}
           {#each LEVELS as [level, label] (level)}
             <li>
               <button type="button" class="sheet-item choice" aria-pressed={levelOf(notify.pref) === level} onclick={() => onNotify({ level })}
-                >{label}</button
+                >{t(label)}</button
               >
             </li>
           {/each}
         {/if}
       </ul>
-      {#if !notify.direct && !notify.desktop}<p class="note">Desktop notifications are off (Settings).</p>{/if}
+      {#if !notify.direct && !notify.desktop}<p class="note">{t("sidebar.desktopNotificationsOff")}</p>{/if}
     {/if}
   {/if}
 </BottomSheet>

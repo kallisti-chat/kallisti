@@ -1,5 +1,6 @@
 <script lang="ts">
   import ContextMenu from "./ContextMenu.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // A friend on another server (see lib/friends): a direct chat there
   // (undefined: no login there), or out of the list.
@@ -19,13 +20,13 @@
   };
 </script>
 
-<ContextMenu {x} {y} label="Actions for {name}" {onClose}>
+<ContextMenu {x} {y} label={t("sidebar.actionsFor", { name })} {onClose}>
   {#if onMessage}
-    <button onclick={act(onMessage)}>Message on {server}</button>
+    <button onclick={act(onMessage)}>{t("sidebar.messageOn", { server })}</button>
   {:else}
-    <p class="note">Add {server} to your servers to write to {name}.</p>
+    <p class="note">{t("sidebar.addServerToWrite", { server, name })}</p>
   {/if}
-  <button onclick={act(onRemove)}>Remove friend</button>
+  <button onclick={act(onRemove)}>{t("sidebar.removeFriend")}</button>
 </ContextMenu>
 
 <style>

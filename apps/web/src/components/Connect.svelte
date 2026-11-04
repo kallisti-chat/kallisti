@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AccountsApi } from "../lib/accounts";
+  import { t } from "../lib/i18n.svelte";
 
   // The popup in which a Kallisti page adds this server (see the server's
   // fediHandoff): it logs in through the user's home server (home), or
@@ -21,8 +22,8 @@
   $effect(() => {
     if (!ask) return;
     ready = false;
-    const t = setTimeout(() => (ready = true), 600);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => (ready = true), 600);
+    return () => clearTimeout(timer);
   });
   const hostOf = (origin: string) => {
     try {
@@ -41,12 +42,12 @@
     if (!ask || !ready) return;
     const key = ask.key;
     ask = null;
-    api.fediHandoff(key).then((h) => ("token" in h ? deliver(h) : failed("The login did not finish. Please try again.")), failed);
+    api.fediHandoff(key).then((h) => ("token" in h ? deliver(h) : failed(t("login.handoffUnfinished"))), failed);
   };
   $effect(() => {
     if (phase === "start")
       api.fediStart(via ?? home, undefined, via ? { to: home } : {}).then((url) => location.assign(url), failed);
-    else if (phase === "deliver" && !window.opener) error = "The page that asked for this login is gone. Please try again there.";
+    else if (phase === "deliver" && !window.opener) error = t("login.openerGone");
     else if (phase === "deliver") api.fediHandoff().then((h) => ("token" in h ? deliver(h) : (ask = { key: h.ask, name: h.name, origin: h.origin })), failed);
     else error = phase.error;
   });
@@ -55,21 +56,21 @@
 <div class="screen">
   <div class="card">
     {#if error}
-      <h1>Could not log in</h1>
+      <h1>{t("login.couldNotLogIn")}</h1>
       <p class="error" role="alert">{error}</p>
-      <button class="link" onclick={() => window.close()}>Close</button>
+      <button class="link" onclick={() => window.close()}>{t("common.close")}</button>
     {:else if ask}
-      <h1>Allow {hostOf(ask.origin)}?</h1>
+      <h1>{t("login.allowSite", { site: hostOf(ask.origin) })}</h1>
+      <!-- The site and the name in bold, wherever the language puts them. -->
       <p class="sub">
-        <strong>{hostOf(ask.origin)}</strong> wants to use your account <strong>{ask.name}</strong> on {location.host}. It can then read and write here
-        as you.
+        {#each t("login.handoffAsk", { host: location.host }).split(/(\{site\}|\{name\})/) as part, i (i)}{#if part === "{site}"}<strong>{hostOf(ask.origin)}</strong>{:else if part === "{name}"}<strong>{ask.name}</strong>{:else}{part}{/if}{/each}
       </p>
-      <button class="primary" disabled={!ready} onclick={allow}>Allow</button>
-      <button class="link" onclick={() => window.close()}>Cancel</button>
+      <button class="primary" disabled={!ready} onclick={allow}>{t("login.allow")}</button>
+      <button class="link" onclick={() => window.close()}>{t("common.cancel")}</button>
     {:else if done}
-      <p class="sub">Done. You can close this window.</p>
+      <p class="sub">{t("login.handoffDone")}</p>
     {:else}
-      <p class="sub" aria-busy="true">{phase === "start" ? `Logging in with your account at ${hostOf(via ?? home)}…` : "Logging in…"}</p>
+      <p class="sub" aria-busy="true">{phase === "start" ? t("login.loggingInAt", { host: hostOf(via ?? home) }) : t("login.loggingIn")}</p>
     {/if}
   </div>
 </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // The frame of the QR login dialogs (see QrShowDialog, QrLinkDialog):
   // a title, a close button, the body (its state announced).
@@ -12,7 +13,7 @@
 <dialog class="qr" bind:this={dialog} onclose={onClose} aria-labelledby="{id}-title">
   <header>
     <h2 id="{id}-title">{title}</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
   <div role="status" aria-live="polite">{@render children()}</div>
 </dialog>

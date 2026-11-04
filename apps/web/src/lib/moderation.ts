@@ -15,6 +15,8 @@ import {
 import { canModerate } from "./channelManagement";
 import { mirrorIds, withoutMirrors } from "./mirrors";
 import { amStaff, channelModIn, channelsUp, roleOf } from "./roles";
+import type { Key } from "../i18n/en";
+import { i18n } from "./i18n.svelte";
 import type { ChannelTimeout, ManageAction, TextState, Timeout, UserTarget } from "./textChannels";
 
 // What the server settings may show (the server checks again): the ban
@@ -28,24 +30,26 @@ export const moderationRights = (server: ServerState) => {
 };
 
 // Time choices in seconds: bans (0: for ever) and time-outs.
-export const BAN_TIMES = [
-  { label: "1 hour", seconds: 3600 },
-  { label: "1 day", seconds: 86400 },
-  { label: "7 days", seconds: 7 * 86400 },
-  { label: "Forever", seconds: 0 },
-] as const;
-export const TIMEOUT_TIMES = [
-  { label: "5 minutes", seconds: 300 },
-  { label: "1 hour", seconds: 3600 },
-  { label: "1 day", seconds: 86400 },
-  { label: "1 week", seconds: 7 * 86400 },
-] as const;
+// label: a text key (shown with t()).
+type TimeChoice = { readonly label: Key; readonly seconds: number };
+export const BAN_TIMES: readonly TimeChoice[] = [
+  { label: "admin.timeOneHour", seconds: 3600 },
+  { label: "admin.timeOneDay", seconds: 86400 },
+  { label: "admin.timeSevenDays", seconds: 7 * 86400 },
+  { label: "admin.timeForever", seconds: 0 },
+];
+export const TIMEOUT_TIMES: readonly TimeChoice[] = [
+  { label: "admin.timeFiveMinutes", seconds: 300 },
+  { label: "admin.timeOneHour", seconds: 3600 },
+  { label: "admin.timeOneDay", seconds: 86400 },
+  { label: "admin.timeOneWeek", seconds: 7 * 86400 },
+];
 // How far back a user's messages are deleted.
-export const DELETE_TIMES = [
-  { label: "1 hour", seconds: 3600 },
-  { label: "24 hours", seconds: 86400 },
-  { label: "7 days", seconds: 7 * 86400 },
-] as const;
+export const DELETE_TIMES: readonly TimeChoice[] = [
+  { label: "admin.timeOneHour", seconds: 3600 },
+  { label: "admin.time24Hours", seconds: 86400 },
+  { label: "admin.timeSevenDays", seconds: 7 * 86400 },
+];
 
 // What we may do to another user (the server checks again).
 // timedBans: bans for a time (built-in server; else only for ever).
@@ -139,7 +143,7 @@ export const channelTimedOutUntil = (
 };
 
 // For people: the end of a time-out.
-export const untilText = (until: number) => new Date(until).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+export const untilText = (until: number) => new Date(until).toLocaleString(i18n.locale, { dateStyle: "medium", timeStyle: "short" });
 
 // An action from the user menu or its confirmation dialog. deleteSeconds:
 // also delete the user's messages of that time; delete: only that.

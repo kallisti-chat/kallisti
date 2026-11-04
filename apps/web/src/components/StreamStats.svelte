@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { perSecond, type StreamTotals } from "../lib/stream/stats";
+  import { t } from "../lib/i18n.svelte";
 
   // A watched stream's numbers over the tile (see lib/stream/stats), each
   // second: its playout buffer, what comes per second, what went wrong since it
@@ -26,21 +27,21 @@
 </script>
 
 {#if now}
-  <dl class="stats" aria-label="Stream stats">
-    <dt>Buffer</dt>
-    <dd>{Math.round(now.delay * 1000)} ms</dd>
-    <dt>Pictures</dt>
-    <dd>{rates ? `${round(rates.pictures)}/s, drawn ${round(rates.drawn)}/s` : "…"}</dd>
-    <dt>Sound</dt>
-    <dd>{rates ? `${round(rates.sound)}/s` : "…"}</dd>
-    <dt>Bitrate</dt>
-    <dd>{rates ? `${Math.round(rates.kbps)} kbps` : "…"}</dd>
-    <dt>Late</dt>
-    <dd>{now.totals.latePictures} pictures, {now.totals.lateSound} sound</dd>
-    <dt>Skipped</dt>
-    <dd>{now.totals.skipped} to a keyframe</dd>
-    <dt>Lost sound</dt>
-    <dd>{now.totals.lostSound} packets</dd>
+  <dl class="stats" aria-label={t("media.statsLabel")}>
+    <dt>{t("media.statsBuffer")}</dt>
+    <dd>{t("media.statsMilliseconds", { ms: Math.round(now.delay * 1000) })}</dd>
+    <dt>{t("media.statsPictures")}</dt>
+    <dd>{rates ? t("media.statsPictureRate", { pictures: round(rates.pictures), drawn: round(rates.drawn) }) : "…"}</dd>
+    <dt>{t("media.statsSound")}</dt>
+    <dd>{rates ? t("media.statsPerSecond", { rate: round(rates.sound) }) : "…"}</dd>
+    <dt>{t("media.statsBitrate")}</dt>
+    <dd>{rates ? t("media.statsKbps", { kbps: Math.round(rates.kbps) }) : "…"}</dd>
+    <dt>{t("media.statsLate")}</dt>
+    <dd>{t("media.statsLateValue", { pictures: now.totals.latePictures, sound: now.totals.lateSound })}</dd>
+    <dt>{t("media.statsSkipped")}</dt>
+    <dd>{t("media.statsSkippedValue", { count: now.totals.skipped })}</dd>
+    <dt>{t("media.statsLostSound")}</dt>
+    <dd>{t("media.statsLostValue", { count: now.totals.lostSound })}</dd>
   </dl>
 {/if}
 

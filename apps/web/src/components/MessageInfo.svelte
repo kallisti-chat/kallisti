@@ -1,5 +1,6 @@
 <script lang="ts">
   import ReactionList from "./ReactionList.svelte";
+  import { t } from "../lib/i18n.svelte";
   import type { InfoRow } from "../lib/messageInfo";
   import type { Reaction } from "../lib/reactions";
 
@@ -13,8 +14,8 @@
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="message-info-title">
   <header>
-    <h2 id="message-info-title">Message from {author}</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="message-info-title">{t("chat.messageFrom", { author })}</h2>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
   <dl>
     {#each rows as row (row.label)}
@@ -23,7 +24,7 @@
     {/each}
   </dl>
   {#if reactions.length}
-    <h3>Reactions</h3>
+    <h3>{t("chat.reactions")}</h3>
     <ReactionList {reactions} />
   {/if}
 </dialog>

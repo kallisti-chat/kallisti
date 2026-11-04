@@ -3,6 +3,7 @@
   import { apiStatus, type QrScan, type QrState } from "../lib/accounts";
   import { pollState } from "../lib/qrLogin";
   import QrDialog from "./QrDialog.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // A scanned login code (see lib/qrLogin): the link opened, or the app's
   // scanner. Logged in, a logged-out device's code: "Log in on <device>?"
@@ -41,11 +42,11 @@
     const status = apiStatus(err);
     error =
       status === 404
-        ? "This code is not valid any more. Make a new one."
+        ? t("login.qrInvalid")
         : status === 409
-          ? "This code logs in a device without an account open. Log out here first, or scan it on that device."
+          ? t("login.qrNeedsLoggedOut")
           : status === 401 && scanning
-            ? "Log in on this device first, then scan the code again."
+            ? t("login.qrLogInFirst")
             : err instanceof Error
               ? err.message
               : String(err);
@@ -81,24 +82,24 @@
   };
 </script>
 
-<QrDialog title="Log in with a QR code" {onClose}>
+<QrDialog title={t("login.qrLogin")} {onClose}>
   {#if phase === "scanning"}
-    <p class="note">Reading the code…</p>
+    <p class="note">{t("login.qrReading")}</p>
   {:else if phase === "ask"}
-    <p><strong>Log in on {other} {me ? `as ${me}` : "with your account"}?</strong></p>
-    <p class="warn">Only if the code is on your own screen. Whoever shows it gets your account: never scan a code that someone sent you.</p>
+    <p><strong>{me ? t("login.qrAskAs", { device: other, name: me }) : t("login.qrAskWithAccount", { device: other })}</strong></p>
+    <p class="warn">{t("login.qrWarning")}</p>
     <div class="buttons">
-      <button type="button" class="secondary" onclick={() => answer(false)}>No</button>
-      <button type="button" class="primary" onclick={() => answer(true)}>Log in</button>
+      <button type="button" class="secondary" onclick={() => answer(false)}>{t("common.no")}</button>
+      <button type="button" class="primary" onclick={() => answer(true)}>{t("login.logIn")}</button>
     </div>
   {:else if phase === "waiting"}
-    <p>Confirm on {other}…</p>
+    <p>{t("login.qrConfirmOn", { device: other })}</p>
   {:else if phase === "done"}
-    <p>{me ? `${other} is logged in.` : "Logged in."}</p>
+    <p>{me ? t("login.qrDeviceLoggedIn", { device: other }) : t("login.qrLoggedIn")}</p>
   {:else if phase === "refused"}
-    <p>Not logged in: the login was refused.</p>
+    <p>{t("login.qrRefused")}</p>
   {:else if phase === "expired"}
-    <p>The code expired. Make a new one.</p>
+    <p>{t("login.qrExpired")}</p>
   {:else}
     <p role="alert">{error}</p>
   {/if}

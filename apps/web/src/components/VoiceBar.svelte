@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
+  import { t } from "../lib/i18n.svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import ConnectionInfo from "./ConnectionInfo.svelte";
   import type { ConnectionInfo as Info } from "../lib/connectionInfo.svelte";
@@ -47,32 +48,32 @@
   };
 </script>
 
-<section class="bar" aria-label="Voice">
+<section class="bar" aria-label={t("client.voice")}>
   <div class="where">
     <div class="state" class:elsewhere={onJoinHere}>
       {#if onJoinHere}
-        In voice on another device
+        {t("client.voiceElsewhere")}
       {:else}
         <ConnectionInfo {info} />
-        Voice connected
-        {#if music}<span class="note" title="No filters, better sound (see the settings)">Music mode</span>{/if}
-        {#if recording}<span class="note rec" title="Everything said in this channel is recorded">● Recording</span>{/if}
+        {t("client.voiceConnected")}
+        {#if music}<span class="note" title={t("client.musicModeHint")}>{t("client.musicMode")}</span>{/if}
+        {#if recording}<span class="note rec" title={t("client.recordingHint")}>● {t("client.recording")}</span>{/if}
       {/if}
     </div>
     {#if onShow}
-      <button class="channel ellipsis link" title="Show {channel}" onclick={onShow}>{channel}</button>
+      <button class="channel ellipsis link" title={t("client.showChannel", { channel })} onclick={onShow}>{channel}</button>
     {:else}
       <div class="channel ellipsis" title={channel}>{channel}</div>
     {/if}
   </div>
   {#if onJoinHere}
-    <button class="here" onclick={onJoinHere}>Join voice here</button>
+    <button class="here" onclick={onJoinHere}>{t("client.joinVoiceHere")}</button>
   {:else if entries.length && onGoLive}
     <button
       class="live"
       class:on={live}
-      title="Go live"
-      aria-label="Go live"
+      title={t("client.goLive")}
+      aria-label={t("client.goLive")}
       aria-pressed={live}
       aria-haspopup="menu"
       aria-expanded={!!menu}
@@ -86,14 +87,14 @@
     </button>
   {/if}
   {#if !onJoinHere}
-    <button title="Leave voice" aria-label="Leave voice" onclick={onLeave}>
+    <button title={t("client.leaveVoice")} aria-label={t("client.leaveVoice")} onclick={onLeave}>
       <Icon name="hangup" size={20} />
     </button>
   {/if}
 </section>
 
 {#if menu}
-  <ContextMenu x={menu.x} y={menu.y} up label="Go live" anchor={liveButton} onClose={() => (menu = null)}>
+  <ContextMenu x={menu.x} y={menu.y} up label={t("client.goLive")} anchor={liveButton} onClose={() => (menu = null)}>
     {#each entries as e (e.action)}
       <button class="item" disabled={!!e.off} onclick={() => choose(e.action)}>
         {e.label}

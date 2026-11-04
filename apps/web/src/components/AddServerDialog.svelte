@@ -6,6 +6,8 @@
   import { serverOrigin } from "../lib/serverList";
   import { iconHref } from "../lib/serverLogo";
   import { initials } from "../lib/avatar";
+  import { t } from "../lib/i18n.svelte";
+  import { around } from "../lib/i18n";
 
   // Another Kallisti server for the rail (several servers in one client):
   // its address, then a login there. New accounts and guests are made on
@@ -100,14 +102,14 @@
     const parsed = serverOrigin(address, home, homeCookie);
     if ("error" in parsed) return void (error = parsed.error);
     const { origin } = parsed;
-    if (taken.includes(origin)) return void (error = "This server is already in the list.");
+    if (taken.includes(origin)) return void (error = t("login.serverInList"));
     const mine = ++attempt;
     busy = true;
     const kind = await isKallisti(origin);
     if (mine !== attempt) return;
     busy = false;
-    if (kind === "unreachable") error = `Cannot reach ${origin}. Check the address, or try again.`;
-    else if (kind === "other") error = `${origin} is not a Kallisti server.`;
+    if (kind === "unreachable") error = t("login.cannotReach", { origin });
+    else if (kind === "other") error = t("login.notKallisti", { origin });
     else found = { origin };
   };
 
@@ -122,7 +124,7 @@
     const mine = attempt;
     error = null;
     const popup = window.open(connectUrl(origin, home, via), "kallisti-connect", "popup,width=480,height=720");
-    if (!popup) return void (error = "The browser blocked the login window. Allow pop-ups for this site, or log in with a password.");
+    if (!popup) return void (error = t("login.popupBlocked"));
     busy = true;
     let result = false;
     const stop = () => {
@@ -137,7 +139,7 @@
       stop();
       if (!onAdded(origin, { name: d.name, temporary: false }, d.token)) {
         void apiFor(origin, d.token).api.logout();
-        error = "This server could not be added (it may be in the list already, or you are no longer logged in).";
+        error = t("login.serverNotAdded");
         return;
       }
       dialog?.close();
@@ -145,7 +147,7 @@
     const watch = setInterval(() => {
       if (!popup.closed) return;
       stop();
-      if (!result && mine === attempt) error = "The login window was closed before it finished.";
+      if (!result && mine === attempt) error = t("login.popupClosed");
     }, 500);
     window.addEventListener("message", onMessage);
     holding = { logout: () => (stop(), popup.close()) };
@@ -173,15 +175,15 @@
       if (cancelled()) return drop();
       // A Mumble registration has no session for other sites (the server
       // refuses it there; an older one may not).
-      if (result.mumble) throw new Error("Log in with this name on the server's own site.");
+      if (result.mumble) throw new Error(t("login.mumbleOwnSite"));
       const account = await api.me();
       if (cancelled()) return drop();
-      const t = token();
-      if (!account || !t) throw new Error("The login did not last. Please try again.");
+      const tok = token();
+      if (!account || !tok) throw new Error(t("login.loginDidNotLast"));
       holding = null;
-      if (!onAdded(origin, account, t)) {
+      if (!onAdded(origin, account, tok)) {
         mineHolds.logout();
-        throw new Error("This server could not be added (it may be in the list already, or you are no longer logged in).");
+        throw new Error(t("login.serverNotAdded"));
       }
       dialog?.close();
     } catch (err) {
@@ -195,21 +197,21 @@
 
 <dialog bind:this={dialog} onclose={() => (cancel(), onClose())} aria-labelledby="add-server-title">
   <header>
-    <h2 id="add-server-title">{preset ? `Log in to ${new URL(preset.origin).host}` : "Add a server"}</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="add-server-title">{preset ? t("login.logInTo", { host: new URL(preset.origin).host }) : t("login.addServer")}</h2>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
   {#if !found}
     <form onsubmit={check}>
       <label>
-        Server address
+        {t("login.serverAddress")}
         <!-- svelte-ignore a11y_autofocus -->
         <input bind:value={address} required placeholder="chat.example.org" autocomplete="url" autofocus />
       </label>
-      <p class="hint">Any Kallisti server: with your account here, or one you have there.</p>
+      <p class="hint">{t("login.addServerHint")}</p>
       {#if error}<p class="error" role="alert">{error}</p>{/if}
       <footer>
-        <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
-        <button type="submit" class="primary" disabled={busy || !address.trim()}>{busy ? "Looking…" : "Continue"}</button>
+        <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
+        <button type="submit" class="primary" disabled={busy || !address.trim()}>{busy ? t("login.looking") : t("login.continue")}</button>
       </footer>
     </form>
   {:else}
@@ -228,40 +230,41 @@
       <!-- The home account first (an account there is made if needed); a
            password there only when asked for (and in the desktop app). -->
       {#if homeCookie && ways.home}
-        <p class="hint">You join {new URL(found.origin).host} with your account at {new URL(home).host}. No account there yet? One is made for you.</p>
-        <button type="button" class="primary" disabled={busy} onclick={() => viaHome()}>Continue with your account at {new URL(home).host}</button>
+        <p class="hint">{t("login.joinWithHome", { server: new URL(found.origin).host, home: new URL(home).host })}</p>
+        <button type="button" class="primary" disabled={busy} onclick={() => viaHome()}>{t("login.continueWithHome", { home: new URL(home).host })}</button>
         {#if ways.fedi}
           {@const via = ways.fedi.host}
-          <button type="button" class="link" disabled={busy} onclick={() => viaHome(via)}>Continue as {ways.fedi.handle} instead</button>
+          <button type="button" class="link" disabled={busy} onclick={() => viaHome(via)}>{t("login.continueAsInstead", { handle: ways.fedi.handle })}</button>
         {/if}
       {:else if homeCookie && ways.fedi}
         {@const via = ways.fedi.host}
-        <p class="hint">You join {new URL(found.origin).host} with your fediverse account. No account there yet? One is made for you.</p>
-        <button type="button" class="primary" disabled={busy} onclick={() => viaHome(via)}>Continue as {ways.fedi.handle}</button>
+        <p class="hint">{t("login.joinWithFedi", { server: new URL(found.origin).host })}</p>
+        <button type="button" class="primary" disabled={busy} onclick={() => viaHome(via)}>{t("login.continueAs", { handle: ways.fedi.handle })}</button>
       {/if}
       {#if withPassword}
         <label>
-          Name
+          {t("login.name")}
           <!-- svelte-ignore a11y_autofocus -->
           <input bind:value={name} required maxlength="128" autocomplete="username" autofocus />
         </label>
         <label>
-          Password
+          {t("login.password")}
           <input bind:value={password} type="password" required autocomplete="current-password" />
         </label>
-        <p class="hint">No account there yet? Make one on <a href={found.origin} target="_blank" rel="noopener noreferrer">its own site</a>.</p>
+        {@const [before, after] = around(t("login.makeAccountThere"), "link")}
+        <p class="hint">{before}<a href={found.origin} target="_blank" rel="noopener noreferrer">{t("login.ownSite")}</a>{after}</p>
       {:else}
-        <button type="button" class="link" onclick={() => (withPassword = true)}>I have a password for an account there</button>
+        <button type="button" class="link" onclick={() => (withPassword = true)}>{t("login.havePassword")}</button>
       {/if}
       {#if error}<p class="error" role="alert">{error}</p>{/if}
       <footer>
         {#if preset}
-          <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
+          <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
         {:else}
-          <button type="button" class="secondary" onclick={back}>Back</button>
+          <button type="button" class="secondary" onclick={back}>{t("common.back")}</button>
         {/if}
         {#if withPassword}
-          <button type="submit" class="primary" disabled={busy || !name.trim() || !password}>{busy ? "Logging in…" : "Log in"}</button>
+          <button type="submit" class="primary" disabled={busy || !name.trim() || !password}>{busy ? t("login.loggingIn") : t("login.logIn")}</button>
         {/if}
       </footer>
     </form>

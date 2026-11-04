@@ -3,6 +3,8 @@
 // running: in voice, the voice plays through an <audio> element (see
 // voice/output.ts) and the system shows it as playing media.
 
+import { t } from "./i18n.svelte";
+
 export type VoiceSessionAction = "leave" | "deafen";
 
 // Pause, stop and a headset's hang-up button: leave voice; plain Mumble
@@ -11,7 +13,7 @@ export const voiceSession = (s: { channel: string; server: string; lobby: boolea
   const action: VoiceSessionAction = s.lobby ? "leave" : "deafen";
   return {
     metadata: {
-      title: `Voice: ${s.channel}`,
+      title: t("media.voiceSessionTitle", { channel: s.channel }),
       artist: s.server,
       artwork: [192, 512].map((n) => ({ src: `/icons/icon-${n}.png`, sizes: `${n}x${n}`, type: "image/png" })),
     },

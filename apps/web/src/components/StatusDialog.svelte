@@ -3,6 +3,7 @@
   import { pickedEmoji } from "../lib/emojiPrefs.svelte";
   import { CLEAR_AFTER, MAX_STATUS_TEXT, clearAfterUntil, type ClearAfter, type CustomStatus } from "../lib/presence";
   import Emoji from "./Emoji.svelte";
+  import { i18n, t } from "../lib/i18n.svelte";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   // Set a custom status: an emoji, a text, and when it goes. start: the
@@ -18,9 +19,10 @@
   let emoji = $state(first?.emoji ?? "");
   let text = $state(first?.text ?? "");
   const keep = first?.until;
-  const options = keep
-    ? [{ value: "keep" as const, label: `Keep (${new Date(keep).toLocaleString([], { dateStyle: "short", timeStyle: "short" })})` }, ...CLEAR_AFTER]
-    : CLEAR_AFTER;
+  const options = $derived([
+    ...(keep ? [{ value: "keep" as const, label: t("client.keepEnd", { time: new Date(keep).toLocaleString(i18n.locale, { dateStyle: "short", timeStyle: "short" }) }) }] : []),
+    ...CLEAR_AFTER.map((c) => ({ value: c.value, label: t(c.label) })),
+  ]);
   let clearAfter = $state<ClearAfter | "keep">(keep ? "keep" : first ? "never" : "today");
   let picker = $state<DOMRect | null>(null);
   $effect(() => dialog?.showModal());
@@ -47,32 +49,32 @@
 >
   <form onsubmit={submit}>
     <header>
-      <h2 id="status-dialog-title">Set a custom status</h2>
-      <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+      <h2 id="status-dialog-title">{t("client.customStatusTitle")}</h2>
+      <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
     </header>
     <div class="row">
       <button
         type="button"
         class="emoji"
-        aria-label={emoji ? "Change the emoji" : "Choose an emoji"}
+        aria-label={emoji ? t("client.changeEmoji") : t("client.chooseEmoji")}
         onclick={(e) => (picker = e.currentTarget.getBoundingClientRect())}
         ><Emoji text={emoji || "🙂"} /></button
       >
       <!-- svelte-ignore a11y_autofocus -->
-      <input bind:value={text} maxlength={MAX_STATUS_TEXT} placeholder="What's up?" aria-label="Status text" autofocus />
+      <input bind:value={text} maxlength={MAX_STATUS_TEXT} placeholder={t("client.statusPlaceholder")} aria-label={t("client.statusText")} autofocus />
       {#if emoji || text}
-        <button type="button" class="clear" aria-label="Clear" onclick={() => ((emoji = ""), (text = ""))}>×</button>
+        <button type="button" class="clear" aria-label={t("client.clearStatusFields")} onclick={() => ((emoji = ""), (text = ""))}>×</button>
       {/if}
     </div>
     <label>
-      Clear after
+      {t("client.clearAfter")}
       <select bind:value={clearAfter}>
         {#each options as c (c.value)}<option value={c.value}>{c.label}</option>{/each}
       </select>
     </label>
     <footer>
-      <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
-      <button type="submit" disabled={!emoji && !text.trim()}>Save</button>
+      <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
+      <button type="submit" disabled={!emoji && !text.trim()}>{t("common.save")}</button>
     </footer>
   </form>
   {#if picker}

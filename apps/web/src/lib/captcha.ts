@@ -2,6 +2,8 @@
 // server/internal/auth/challenge.go): find a nonce so that
 // SHA-256(challenge + nonce) starts with `bits` zero bits. A worker does
 // it (captcha.worker.ts), so the page stays responsive.
+import { t } from "./i18n.svelte";
+
 export type Challenge = { challenge: string; bits: number };
 export type Proof = { challenge: string; nonce: string };
 
@@ -33,7 +35,7 @@ export const solve = async (challenge: string, bits: number, batch = 512) => {
 export const solveInWorker = (c: Challenge) =>
   new Promise<Proof>((resolve, reject) => {
     const worker = new Worker(new URL("./captcha.worker.ts", import.meta.url), { type: "module" });
-    const fail = () => reject(new Error("The browser check did not work. Please try again."));
+    const fail = () => reject(new Error(t("admin.captchaFailed")));
     worker.onmessage = (e: MessageEvent<string | null>) => {
       worker.terminate();
       if (e.data === null) fail();

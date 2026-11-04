@@ -1,5 +1,6 @@
 import { isDesktop } from "./desktop";
 import { htmlToText } from "./htmlText";
+import { t } from "./i18n.svelte";
 
 // Desktop notifications for mentions and private messages: only when the
 // user turned them on and the browser allows it, not while deafened or in
@@ -16,7 +17,7 @@ export const shouldNotify = (s: {
 const BODY_LENGTH = 140;
 
 // Mumble messages are HTML; a picture alone has no text.
-export const notificationBody = (html: string) => htmlToText(html).trim().slice(0, BODY_LENGTH) || "(image)";
+export const notificationBody = (html: string) => htmlToText(html).trim().slice(0, BODY_LENGTH) || t("client.notificationImage");
 
 // Where notifications come from: the desktop app's own (system
 // notifications, see tauri-plugin-notification; WKWebView on macOS has no
@@ -42,12 +43,12 @@ export const nativePermission = (state: string): Permission =>
 
 export const permissionNote = (permission: Permission, desktop: boolean) =>
   permission === "unsupported"
-    ? "This browser has no desktop notifications."
+    ? t("client.notificationsUnsupported")
     : permission !== "denied"
       ? null
       : desktop
-        ? "The system blocks notifications for Kallisti (see its notification settings)."
-        : "The browser blocks notifications for this site.";
+        ? t("client.notificationsBlockedSystem")
+        : t("client.notificationsBlockedBrowser");
 
 // Whether the user sees the page. The desktop app's window stays visible
 // behind other windows: there it also needs the focus.

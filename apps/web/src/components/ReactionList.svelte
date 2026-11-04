@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import Emoji from "./Emoji.svelte";
+  import { t } from "../lib/i18n.svelte";
   import type { Reaction } from "../lib/reactions";
 
   // Who reacted with what, as in Discord: a button per emoji (from
@@ -15,7 +16,7 @@
   const id = `reactions-${Math.random().toString(36).slice(2)}`;
 </script>
 
-<div class="tabs" role="group" aria-label="Reactions">
+<div class="tabs" role="group" aria-label={t("chat.reactions")}>
   {#each reactions as r, i (r.emoji)}
     <button type="button" id="{id}-{i}" aria-pressed={r === shown} aria-controls="{id}-names" onclick={() => (chosen = r.emoji)}
       ><Emoji text={r.emoji} /> {r.users.length}</button

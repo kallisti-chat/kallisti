@@ -1,3 +1,6 @@
+import type { Key } from "../i18n/en";
+import { t } from "./i18n.svelte";
+
 // Online, idle, do not disturb, and a custom status (emoji and text, until
 // a time). The Kallisti server keeps them; Mumble clients do not see them.
 
@@ -6,7 +9,19 @@ export type Presence = "online" | "idle" | "dnd";
 export type PresenceView = { status: Presence; emoji?: string; text?: string; until?: number };
 export type CustomStatus = { emoji?: string; text?: string; until?: number };
 
-export const PRESENCE_LABEL: Record<Presence, string> = { online: "Online", idle: "Idle", dnd: "Do not disturb" };
+const PRESENCE_KEY: Record<Presence, Key> = { online: "client.presenceOnline", idle: "client.presenceIdle", dnd: "client.presenceDnd" };
+// In the language in use when read (getters: reactive in templates).
+export const PRESENCE_LABEL: Readonly<Record<Presence, string>> = {
+  get online() {
+    return t(PRESENCE_KEY.online);
+  },
+  get idle() {
+    return t(PRESENCE_KEY.idle);
+  },
+  get dnd() {
+    return t(PRESENCE_KEY.dnd);
+  },
+};
 export const MAX_STATUS_TEXT = 128; // characters, as the server
 
 // No input (or a hidden page) this long: away (shown as idle).
@@ -41,12 +56,12 @@ export const statusOfSession = (
     : { presence: presenceOf(s.statuses, session), custom: customOf(s.statuses[session], s.now) };
 
 export type ClearAfter = "30m" | "1h" | "4h" | "today" | "never";
-export const CLEAR_AFTER: { value: ClearAfter; label: string }[] = [
-  { value: "30m", label: "30 minutes" },
-  { value: "1h", label: "1 hour" },
-  { value: "4h", label: "4 hours" },
-  { value: "today", label: "Today" },
-  { value: "never", label: "Never" },
+export const CLEAR_AFTER: { value: ClearAfter; label: Key }[] = [
+  { value: "30m", label: "client.clearAfter30m" },
+  { value: "1h", label: "client.clearAfter1h" },
+  { value: "4h", label: "client.clearAfter4h" },
+  { value: "today", label: "client.clearAfterToday" },
+  { value: "never", label: "client.clearAfterNever" },
 ];
 
 const MINUTE = 60_000;

@@ -1,3 +1,5 @@
+import { t } from "./i18n.svelte";
+
 // The "NEW" line above the first unread message of a chat, and the bar
 // that leads back to it (see ChatPane, textView).
 
@@ -14,8 +16,8 @@ export const unreadBar = <M extends Line>(messages: readonly M[], after: number 
   if (!unread.length) return null;
   const n = unread.length;
   const loaded = messages.some((m) => idOf(m) > 0 && idOf(m) <= after);
-  const count = `${n}${loaded ? "" : "+"} new message${n === 1 && loaded ? "" : "s"}`;
-  return { first: idOf(unread[0]!), loaded, text: loaded ? `${count} since ${time(unread[0]!.at)}` : count };
+  const text = loaded ? t("chat.unreadSince", { count: n, time: time(unread[0]!.at) }) : t("chat.unreadAtLeast", { count: n });
+  return { first: idOf(unread[0]!), loaded, text };
 };
 
 export const sameRecord = (a: Readonly<Record<number, number>>, b: Readonly<Record<number, number>>) => {

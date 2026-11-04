@@ -1,5 +1,6 @@
 import { CUSTOM_NAME, customImageOf, emojiFormError, parseRef, personalRef, PERSONAL_REF, type CustomEmojiSet } from "./customEmoji";
 import type { EmojiEntry } from "./emojiPicker";
+import { t } from "./i18n.svelte";
 
 // Personal emoji: registered users keep their own (server/internal/
 // sidecar/useremoji.go). Messages and reactions refer to one as
@@ -71,9 +72,9 @@ export const personalFormError = (
   server: Names,
   upload = true,
 ): string | null => {
-  if (mine.some((e) => e.name === name)) return "You have an emoji with this name.";
-  if (server.has(name)) return "This server has an emoji with this name.";
-  if (mine.length >= MAX_PERSONAL) return `You have the most emoji you can have (${MAX_PERSONAL}).`;
+  if (mine.some((e) => e.name === name)) return t("media.personalNameTaken");
+  if (server.has(name)) return t("media.personalNameOnServer");
+  if (mine.length >= MAX_PERSONAL) return t("media.personalEmojiFull", { max: MAX_PERSONAL });
   return emojiFormError(name, upload ? file : { size: 0, type: "image/png" }, []);
 };
 

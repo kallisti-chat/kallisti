@@ -1,5 +1,7 @@
 // "bob is typing…": who typed in which channel, until when. The server
 // passes a signal on at most every few seconds per user and channel.
+import { t } from "./i18n.svelte";
+
 export const TYPING_SEND_MS = 3000;
 export const TYPING_SHOW_MS = 6000; // two signals, with time to spare
 
@@ -24,9 +26,11 @@ export const typingNames = (t: Typers, channel: number, now: number, me: string)
 
 export const typingText = (names: readonly string[]): string => {
   if (names.length === 0) return "";
-  if (names.length === 1) return `${names[0]} is typing…`;
-  if (names.length > 3) return "Several people are typing…";
-  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)} are typing…`;
+  const [first, second, third] = names;
+  if (names.length === 1) return t("client.typingOne", { name: first! });
+  if (names.length === 2) return t("client.typingTwo", { first: first!, second: second! });
+  if (names.length === 3) return t("client.typingThree", { first: first!, second: second!, third: third! });
+  return t("client.typingMany");
 };
 
 export const shouldSendTyping = (last: number | undefined, now: number) =>

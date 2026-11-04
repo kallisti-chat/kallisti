@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { t } from "../lib/i18n.svelte";
   import { BAN_TIMES, DELETE_TIMES, TIMEOUT_TIMES, type ConfirmKind, type ModerationAction } from "../lib/moderation";
 
   // Asks before a kick, ban, time-out or deleting messages: a reason (kick,
@@ -35,7 +36,17 @@
   let deleteSeconds = $state(0);
   $effect(() => dialog?.showModal());
 
-  const title = { kick: "Kick", ban: "Ban", timeout: "Time out", delete: "Delete messages of" }[k];
+  const w = untrack(() => where);
+  const title = $derived(
+    k === "kick"
+      ? t("admin.kickTitle", { name })
+      : k === "ban"
+        ? t("admin.banTitle", { name })
+        : k === "timeout"
+          ? w ? t("admin.timeoutInTitle", { name, where: w }) : t("admin.timeoutTitle", { name })
+          : t("admin.deleteMessagesTitle", { name }),
+  );
+  const BUTTONS = { kick: "admin.kickButton", ban: "admin.banButton", timeout: "admin.timeoutButton", delete: "admin.deleteMessagesButton" } as const;
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     const r = reason.trim();
@@ -56,45 +67,45 @@
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="user-action-title">
   <form onsubmit={submit}>
     <header>
-      <h2 id="user-action-title">{title} {name}{where ? ` in ${where}` : ""}</h2>
-      <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+      <h2 id="user-action-title">{title}</h2>
+      <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
     </header>
     <p>
       {k === "kick"
-        ? `${name} leaves the server and can come back.`
+        ? t("admin.kickNote", { name })
         : k === "ban"
-          ? `${name} leaves the server and cannot come back${times.length ? " for this time" : ""}.`
+          ? t(times.length ? "admin.banTimedNote" : "admin.banNote", { name })
           : k === "timeout"
-            ? `${name} cannot write, react or speak${where ? ` in ${where}` : ""} for this time.`
-            : `${name}'s messages from this time go from all text channels and voice channel chats (not from direct messages). This cannot be undone.`}
+            ? w ? t("admin.timeoutInNote", { name, where: w }) : t("admin.timeoutNote", { name })
+            : t("admin.deleteMessagesNote", { name })}
     </p>
     {#if times.length}
       <label>
-        {k === "ban" ? "Ban for" : k === "timeout" ? "Time out for" : "Delete from the last"}
+        {k === "ban" ? t("admin.banFor") : k === "timeout" ? t("admin.timeoutFor") : t("admin.deleteFrom")}
         <select bind:value={seconds}>
-          {#each times as t (t.seconds)}<option value={t.seconds}>{t.label}</option>{/each}
+          {#each times as c (c.seconds)}<option value={c.seconds}>{t(c.label)}</option>{/each}
         </select>
       </label>
     {/if}
     {#if alsoDelete}
       <label>
-        Also delete their messages from the last
+        {t("admin.alsoDelete")}
         <select bind:value={deleteSeconds}>
-          <option value={0}>None</option>
-          {#each DELETE_TIMES as t (t.seconds)}<option value={t.seconds}>{t.label}</option>{/each}
+          <option value={0}>{t("admin.deleteNone")}</option>
+          {#each DELETE_TIMES as c (c.seconds)}<option value={c.seconds}>{t(c.label)}</option>{/each}
         </select>
       </label>
     {/if}
     {#if k === "kick" || k === "ban"}
       <label>
-        Reason (optional)
+        {t("admin.reasonOptional")}
         <!-- svelte-ignore a11y_autofocus -->
         <input bind:value={reason} maxlength="200" autofocus />
       </label>
     {/if}
     <footer>
-      <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
-      <button type="submit" class="danger">{k === "delete" ? "Delete messages" : title}</button>
+      <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
+      <button type="submit" class="danger">{t(BUTTONS[k])}</button>
     </footer>
   </form>
 </dialog>

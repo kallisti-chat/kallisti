@@ -1,3 +1,4 @@
+import { t } from "../i18n.svelte";
 import { fitSize } from "./protocol";
 
 // What a streamer sends: a screen share and a camera (at most one each),
@@ -51,8 +52,8 @@ export const parseQuality = (v: unknown, kind: Kind): Quality => {
 
 export const qualityOptions = (limits: Limits) => ({ heights: HEIGHTS.filter((h) => h <= limits.maxSide), fps: FPS });
 
-export const qualityLabel = (q: Quality) => `${q.height}p ${q.fps} fps`;
-export const streamLabel = (name: string, camera: boolean) => `${name}'s ${camera ? "camera" : "screen"}`;
+export const qualityLabel = (q: Quality) => t("settings.qualityLabel", { height: q.height, fps: q.fps });
+export const streamLabel = (name: string, camera: boolean) => t(camera ? "settings.streamCamera" : "settings.streamScreen", { name });
 
 // What the browser can share (mobile browsers cannot share the screen).
 export const sources = (env: { encode: boolean; display: boolean; camera: boolean; phone: boolean }): Record<Kind, boolean> => ({

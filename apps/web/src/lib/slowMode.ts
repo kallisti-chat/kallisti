@@ -1,3 +1,5 @@
+import { t } from "./i18n.svelte";
+
 // Slow mode (built-in server): in a text channel, each user may post once
 // per so many seconds; staff are exempt. The server checks and refuses
 // with when the wait ends (see TextState.slowUntil).
@@ -8,14 +10,14 @@ export const SLOW_MODES = [0, 5, 30, 60, 300, 3600] as const;
 // "1 h 1 min", "1 min 5 s", "23 s": empty parts left out.
 export const formatSeconds = (seconds: number) => {
   const parts = [
-    [Math.floor(seconds / 3600), "h"],
-    [Math.floor((seconds % 3600) / 60), "min"],
-    [seconds % 60, "s"],
+    [Math.floor(seconds / 3600), "admin.unitHours"],
+    [Math.floor((seconds % 3600) / 60), "admin.unitMinutes"],
+    [seconds % 60, "admin.unitSeconds"],
   ] as const;
-  return parts.flatMap(([n, unit]) => (n ? [`${n} ${unit}`] : [])).join(" ") || "0 s";
+  return parts.flatMap(([count, unit]) => (count ? [t(unit, { count })] : [])).join(" ") || t("admin.unitSeconds", { count: 0 });
 };
 
-export const slowModeLabel = (seconds: number) => (seconds ? formatSeconds(seconds) : "Off");
+export const slowModeLabel = (seconds: number) => (seconds ? formatSeconds(seconds) : t("common.off"));
 
 // How long (ms) we still wait before we may post: from our last post here
 // or the server's refusal (until), whichever ends later. Both are server

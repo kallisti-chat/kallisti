@@ -3,18 +3,20 @@
 // for errors, a reason code. Only known codes become text: the address
 // can be made by anyone.
 
+import type { Key } from "../i18n/en";
+import { t } from "./i18n.svelte";
+
 // connect: a handoff's token waits (see Connect).
 export type FediResult = { kind: "register" | "connect" } | { kind: "linked" | "reauth" | "error"; text: string };
 
-const REASONS: Record<string, string> = {
-  expired: "The fediverse login expired or was started elsewhere. Please try again.",
-  denied: "The fediverse server did not allow the login.",
-  unreachable: "Could not check the login with the fediverse server. Please try again.",
-  taken: "This fediverse account is linked to another account already.",
-  other: "That is not the fediverse account linked to your account.",
-  blocked: "This server does not take logins from that server.",
+const REASONS: Record<string, Key> = {
+  expired: "login.fediExpiredElsewhere",
+  denied: "login.fediDenied",
+  unreachable: "login.fediUnreachable",
+  taken: "login.fediTaken",
+  other: "login.fediOther",
+  blocked: "login.fediBlocked",
 };
-const FAILED = "The fediverse login did not work. Please try again.";
 
 export const fediResult = (search: string): FediResult | null => {
   const q = new URLSearchParams(search);
@@ -24,12 +26,14 @@ export const fediResult = (search: string): FediResult | null => {
     case "connect":
       return { kind: "connect" };
     case "linked":
-      return { kind: "linked", text: "Fediverse account linked: you can log in with it now." };
+      return { kind: "linked", text: t("login.fediLinked") };
     // A fresh login for the first password (see SettingsDialog).
     case "reauth":
-      return { kind: "reauth", text: "Confirmed: set your password now." };
-    case "error":
-      return { kind: "error", text: REASONS[q.get("reason") ?? ""] ?? FAILED };
+      return { kind: "reauth", text: t("login.fediReauthDone") };
+    case "error": {
+      const reason = q.get("reason") ?? "";
+      return { kind: "error", text: t(Object.hasOwn(REASONS, reason) ? REASONS[reason]! : "login.fediFailed") };
+    }
     default:
       return null;
   }

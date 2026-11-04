@@ -1,4 +1,6 @@
+import type { Key } from "../i18n/en";
 import { qualityLevel, type Level } from "./connectionQuality";
+import { t } from "./i18n.svelte";
 
 // The admin view of all connections (Server settings → Connections): what
 // the server measured over the last 30 to 40 s. No addresses: admins see
@@ -76,17 +78,26 @@ export const formatPercent = (p: number | null) => (p === null ? "–" : `${p < 
 
 export const formatOnline = (s: number) => {
   const [d, h, m] = [Math.floor(s / 86400), Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60];
-  if (d) return `${d} d ${h} h`;
-  if (h) return `${h} h ${m} min`;
-  return m ? `${m} min` : `${s} s`;
+  if (d) return `${t("admin.unitDays", { count: d })} ${t("admin.unitHours", { count: h })}`;
+  if (h) return `${t("admin.unitHours", { count: h })} ${t("admin.unitMinutes", { count: m })}`;
+  return m ? t("admin.unitMinutes", { count: m }) : t("admin.unitSeconds", { count: s });
 };
+
+const BANDS: Record<string, Key> = {
+  narrow: "admin.soundBandNarrow",
+  medium: "admin.soundBandMedium",
+  wide: "admin.soundBandWide",
+  "super-wide": "admin.soundBandSuperWide",
+  full: "admin.soundBandFull",
+};
+const bandText = (band: string) => (BANDS[band] ? t(BANDS[band]) : t("admin.soundBandOther", { band }));
 
 // A speaker's sound for the admin view. Narrow and medium band sound
 // muffled: often a Bluetooth headset whose microphone is in its phone mode.
 export const formatSound = (c: Pick<Connection, "voiceBand" | "voiceKbps" | "voiceStereo">) =>
   c.voiceBand
     ? {
-        text: [`${c.voiceBand} band`, ...(c.voiceStereo ? ["stereo"] : []), `${Math.round(c.voiceKbps ?? 0)} kbps`].join(" · "),
+        text: [bandText(c.voiceBand), ...(c.voiceStereo ? [t("admin.stereo")] : []), `${Math.round(c.voiceKbps ?? 0)} kbps`].join(" · "),
         muffled: c.voiceBand === "narrow" || c.voiceBand === "medium",
       }
     : { text: "–", muffled: false };
@@ -98,10 +109,10 @@ export const formatMic = (c: Pick<Connection, "micName" | "micRate" | "micChanne
     ? { text: "–", filters: "", phoneMode: false }
     : {
         text: [
-          c.micName || "unnamed microphone",
+          c.micName || t("admin.micUnnamed"),
           ...(c.micRate ? [`${+(c.micRate / 1000).toFixed(1)} kHz`] : []),
-          ...(c.micChannels ? [c.micChannels === 1 ? "mono" : c.micChannels === 2 ? "stereo" : `${c.micChannels} channels`] : []),
+          ...(c.micChannels ? [c.micChannels === 1 ? t("admin.mono") : c.micChannels === 2 ? t("admin.stereo") : t("admin.audioChannels", { count: c.micChannels })] : []),
         ].join(" · "),
-        filters: c.micFilters?.length ? c.micFilters.join(", ") : "no filters",
+        filters: c.micFilters?.length ? c.micFilters.join(", ") : t("admin.micNoFilters"),
         phoneMode: !!c.micRate && c.micRate <= 16_000,
       };

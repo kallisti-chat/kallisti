@@ -3,16 +3,19 @@
   import { previewText } from "../lib/markdown";
   import { spoilerUpload } from "../lib/media";
   import { formatTimestamp } from "../lib/chat";
+  import { around } from "../lib/i18n";
   import { settings } from "../lib/settings.svelte";
   import Avatar from "./Avatar.svelte";
+  import { i18n, t } from "../lib/i18n.svelte";
 
   // Search results, in place of the member list. With a heading: another
   // list of messages (the pinned ones).
   let {
     text,
     heading,
-    label = "Search results",
-    none = "No messages found.",
+    label,
+    closeLabel,
+    none,
     messages,
     where,
     canOpen,
@@ -22,7 +25,8 @@
   }: {
     text: string | null; // null: searching (loading)
     heading?: string;
-    label?: string;
+    label?: string; // default: search results
+    closeLabel?: string; // the close button's label
     none?: string;
     messages: readonly TextMessage[];
     // Where a message is ("#general", a voice channel's name).
@@ -34,19 +38,27 @@
     inert?: boolean; // in a closed phone drawer
   } = $props();
   const now = Date.now();
+  const shownLabel = $derived(label ?? t("chat.searchResults"));
+  const shownClose = $derived(closeLabel ?? (label === undefined ? t("chat.closeSearchResults") : t("chat.closePanel", { panel: label })));
   let closeButton: HTMLButtonElement | undefined = $state();
   $effect(() => closeButton?.focus());
 </script>
 
-<aside class="search" aria-label={label} {inert}>
+<!-- "<author> in <where> · <time>": the author bold. -->
+{#snippet meta(m: TextMessage)}
+  {@const [before, after] = around(t("chat.searchResultMeta", { where: where(m), time: formatTimestamp(m.at, now, i18n.locale, settings.value.timeFormat) }), "author")}
+  {before}<strong>{m.author}</strong>{after}
+{/snippet}
+
+<aside class="search" aria-label={shownLabel} {inert}>
   <header aria-live="polite">
     <span class="ellipsis">
-      {#if text === null}{heading ? "Loading…" : "Searching…"}{:else if heading}{heading}{:else}{messages.length} {messages.length === 1 ? "result" : "results"} for “{text}”{/if}
+      {#if text === null}{heading ? t("common.loading") : t("chat.searching")}{:else if heading}{heading}{:else}{t("chat.searchResultsFor", { count: messages.length, text })}{/if}
     </span>
-    <button type="button" aria-label="Close {label.toLowerCase()}" bind:this={closeButton} onclick={onClose}>×</button>
+    <button type="button" aria-label={shownClose} bind:this={closeButton} onclick={onClose}>×</button>
   </header>
   {#if text !== null && messages.length === 0}
-    <p class="none">{none}</p>
+    <p class="none">{none ?? t("chat.noMessagesFound")}</p>
   {:else}
     <ul>
       {#each messages as m (m.id)}
@@ -55,12 +67,12 @@
             type="button"
             class="hover-row"
             disabled={!canOpen(m)}
-            title={canOpen(m) ? undefined : "In a voice channel's chat: join the channel to see it there"}
+            title={canOpen(m) ? undefined : t("chat.searchResultInVoiceChat")}
             onclick={() => onOpen(m)}
           >
             <Avatar name={m.author} size={24} />
             <span class="body">
-              <span class="meta"><strong>{m.author}</strong> in {where(m)} · {formatTimestamp(m.at, now, undefined, settings.value.timeFormat)}</span>
+              <span class="meta">{@render meta(m)}</span>
               <span class="text">{previewText(m.text) || (messageFiles(m)[0] ? spoilerUpload(messageFiles(m)[0]!).name : "")}</span>
             </span>
           </button>

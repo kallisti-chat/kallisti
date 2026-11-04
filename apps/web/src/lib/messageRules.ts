@@ -1,3 +1,6 @@
+import type { Key } from "../i18n/en";
+import { t } from "./i18n.svelte";
+
 // Message rules (Server settings → Message rules, admins): blocked words
 // and link domains, limits for new accounts and guests, and word
 // replacements. The server checks every message (staff are exempt, but
@@ -47,16 +50,19 @@ const PLAIN = new RegExp(`^${W}+(?:[ '’.,!?-]+${W}+)*[.,!?]*$`, "u");
 const tidy = (s: string) => s.trim().split(/\s+/).join(" ");
 const tooLong = (s: string) => [...s].length > MAX_ENTRY;
 
-const replacementOf = (line: string): Replacement | string => {
+// A problem: its text's key and values (the line number comes later).
+type Problem = { problem: Key; max?: number; text?: string };
+
+const replacementOf = (line: string): Replacement | Problem => {
   const at = line.indexOf("=>");
-  if (at < 0) return 'write "phrase => replacement | another"';
+  if (at < 0) return { problem: "admin.rulesNeedArrow" };
   const phrase = tidy(line.slice(0, at));
   const withs = [...new Set(line.slice(at + 2).split("|").map(tidy).filter(Boolean))];
-  if (!phrase) return "the phrase is missing";
-  if (tooLong(phrase) || !PHRASE.test(phrase)) return `the phrase: up to ${MAX_ENTRY} letters and digits (with ' - . _ between)`;
-  if (withs.length === 0 || withs.length > MAX_WITH) return `1 to ${MAX_WITH} replacements`;
+  if (!phrase) return { problem: "admin.rulesPhraseMissing" };
+  if (tooLong(phrase) || !PHRASE.test(phrase)) return { problem: "admin.rulesPhraseInvalid", max: MAX_ENTRY };
+  if (withs.length === 0 || withs.length > MAX_WITH) return { problem: "admin.rulesReplacementCount", max: MAX_WITH };
   const bad = withs.find((w) => tooLong(w) || !PLAIN.test(w));
-  if (bad !== undefined) return `"${bad}": up to ${MAX_ENTRY} letters, digits, emoji, spaces and ' . , ! ? -`;
+  if (bad !== undefined) return { problem: "admin.rulesReplacementInvalid", max: MAX_ENTRY, text: bad };
   return { phrase, with: withs };
 };
 
@@ -66,8 +72,10 @@ export const parseReplacements = (text: string) => {
   text.split("\n").forEach((line, i) => {
     if (!line.trim()) return;
     const r = replacementOf(line);
-    if (typeof r === "string") errors.push(`Line ${i + 1}: ${r}.`);
-    else replacements.push(r);
+    if ("problem" in r) {
+      const { problem, ...vars } = r;
+      errors.push(t(problem, { ...vars, line: i + 1 }));
+    } else replacements.push(r);
   });
   return { replacements, errors };
 };
@@ -78,7 +86,7 @@ export const minutesError = (text: string) => {
   const n = Number(text.trim());
   return text.trim() !== "" && Number.isInteger(n) && n >= 0 && n <= MAX_NEW_MINUTES
     ? null
-    : `Minutes: a whole number from 0 (off) to ${MAX_NEW_MINUTES}.`;
+    : t("admin.rulesMinutesError", { max: MAX_NEW_MINUTES });
 };
 
 // The form's fields as rules (the server checks and tidies them again).
