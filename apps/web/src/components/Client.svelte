@@ -2080,8 +2080,13 @@
   <ModerationDialog
     bans={server.bans}
     registered={server.registered}
+    accountUsers={text.voiceChats ? text.accountUsers : []}
     rights={moderation}
-    onLoad={(what) => connection.send(what === "bans" ? queryBans() : queryRegistered())}
+    onLoad={(what) => {
+      if (what === "bans") return connection.send(queryBans());
+      connection.send(queryRegistered());
+      if (text.voiceChats) connection.request({ accountUsers: true }).catch(() => {});
+    }}
     onSetBans={(bans) => {
       // Done once the list asked for again has the new length.
       const before = server.bans;

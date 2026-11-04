@@ -19,12 +19,21 @@ import type { ChannelTimeout, ManageAction, TextState, Timeout, UserTarget } fro
 
 // What the server settings may show (the server checks again): the ban
 // list with Ban in root, changing it with Write too (admins); registered
-// users with Register.
+// users with Register, deleting web accounts with Write (admins).
 export const moderationRights = (server: ServerState) => {
   const bans = may(server, 0, Perm.Ban);
   const users = may(server, 0, Perm.Register);
-  return { any: bans || users, bans, editBans: bans && may(server, 0, Perm.Write), users };
+  const admin = may(server, 0, Perm.Write);
+  return { any: bans || users, bans, editBans: bans && admin, users, deleteAccounts: users && admin };
 };
+
+// What the users list offers for a registration: an account keeps its
+// name, and removing it deletes the account (admins only). account null:
+// not known yet, so nothing.
+export const registeredActions = (account: boolean | null, deleteAccounts: boolean) => ({
+  rename: account === false,
+  remove: account === null ? null : !account ? "Unregister" : deleteAccounts ? "Delete account" : null,
+});
 
 // Time choices in seconds: bans (0: for ever) and time-outs.
 export const BAN_TIMES = [

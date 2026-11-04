@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { emptyUser, initialState, joinChannel, moderateUser, Perm, removeUser, type Channel, type ServerState, type User } from "@kallisti/protocol";
-import { mayDeleteMessages, moderationRequest, moderationRequests, moderationRights, permissionsToAsk, timedOutUntil, userModeration } from "../src/lib/moderation";
+import { mayDeleteMessages, moderationRequest, registeredActions, moderationRequests, moderationRights, permissionsToAsk, timedOutUntil, userModeration } from "../src/lib/moderation";
 import { initialTextState, manageRequest, type TextState } from "../src/lib/textChannels";
 
 const root = (perms: number): ServerState => ({ ...initialState, rootPermissions: perms });
 
 describe("moderationRights", () => {
   it("follows the root permissions", () => {
-    expect(moderationRights(root(0))).toEqual({ any: false, bans: false, editBans: false, users: false });
-    expect(moderationRights(root(Perm.Ban | Perm.Register))).toEqual({ any: true, bans: true, editBans: false, users: true });
+    expect(moderationRights(root(0))).toEqual({ any: false, bans: false, editBans: false, users: false, deleteAccounts: false });
+    expect(moderationRights(root(Perm.Ban | Perm.Register))).toEqual({ any: true, bans: true, editBans: false, users: true, deleteAccounts: false });
     expect(moderationRights(root(Perm.Ban | Perm.Register | Perm.Write))).toEqual({
       any: true,
       bans: true,
       editBans: true,
       users: true,
+      deleteAccounts: true,
     });
   });
 });
@@ -129,5 +130,16 @@ describe("deleting a user's recent messages", () => {
     ]);
     expect(moderationRequests({ user: 9 }, { kind: "delete", seconds: 86400 })).toEqual([{ manage: { deleteMessages: { user: 9 }, seconds: 86400 } }]);
     expect(JSON.parse(manageRequest({ deleteMessages: { user: 9 }, seconds: 3600 }))).toEqual({ type: "delete-messages", user: 9, seconds: 3600 });
+  });
+});
+
+describe("registeredActions", () => {
+  it("deletes accounts (admins only) and unregisters the others", () => {
+    expect(registeredActions(false, false)).toEqual({ rename: true, remove: "Unregister" });
+    expect(registeredActions(true, true)).toEqual({ rename: false, remove: "Delete account" });
+    // Moderators leave accounts alone; an account keeps its name.
+    expect(registeredActions(true, false)).toEqual({ rename: false, remove: null });
+    // Not known yet (the built-in server's answer): nothing to click.
+    expect(registeredActions(null, true)).toEqual({ rename: false, remove: null });
   });
 });

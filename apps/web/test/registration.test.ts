@@ -65,4 +65,12 @@ describe("account invitations", () => {
     expect(serverSections(rights).some((s) => s.id === "registration")).toBe(false);
     expect(serverSections({ ...rights, registration: true }).some((s) => s.id === "registration")).toBe(true);
   });
+
+  it("lists the registrations of accounts for the users list", () => {
+    expect(manageRequest({ accountUsers: true })).toBe('{"type":"account-users"}');
+    const event = parseServerEvent('{"type":"account-users","ids":[3,7]}')!;
+    expect(reduceText(initialTextState, event).accountUsers).toEqual([3, 7]);
+    expect(initialTextState.accountUsers).toBeNull();
+    expect(parseServerEvent('{"type":"account-users","ids":["3"]}')).toBeNull();
+  });
 });

@@ -36,6 +36,7 @@
   import RegistrationSettings from "./RegistrationSettings.svelte";
   import type { Invite } from "../lib/invites";
   import SaveStatus from "./SaveStatus.svelte";
+  import { registeredActions } from "../lib/moderation";
 
   // Server settings for moderators and admins: the ban list, the
   // registered users, the custom emoji, the finished channel recordings,
@@ -44,6 +45,7 @@
   let {
     bans,
     registered,
+    accountUsers = null,
     rights,
     onLoad,
     onSetBans,
@@ -90,7 +92,10 @@
   }: {
     bans: readonly Ban[] | null;
     registered: readonly Registered[] | null;
-    rights: { bans: boolean; editBans: boolean; users: boolean; emoji: boolean };
+    // Registered user ids of web accounts (null: not known yet, so no
+    // changes offered; external Murmur: none).
+    accountUsers?: readonly number[] | null;
+    rights: { bans: boolean; editBans: boolean; users: boolean; deleteAccounts?: boolean; emoji: boolean };
     onLoad: (what: "bans" | "users") => void;
     onSetBans: (bans: Ban[]) => Promise<void>;
     onRename: (userId: number, name: string) => Promise<void>;
@@ -558,7 +563,16 @@
                 <button type="button" onclick={() => (renaming = null)}>Cancel</button>
               </form>
             {:else}
-              <div class="what"><strong>{user.name}</strong><span class="detail">#{user.userId}</span></div>
+              {@const account = accountUsers ? accountUsers.includes(user.userId) : null}
+              {@const actions = registeredActions(account, rights.deleteAccounts ?? false)}
+              <div class="what">
+                <strong>{user.name}</strong>
+                <span class="detail">
+                  #{user.userId}{account ? " · web account" : ""}{confirming === user.userId && account
+                    ? " · logs out for good; messages stay"
+                    : ""}
+                </span>
+              </div>
               {#if user.userId !== 0}
                 {#if confirming === user.userId}
                   <button
@@ -567,12 +581,16 @@
                     disabled={saves.users.busy}
                     onclick={() => (saves.users.run(() => onUnregister(user.userId)), (confirming = null))}
                   >
-                    Unregister
+                    {actions.remove}
                   </button>
                   <button type="button" onclick={() => (confirming = null)}>Cancel</button>
                 {:else}
-                  <button type="button" onclick={() => (renaming = { id: user.userId, name: user.name })}>Rename</button>
-                  <button type="button" onclick={() => (confirming = user.userId)}>Unregister…</button>
+                  {#if actions.rename}
+                    <button type="button" onclick={() => (renaming = { id: user.userId, name: user.name })}>Rename</button>
+                  {/if}
+                  {#if actions.remove}
+                    <button type="button" onclick={() => (confirming = user.userId)}>{actions.remove}…</button>
+                  {/if}
                 {/if}
               {/if}
             {/if}
