@@ -419,3 +419,27 @@ func TestEndingAnAccountsPasswordLoginsKicksItsMumbleClients(t *testing.T) {
 		t.Fatalf("online: alice %v, bob %v, web %v, guest %v", online(alice.session), online(bob.session), online(web.session), online(guest.session))
 	}
 }
+
+// The desktop app's bridge sends a web session's voice over UDP: the
+// server takes it from the session's IP and key, and sends voice back over
+// UDP, as to a Mumble client.
+func TestWebSessionsGetVoiceOverUDP(t *testing.T) {
+	s, addr := startServerAndListen(t, "127.0.0.1", Config{}, openACL)
+	web := joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("127.0.0.1")}, "webby"))
+	native := dial(t, addr, "native")
+	web.openUDP(addr)
+	web.sendUDP(audio(3, []byte{0xfc, 3}))
+	if h := parseAudio(t, native.expect(mumble.TypeUDPTunnel)); h.sender != web.session || h.frame != 3 {
+		t.Fatalf("native heard %+v", h)
+	}
+	native.conn.Write(mumble.EncodeFrame(mumble.TypeUDPTunnel, audio(4, []byte{0xfc, 4})))
+	if h := parseAudio(t, web.readUDP()); h.sender != native.session || h.frame != 4 {
+		t.Fatalf("web heard %+v", h)
+	}
+	web.expectNone(mumble.TypeUDPTunnel)
+	for _, st := range s.ConnectionStats() {
+		if st.Session == web.session && st.Transport != "websocket+udp" {
+			t.Fatalf("stats %+v", st)
+		}
+	}
+}

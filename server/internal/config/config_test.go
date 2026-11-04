@@ -160,7 +160,7 @@ func TestTheBuiltInServerIsTheDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := &Builtin{Listen: ":64738", ServerName: "Kallisti", MaxUsers: 100, CertDir: "/data",
+	want := &Builtin{Listen: ":64738", PublicPort: 64738, ServerName: "Kallisti", MaxUsers: 100, CertDir: "/data",
 		RecordingDir: "/data/recordings", RecordingMax: 4 * time.Hour, RecordingMaxBytes: 1 << 30, RecordingKeep: 7 * 24 * time.Hour}
 	if !reflect.DeepEqual(got.Builtin, want) {
 		t.Errorf("got %+v, want %+v", got.Builtin, want)
@@ -172,13 +172,22 @@ func TestTheBuiltInServerIsTheDefault(t *testing.T) {
 		"MUMBLE_CERT_FILE": "/le/c.crt", "MUMBLE_KEY_FILE": "/le/c.key",
 		"WHIP_UDP_PORT": "8189", "WHIP_PUBLIC_IP": "chat.example.org",
 		"RECORDING_DIR": "/rec", "RECORDING_MAX_MINUTES": "90", "RECORDING_MAX_MB": "200", "RECORDING_KEEP_DAYS": "2",
+		"MUMBLE_PUBLIC_PORT": "7700",
 	}))
-	want = &Builtin{Listen: "0.0.0.0:7000", ServerName: "Our place", Welcome: "Hi!", Password: "pw",
+	want = &Builtin{Listen: "0.0.0.0:7000", PublicPort: 7700, ServerName: "Our place", Welcome: "Hi!", Password: "pw",
 		MaxUsers: 20, MaxPerIP: 5, CertDir: "/certs", CertFile: "/le/c.crt", KeyFile: "/le/c.key",
 		WHIPPort: 8189, WHIPPublicIP: "chat.example.org",
 		RecordingDir: "/rec", RecordingMax: 90 * time.Minute, RecordingMaxBytes: 200 << 20, RecordingKeep: 2 * 24 * time.Hour}
 	if !reflect.DeepEqual(got.Builtin, want) {
 		t.Errorf("got %+v, want %+v", got.Builtin, want)
+	}
+	// 0: the apps send voice over the WebSocket only.
+	got, _ = Parse(env(map[string]string{"ALLOWED_ORIGINS": "*", "MUMBLE_LISTEN": ":7000", "MUMBLE_PUBLIC_PORT": "0"}))
+	if got.Builtin.PublicPort != 0 {
+		t.Errorf("public port %d", got.Builtin.PublicPort)
+	}
+	if _, err := Parse(env(map[string]string{"ALLOWED_ORIGINS": "*", "MUMBLE_PUBLIC_PORT": "x"})); err == nil {
+		t.Error("a bad public port passed")
 	}
 }
 

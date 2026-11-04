@@ -35,7 +35,7 @@ type Reported struct {
 type ConnStats struct {
 	Session   uint32
 	Name      string
-	Transport string // of its voice: "udp", "tcp" or "websocket" (the web bridge)
+	Transport string // of its voice: "udp", "tcp", "websocket" (the web bridge) or "websocket+udp" (the apps' bridge)
 	Address   netip.Addr
 	// The client's version (Mumble's version_v2) and system, as it said.
 	Version                uint64
@@ -89,7 +89,9 @@ func (c *client) connStats(name string, udpVoice bool, now time.Time) ConnStats 
 		Version: c.version, Release: c.release, OS: c.os, OSVersion: c.osVersion,
 		UDP: c.cryptStats(), Dropped: c.dropped.Load(),
 	}
-	if c.web {
+	if c.web && udpVoice {
+		st.Transport = "websocket+udp"
+	} else if c.web {
 		st.Transport = "websocket"
 	} else if udpVoice {
 		st.Transport = "udp"

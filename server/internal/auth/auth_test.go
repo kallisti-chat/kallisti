@@ -636,6 +636,14 @@ func TestServerSaysItsNameAndLogo(t *testing.T) {
 	if v := get(); v["logo"] != version {
 		t.Fatalf("with a logo %v", v)
 	}
+	// The apps send voice over UDP to the Mumble port, when there is one.
+	if v := get(); v["udpPort"] != nil {
+		t.Fatalf("no port: %v", v)
+	}
+	a.VoicePort = 64738
+	if v := get(); v["udpPort"] != float64(64738) {
+		t.Fatalf("port: %v", v)
+	}
 }
 
 // Password guessing from another site, spread over its visitors'
