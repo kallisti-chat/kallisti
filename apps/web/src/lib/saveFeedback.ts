@@ -1,5 +1,6 @@
 import type { TextCategory } from "./categories";
 import type { ManageAction, ServerEvent, TextChannel } from "./textChannels";
+import { t } from "./i18n.svelte";
 
 // Feedback on a control that saves or applies something on the server:
 // pending while it works, saved for a moment once it confirms, or its
@@ -16,7 +17,7 @@ export const ANSWER_MS = 5_000;
 export const settle = (s: Save, error?: string): Save =>
   s.phase !== "pending" ? s : error === undefined ? { phase: "saved" } : { phase: "error", message: error };
 export const fade = (s: Save): Save => (s.phase === "saved" ? idle : s);
-export const busyLabel = (s: Save, label: string, busy = "Saving…") => (s.phase === "pending" ? busy : label);
+export const busyLabel = (s: Save, label: string, busy = t("common.saving")) => (s.phase === "pending" ? busy : label);
 
 // Requests that wait for the server's answer, oldest first. The server
 // answers in order, so a refusal (a manage error, a Mumble

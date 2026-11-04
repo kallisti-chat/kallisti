@@ -9,6 +9,7 @@
   import { streamLabel } from "../lib/stream/quality";
   import { dragShare, keyShare, shareOf, STAGE_MAX, STAGE_MIN } from "../lib/stream/stageSize";
   import { streamStage } from "../lib/settings.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // The screen shares and cameras being watched (by stream id), above the
   // chat (as Discord's call area): a grid of all, or one in focus over a
@@ -166,23 +167,23 @@
   };
 </script>
 
-<section class="stage" class:focusing class:bare={focusing && stripHidden} bind:this={stage} aria-label="Streams">
+<section class="stage" class:focusing class:bare={focusing && stripHidden} bind:this={stage} aria-label={t("media.streams")}>
   {#if sessions.length > 1}
     <div class="bar">
       <button
         onclick={() => (view = view === "grid" ? "focus" : "grid")}
-        title={view === "grid" ? "Focus view" : "Grid view"}
-        aria-label={view === "grid" ? "Focus view" : "Grid view"}
+        title={view === "grid" ? t("media.focusView") : t("media.gridView")}
+        aria-label={view === "grid" ? t("media.focusView") : t("media.gridView")}
       >
         <Icon name={view === "grid" ? "focus" : "grid"} />
       </button>
       {#if focusing}
-        <button onclick={() => (stripHidden = !stripHidden)} aria-pressed={stripHidden} title={stripHidden ? "Show the others" : "Hide the others"}>
-          {stripHidden ? "Show others" : "Hide others"}
+        <button onclick={() => (stripHidden = !stripHidden)} aria-pressed={stripHidden} title={stripHidden ? t("media.showOthersHint") : t("media.hideOthersHint")}>
+          {stripHidden ? t("media.showOthers") : t("media.hideOthers")}
         </button>
       {/if}
       {#if fullScreenSupported}
-        <button onclick={() => fullScreen(stage)} title="Full screen" aria-label="Full screen, all streams">
+        <button onclick={() => fullScreen(stage)} title={t("media.fullScreen")} aria-label={t("media.fullScreenAll")}>
           <Icon name="fullscreen" />
         </button>
       {/if}
@@ -193,7 +194,7 @@
       {@const at = strip.indexOf(session)}
       {@const label = streamLabel(nameOf(session), isCamera(session))}
       <div class="tile" class:focused={focusing && session === focused} style:grid-column={at >= 0 ? at + 2 : null}>
-        <button class="screen" onclick={() => tap(session)} tabindex={sessions.length > 1 ? 0 : -1} aria-label={focusing && session === focused ? "Grid view" : `Focus ${label}`}>
+        <button class="screen" onclick={() => tap(session)} tabindex={sessions.length > 1 ? 0 : -1} aria-label={focusing && session === focused ? t("media.gridView") : t("media.focusStream", { stream: label })}>
           <canvas use:canvasOf={session} aria-label={label}></canvas>
         </button>
         {#if statsOf && withStats.has(session)}
@@ -203,13 +204,13 @@
           <!-- The canvas draws on below: the floating window shows it. -->
           <div class="pip-note">
             <Icon name="pip" size={28} />
-            <span>Playing in picture-in-picture</span>
-            <button onclick={() => pips.toggle(session)}>Bring it back</button>
+            <span>{t("media.playingInPip")}</span>
+            <button onclick={() => pips.toggle(session)}>{t("media.bringBackFromPip")}</button>
           </div>
         {/if}
         <!-- svelte-ignore a11y_no_static_element_interactions (only keeps the controls shown) -->
         <div class="overlay" class:shown={shown === session} onpointerdown={() => touch && reveal(session)}>
-          <span class="who"><span class="live">{#if isCamera(session)}<Icon name="camera" size={12} /><span class="sr-only">Camera</span>{:else}LIVE{/if}</span> {nameOf(session)}</span>
+          <span class="who"><span class="live">{#if isCamera(session)}<Icon name="camera" size={12} /><span class="sr-only">{t("media.cameraBadgeHidden")}</span>{:else}{t("media.liveBadge")}{/if}</span> {nameOf(session)}</span>
           <span class="tools">
             {#if volumeOf(session) !== undefined}
               <input
@@ -218,24 +219,24 @@
                 max="1"
                 step="0.05"
                 value={volumeOf(session)}
-                aria-label="Volume of {nameOf(session)}'s stream"
+                aria-label={t("media.streamVolume", { name: nameOf(session) })}
                 oninput={(e) => onVolume(session, Number(e.currentTarget.value))}
               />
             {/if}
             {#if statsOf}
-              <button onclick={() => toggleStats(session)} aria-pressed={withStats.has(session)} title="Stats" aria-label="Stats of {label}">
+              <button onclick={() => toggleStats(session)} aria-pressed={withStats.has(session)} title={t("media.stats")} aria-label={t("media.statsOf", { stream: label })}>
                 <Icon name="info" size={16} />
               </button>
             {/if}
             {#if pipSupported}
-              <button onclick={() => pips.toggle(session)} aria-pressed={pip === session} title="Picture in picture" aria-label="Picture in picture">
+              <button onclick={() => pips.toggle(session)} aria-pressed={pip === session} title={t("media.pictureInPicture")} aria-label={t("media.pictureInPicture")}>
                 <Icon name="pip" size={16} />
               </button>
             {/if}
             {#if fullScreenSupported}
-              <button onclick={(e) => fullScreen(e.currentTarget.closest(".tile"))} title="Full screen" aria-label="Full screen">⛶</button>
+              <button onclick={(e) => fullScreen(e.currentTarget.closest(".tile"))} title={t("media.fullScreen")} aria-label={t("media.fullScreen")}>⛶</button>
             {/if}
-            <button onclick={() => onClose(session)} title="Stop watching" aria-label="Stop watching {label}">×</button>
+            <button onclick={() => onClose(session)} title={t("media.stopWatching")} aria-label={t("media.stopWatchingStream", { stream: label })}>×</button>
           </span>
         </div>
       </div>
@@ -246,7 +247,7 @@
     class="resize"
     role="separator"
     aria-orientation="horizontal"
-    aria-label="Resize the stream view"
+    aria-label={t("media.resizeStage")}
     aria-valuemin={STAGE_MIN * 100}
     aria-valuemax={STAGE_MAX * 100}
     aria-valuenow={Math.round(share * 100)}

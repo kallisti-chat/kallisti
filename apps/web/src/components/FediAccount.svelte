@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../lib/i18n.svelte";
   import type { AccountActions } from "../lib/accounts";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
@@ -34,34 +35,34 @@
 
 {#if account.fedi}
   <div class="account">
-    <span class="label">Fediverse account</span>
+    <span class="label">{t("settings.fediAccount")}</span>
     <p class="handle">{account.fedi.handle}</p>
     <label class="check">
       <input type="checkbox" checked={account.fedi.public} disabled={publicSave.busy} onchange={(e) => setPublic(e.currentTarget)} />
-      <span>Show it on my profile, as verified</span>
+      <span>{t("settings.fediPublic")}</span>
       <SaveStatus save={publicSave.state} />
     </label>
     {#if account.hasPassword}
       <div class="buttons">
         <button type="button" class="secondary" disabled={unlinkSave.busy} onclick={() => unlinkSave.run(account.fediUnlink)}>
-          {busyLabel(unlinkSave.state, "Unlink", "Unlinking…")}
+          {busyLabel(unlinkSave.state, t("settings.fediUnlink"), t("settings.fediUnlinking"))}
         </button>
         <SaveStatus save={unlinkSave.state} done="" />
       </div>
     {:else}
-      <p class="hint">It is your only way to log in: set a password above to unlink it.</p>
+      <p class="hint">{t("settings.fediOnlyLogin")}</p>
     {/if}
   </div>
 {:else if enabled}
   <form class="account" onsubmit={link}>
-    <span class="label">Fediverse account</span>
-    <p class="hint">Log in with your Mastodon, Pleroma, GoToSocial or other fediverse account too.</p>
-    <input bind:value={instance} placeholder="mastodon.social or @you@mastodon.social" autocomplete="url" aria-label="Your fediverse server or address" required />
+    <span class="label">{t("settings.fediAccount")}</span>
+    <p class="hint">{t("settings.fediLinkHint")}</p>
+    <input bind:value={instance} placeholder={t("settings.fediPlaceholder")} autocomplete="url" aria-label={t("settings.fediAddressLabel")} required />
     {#if account.hasPassword && !account.temporary}
-      <input type="password" bind:value={password} placeholder="Current password" autocomplete="current-password" required />
+      <input type="password" bind:value={password} placeholder={t("settings.currentPassword")} autocomplete="current-password" required />
     {/if}
     <div class="buttons">
-      <button type="submit" class="secondary" disabled={linkSave.busy}>{busyLabel(linkSave.state, "Link account", "Opening…")}</button>
+      <button type="submit" class="secondary" disabled={linkSave.busy}>{busyLabel(linkSave.state, t("settings.fediLink"), t("settings.fediOpening"))}</button>
       <SaveStatus save={linkSave.state} done="" />
     </div>
   </form>

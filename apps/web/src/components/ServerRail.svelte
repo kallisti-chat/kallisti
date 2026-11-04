@@ -1,6 +1,7 @@
 <script lang="ts">
   import { initials } from "../lib/avatar";
   import Icon from "./Icon.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // A server in the rail: logo null shows its initials; mentions (a red
   // count) and unread (a dot) when it is not on screen.
@@ -11,7 +12,7 @@
   let { servers, onSelect, onAdd }: { servers: readonly RailServer[]; onSelect?: (id: string) => void; onAdd?: () => void } = $props();
 </script>
 
-<nav class="rail" aria-label="Servers">
+<nav class="rail" aria-label={t("login.servers")}>
   {#each servers as s (s.id)}
     {@const mentions = s.active ? 0 : (s.mentions ?? 0)}
     <div class="item">
@@ -20,7 +21,7 @@
         class="server"
         class:active={s.active}
         title={s.name}
-        aria-label={mentions ? `${s.name}, ${mentions} unread ${mentions === 1 ? "mention or direct message" : "mentions or direct messages"}` : !s.active && s.unread ? `${s.name}, unread messages` : s.name}
+        aria-label={mentions ? t("login.serverMentions", { name: s.name, count: mentions }) : !s.active && s.unread ? t("login.serverUnread", { name: s.name }) : s.name}
         aria-current={s.active ? "true" : undefined}
         onclick={() => onSelect?.(s.id)}
       >
@@ -31,7 +32,7 @@
   {/each}
   {#if onAdd}
     <div class="item">
-      <button class="server add" title="Add a server" aria-label="Add a server" onclick={onAdd}><Icon name="plus" size={28} /></button>
+      <button class="server add" title={t("login.addServer")} aria-label={t("login.addServer")} onclick={onAdd}><Icon name="plus" size={28} /></button>
     </div>
   {/if}
 </nav>

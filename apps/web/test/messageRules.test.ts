@@ -48,6 +48,8 @@ describe("replacements", () => {
     );
     expect(ok).toEqual([{ phrase: "good", with: ["fine"] }]);
     expect(errors.map((e) => e.split(":")[0])).toEqual(["Line 2", "Line 3", "Line 4", "Line 5", "Line 6", "Line 7", "Line 8"]);
+    expect(errors[3]).toBe("Line 5: the phrase: up to 100 letters and digits (with ' - . _ between).");
+    expect(errors[4]).toBe(`Line 6: "**bold**": up to 100 letters, digits, emoji, spaces and ' . , ! ? -.`);
   });
 });
 

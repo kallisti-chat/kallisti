@@ -9,6 +9,8 @@
   import { browserPushSupport, pushIsOn, turnOffPush, turnOnPush, type PushPrefs } from "../lib/push";
   import { needsReauth, type AccountActions } from "../lib/accounts";
   import { handleHost } from "../lib/fedi";
+  import { i18n, t } from "../lib/i18n.svelte";
+  import { around, LOCALE_NAMES, LOCALES, type Language } from "../lib/i18n";
   import { keyLabel, meterPercent, METER_MIN_DB, type Settings, type ThemeSetting } from "../lib/settings";
   import type { TimeFormat } from "../lib/chat";
   import { isDesktop } from "../lib/desktop";
@@ -73,7 +75,9 @@
   } = $props();
 
   // The categories (see CategoryDialog), and the one open.
-  const sections = $derived(sectionsFor({ profile: !!(profile || bio || emoji), account: !!account }));
+  const sections = $derived(sectionsFor({ profile: !!(profile || bio || emoji), account: !!account }).map((s) => ({ ...s, title: t(s.title) })));
+  const groupTitles = $derived({ user: t(GROUP_TITLES.user), app: t(GROUP_TITLES.app) });
+  const footer = $derived(around(t("settings.footer"), "link"));
   let section = $state<SectionId | null>(null);
 
   // Saved when the field loses focus or the settings close. The draft
@@ -102,7 +106,7 @@
       async () => {
         const note = on ? await turnOnPush(base, name, prefs) : (await turnOffPush(base), null);
         pushOn = await pushIsOn(base, name);
-        if (note || pushOn !== on) throw new Error(note ?? "The browser did not change it.");
+        if (note || pushOn !== on) throw new Error(note ?? t("settings.pushNotChanged"));
       },
       () => (el.checked = pushOn),
     );
@@ -159,10 +163,10 @@
         throw err;
       });
       passwordNote = kept
-        ? "Password set: your account stays."
+        ? t("settings.passwordSetKept")
         : first
-          ? "Password set: you can also log in with your name. Other devices are logged out."
-          : "Password changed. Other devices are logged out.";
+          ? t("settings.passwordSetFirst")
+          : t("settings.passwordChanged");
       oldPassword = newPassword = "";
     });
   };
@@ -182,9 +186,9 @@
 <svelte:window onkeydowncapture={recordKey} />
 
 <CategoryDialog
-  title="Settings"
+  title={t("common.settings")}
   categories={sections}
-  groupTitles={GROUP_TITLES}
+  {groupTitles}
   {start}
   {phone}
   hideOnPhone={profile ? ["profile"] : []}
@@ -199,7 +203,7 @@
     {#if phone && profile}
       <button class="me" onclick={() => open("profile")}>
         <span class="me-name">{profile.name}</span>
-        <span class="me-edit">Edit profile ›</span>
+        <span class="me-edit">{t("settings.editProfile")}</span>
       </button>
     {/if}
   {/snippet}
@@ -207,10 +211,10 @@
     <!-- Guests log out on Account, where it says that this ends the account. -->
     {#if account && !account.temporary}
       {#if !phone}<div class="sep"></div>{/if}
-      <button class="item danger" onclick={account.logout}>Log out</button>
+      <button class="item danger" onclick={account.logout}>{t("settings.logOut")}</button>
     {/if}
     <footer class="hint menu-footer">
-      Kallisti: a Mumble server and client. <a href="https://kallisti.chat" target="_blank" rel="noreferrer">kallisti.chat</a>
+      {footer[0]}<a href="https://kallisti.chat" target="_blank" rel="noreferrer">kallisti.chat</a>{footer[1]}
     </footer>
   {/snippet}
   {#snippet content(id: SectionId)}
@@ -219,42 +223,36 @@
 
       {#if bio}
         <label class="bio">
-          <span class="label-row">About me <span class="count">{bioDraft.length}/{BIO_MAX}</span></span>
+          <span class="label-row">{t("settings.aboutMe")} <span class="count">{bioDraft.length}/{BIO_MAX}</span></span>
           <textarea rows="3" maxlength={BIO_MAX} disabled={bio.loading && !bioText} bind:value={bioDraft} onblur={saveBio}></textarea>
-          <span class="hint">Everyone on the server sees it, in Mumble apps too.</span>
+          <span class="hint">{t("settings.bioHint")}</span>
         </label>
       {/if}
 
       {#if emoji}
         <section class="my-emoji" aria-labelledby="my-emoji-title">
-          <h4 id="my-emoji-title">My emoji</h4>
-          <p class="hint">
-            Type :name: to use one. Everyone sees them in your messages and reactions; Mumble apps show :name:. To add one from a
-            message, click it.
-          </p>
+          <h4 id="my-emoji-title">{t("settings.myEmoji")}</h4>
+          <p class="hint">{t("settings.myEmojiHint")}</p>
           <EmojiList {...emoji} />
         </section>
       {/if}
     {:else if id === "account" && account}
         <form class="account" onsubmit={changePassword}>
           {#if account.temporary}
-            <span class="label">Keep this account</span>
-            <p class="hint">
-              This is a guest account: it is deleted a day after your last visit. With a password it stays, and you can log
-              in on other devices.
-            </p>
+            <span class="label">{t("settings.keepAccount")}</span>
+            <p class="hint">{t("settings.guestAccountHint")}</p>
           {:else if !account.hasPassword}
-            <span class="label">Set a password</span>
-            <p class="hint">You log in with your fediverse account. A password also works in Mumble apps, with your name. First you confirm with your fediverse server.</p>
+            <span class="label">{t("settings.setPasswordTitle")}</span>
+            <p class="hint">{t("settings.fediOnlyHint")}</p>
           {:else}
-            <span class="label">Change password</span>
-            <input type="password" bind:value={oldPassword} placeholder="Current password" autocomplete="current-password" required />
+            <span class="label">{t("settings.changePassword")}</span>
+            <input type="password" bind:value={oldPassword} placeholder={t("settings.currentPassword")} autocomplete="current-password" required />
           {/if}
-          <input type="password" bind:value={newPassword} placeholder="New password (8 or more characters)" autocomplete="new-password" minlength="8" required />
+          <input type="password" bind:value={newPassword} placeholder={t("settings.newPassword")} autocomplete="new-password" minlength="8" required />
           {#if passwordNote}<p class="hint" role="status">{passwordNote}</p>{/if}
           <div class="buttons">
             <button type="submit" class="secondary" disabled={passwordSave.busy}>
-              {busyLabel(passwordSave.state, account.temporary || !account.hasPassword ? "Set password" : "Change password")}
+              {busyLabel(passwordSave.state, account.temporary || !account.hasPassword ? t("settings.setPassword") : t("settings.changePassword"))}
             </button>
             <SaveStatus save={passwordSave.state} done="" />
           </div>
@@ -264,7 +262,7 @@
           {#if (reauth || (!account.hasPassword && !account.temporary)) && account.fedi && !isDesktop()}
             <div class="buttons">
               <button type="button" class="secondary" disabled={reauthSave.busy} onclick={() => reauthSave.run(account.fediReauth)}>
-                Confirm with {handleHost(account.fedi.handle)}
+                {t("settings.confirmWith", { host: handleHost(account.fedi.handle) })}
               </button>
               <SaveStatus save={reauthSave.state} done="" />
             </div>
@@ -274,28 +272,27 @@
         {#if account.sites && !account.temporary}<AllowedSites sites={account.sites} />{/if}
         {#if account.qr && !account.temporary}
           <div class="account">
-            <span class="label">Log in on another device</span>
+            <span class="label">{t("settings.otherDevice")}</span>
             <p class="hint">
-              Show a code here and scan it with your phone: no password to type there.{#if account.qr.scan}
-                Or scan the code another device shows on its login screen.{/if}
+              {t("settings.otherDeviceHint")}{#if account.qr.scan}{" "}{t("settings.otherDeviceScanHint")}{/if}
             </p>
             <div class="buttons">
-              <button type="button" class="secondary" onclick={() => (qrShown = true)}>Show a login code</button>
-              {#if account.qr.scan}<button type="button" class="secondary" onclick={account.qr.scan}>Scan a code</button>{/if}
+              <button type="button" class="secondary" onclick={() => (qrShown = true)}>{t("settings.showLoginCode")}</button>
+              {#if account.qr.scan}<button type="button" class="secondary" onclick={account.qr.scan}>{t("settings.scanCode")}</button>{/if}
             </div>
           </div>
         {/if}
         <div class="account">
-          <span class="label">Log out</span>
+          <span class="label">{t("settings.logOut")}</span>
           {#if account.temporary}
-            <p class="hint">Logging out ends this guest account (set a password above to keep it).</p>
+            <p class="hint">{t("settings.logOutGuestHint")}</p>
           {:else}
-            <p class="hint">"Everywhere" also logs out your other browsers and devices, for example after you used a shared computer.</p>
+            <p class="hint">{t("settings.logOutEverywhereHint")}</p>
           {/if}
           <div class="buttons">
-            <button type="button" class="logout" onclick={account.logout}>Log out</button>
+            <button type="button" class="logout" onclick={account.logout}>{t("settings.logOut")}</button>
             {#if !account.temporary}
-              <button type="button" class="logout" onclick={account.logoutAll}>Log out everywhere</button>
+              <button type="button" class="logout" onclick={account.logoutAll}>{t("settings.logOutEverywhere")}</button>
             {/if}
           </div>
         </div>
@@ -305,96 +302,93 @@
         <p class="hint warn voice-error" role="status">{voiceError}</p>
       {/if}
       <label>
-        Input device
+        {t("settings.inputDevice")}
         <select
           value={settings.inputDeviceId ?? ""}
           onchange={(e) => onChange({ inputDeviceId: e.currentTarget.value || null })}
         >
-          <option value="">Default</option>
+          <option value="">{t("settings.deviceDefault")}</option>
           {#each inputs as d (d.deviceId)}
             {#if d.deviceId !== "default"}
-              <option value={d.deviceId}>{d.label || "Microphone"}</option>
+              <option value={d.deviceId}>{d.label || t("settings.microphone")}</option>
             {/if}
           {/each}
         </select>
         {#if fellBack}
           <span class="hint warn" role="status">
-            The chosen microphone is not available. Using {deviceLabel || "the default microphone"}.
+            {deviceLabel ? t("settings.micFellBack", { device: deviceLabel }) : t("settings.micFellBackDefault")}
           </span>
         {:else if deviceLabel}
-          <span class="hint">In use: {deviceLabel}</span>
+          <span class="hint">{t("settings.micInUse", { device: deviceLabel })}</span>
         {/if}
       </label>
 
       {#if hasCamera}
         <label>
-          Camera
+          {t("settings.camera")}
           <select value={settings.cameraDeviceId ?? ""} onchange={(e) => onChange({ cameraDeviceId: e.currentTarget.value || null })}>
-            <option value="">Default</option>
+            <option value="">{t("settings.deviceDefault")}</option>
             {#each cameras as d, i (d.deviceId)}
-              <option value={d.deviceId}>{d.label || `Camera ${i + 1}`}</option>
+              <option value={d.deviceId}>{d.label || t("settings.cameraNumbered", { number: i + 1 })}</option>
             {/each}
           </select>
-          {#if !cameras.length}<span class="hint">The list fills once you have turned the camera on in voice.</span>{/if}
+          {#if !cameras.length}<span class="hint">{t("settings.cameraListHint")}</span>{/if}
         </label>
       {/if}
 
       <label>
-        Noise suppression
+        {t("settings.noiseSuppression")}
         <select
           value={settings.noiseSuppression}
           disabled={settings.musicMode}
           onchange={(e) => onChange({ noiseSuppression: e.currentTarget.value as NoiseMode })}
         >
-          <option value="browser">Standard (the browser's)</option>
-          <option value="strong">Strong (RNNoise)</option>
-          <option value="strongest">Strongest (DeepFilterNet3)</option>
+          <option value="browser">{t("settings.noiseStandard")}</option>
+          <option value="strong">{t("settings.noiseStrong")}</option>
+          <option value="strongest">{t("settings.noiseStrongest")}</option>
         </select>
         {#if settings.musicMode}
-          <span class="hint">Off in music mode.</span>
+          <span class="hint">{t("settings.noiseOffMusic")}</span>
         {:else if noiseError}
           <span class="hint warn" role="status">{noiseError}</span>
         {:else if noiseRunning && noiseRunning === settings.noiseSuppression}
-          <span class="hint" role="status">{noiseLabel(noiseRunning)} is running.</span>
+          <span class="hint" role="status">{t("settings.noiseRunning", { filter: noiseLabel(noiseRunning) })}</span>
         {:else if settings.noiseSuppression === "strongest"}
-          <span class="hint" role="status">Loading DeepFilterNet3 (about 12 MB, once)…</span>
+          <span class="hint" role="status">{t("settings.noiseLoading")}</span>
         {:else}
-          <span class="hint">
-            Strong removes fan and other steady noise; typing alone does not start sending. Strongest also removes most
-            typing, but loads about 12 MB, uses more CPU and adds a little delay.
-          </span>
+          <span class="hint">{t("settings.noiseHint")}</span>
         {/if}
       </label>
       {#if onEcho}
         <div class="row">
-          <span class="label">Hear yourself</span>
+          <span class="label">{t("settings.hearYourself")}</span>
           <div class="buttons">
             <button type="button" class="secondary" aria-pressed={echo} onclick={() => (echo = !echo)}>
-              {echo ? "Stop" : "Start echo test"}
+              {echo ? t("settings.echoTestStop") : t("settings.echoTestStart")}
             </button>
           </div>
-          <p class="hint">Plays your microphone as the others hear it, after noise suppression. Use headphones.</p>
+          <p class="hint">{t("settings.echoTestHint")}</p>
         </div>
       {/if}
 
       {#if outputSupported}
         <label>
-          Output device
+          {t("settings.outputDevice")}
           <select
             value={settings.outputDeviceId ?? ""}
             onchange={(e) => onChange({ outputDeviceId: e.currentTarget.value || null })}
           >
-            <option value="">Default</option>
+            <option value="">{t("settings.deviceDefault")}</option>
             {#each outputs as d (d.deviceId)}
               {#if d.deviceId !== "default"}
-                <option value={d.deviceId}>{d.label || "Speakers"}</option>
+                <option value={d.deviceId}>{d.label || t("settings.speakers")}</option>
               {/if}
             {/each}
           </select>
         </label>
       {/if}
       <label>
-        Playback buffer
+        {t("settings.playbackBuffer")}
         <select
           value={settings.playbackBuffer}
           onchange={(e) => onChange({ playbackBuffer: e.currentTarget.value as PlaybackBuffer })}
@@ -403,13 +397,10 @@
             <option value={b}>{bufferLabel(b)}</option>
           {/each}
         </select>
-        <span class="hint">
-          How long others' voices wait before they play. More fills gaps on a bad connection, but adds delay. Music
-          always gets at least 500 ms.
-        </span>
+        <span class="hint">{t("settings.playbackBufferHint")}</span>
       </label>
       <fieldset>
-        <legend>Input mode</legend>
+        <legend>{t("settings.inputMode")}</legend>
         <label class="radio">
           <input
             type="radio"
@@ -417,7 +408,7 @@
             checked={settings.mode === "vad"}
             onchange={() => onChange({ mode: "vad" })}
           />
-          Voice activity
+          {t("settings.voiceActivity")}
         </label>
         <label class="radio">
           <input
@@ -426,30 +417,30 @@
             checked={settings.mode === "ptt"}
             onchange={() => onChange({ mode: "ptt" })}
           />
-          Push to talk
+          {t("settings.pushToTalk")}
         </label>
       </fieldset>
 
       {#if settings.mode === "ptt"}
         <div class="row">
-          <span class="label">Push-to-talk key</span>
+          <span class="label">{t("settings.pttKey")}</span>
           <button
             class="key"
             class:recording={recordingKey}
             aria-pressed={recordingKey}
             onclick={() => (recordingKey = true)}
           >
-            {recordingKey ? "Press a key… (Esc to cancel)" : keyLabel(settings.pttKey)}
+            {recordingKey ? t("settings.pttRecording") : keyLabel(settings.pttKey)}
           </button>
           <p class="hint">
             {isDesktop()
-              ? "Works in the background too. The key is reserved for Kallisti while the app runs."
-              : "Works only while this tab has focus."}
+              ? t("settings.pttHintDesktop")
+              : t("settings.pttHintBrowser")}
           </p>
         </div>
       {:else}
         <div class="row">
-          <span class="label">Sensitivity</span>
+          <span class="label">{t("settings.sensitivity")}</span>
           <div class="meter" aria-hidden="true">
             <div
               class="level"
@@ -464,12 +455,10 @@
             step="1"
             value={settings.vadThresholdDb}
             oninput={(e) => onChange({ vadThresholdDb: Number(e.currentTarget.value) })}
-            aria-label="Voice activity threshold"
-            aria-valuetext="{settings.vadThresholdDb} dB"
+            aria-label={t("settings.vadThreshold")}
+            aria-valuetext={t("settings.decibels", { value: settings.vadThresholdDb })}
           />
-          <p class="hint">
-            Speak normally: the bar should turn green when you talk, and stay grey when you are quiet.
-          </p>
+          <p class="hint">{t("settings.sensitivityHint")}</p>
         </div>
       {/if}
       <label class="check">
@@ -479,13 +468,13 @@
           disabled={settings.musicMode}
           onchange={(e) => onChange({ echoCancellation: e.currentTarget.checked })}
         />
-        <span>Echo cancellation</span>
-        <span class="hint">Needed with speakers. With a headset you can turn it off: on a Mac, the desktop app and Safari otherwise switch Bluetooth headsets to their call mode, with worse sound.</span>
+        <span>{t("settings.echoCancellation")}</span>
+        <span class="hint">{t("settings.echoCancellationHint")}</span>
       </label>
       <label class="check">
         <input type="checkbox" checked={settings.musicMode} onchange={(e) => onChange({ musicMode: e.currentTarget.checked })} />
-        <span>Music mode</span>
-        <span class="hint">For playing music: no noise suppression, echo cancellation or automatic volume, and better sound (stereo if the microphone has two channels). Use a headset.</span>
+        <span>{t("settings.musicMode")}</span>
+        <span class="hint">{t("settings.musicModeHint")}</span>
       </label>
       <label class="check">
         <input
@@ -493,13 +482,13 @@
           checked={settings.closeMicWhenMuted}
           onchange={(e) => onChange({ closeMicWhenMuted: e.currentTarget.checked })}
         />
-        <span>Close the microphone when muted</span>
-        <span class="hint">The browser then stops showing it as recording, but the sound stops for a moment when you mute or unmute.</span>
+        <span>{t("settings.closeMic")}</span>
+        <span class="hint">{t("settings.closeMicHint")}</span>
       </label>
       <label class="check">
         <input type="checkbox" checked={settings.streamPreviews} onchange={(e) => onChange({ streamPreviews: e.currentTarget.checked })} />
-        <span>Show a preview of my screen share and camera</span>
-        <span class="hint">People who are not watching see a small picture, updated every few seconds.</span>
+        <span>{t("settings.streamPreviews")}</span>
+        <span class="hint">{t("settings.streamPreviewsHint")}</span>
       </label>
     {:else if id === "notifications"}
       <label class="check">
@@ -517,30 +506,27 @@
             onChange({ notifications: on });
           }}
         />
-        <span>Desktop notifications (mentions and direct messages; per channel in its menu)</span>
+        <span>{t("settings.desktopNotifications")}</span>
         {#if notificationNote}<span class="hint warn" role="status">{notificationNote}</span>{/if}
       </label>
       {#if push && pushSupport === "ok"}
         <label class="check">
           <input type="checkbox" checked={pushOn} disabled={pushSave.busy} onchange={(e) => setPush(e.currentTarget)} />
-          <span>Push notifications on this device</span>
-          <span class="hint">Mentions and direct messages also while Kallisti is closed. They say who and where, not the message.</span>
+          <span>{t("settings.pushNotifications")}</span>
+          <span class="hint">{t("settings.pushHint")}</span>
           <SaveStatus save={pushSave.state} />
         </label>
       {:else if push && pushSupport === "install"}
-        <p class="hint">
-          For push notifications on this iPhone or iPad: tap Share, then "Add to Home Screen", and open Kallisti from there
-          (iOS 16.4 or later).
-        </p>
+        <p class="hint">{t("settings.pushInstallHint")}</p>
       {/if}
       <label class="check">
         <input type="checkbox" checked={settings.sounds} onchange={(e) => onChange({ sounds: e.currentTarget.checked })} />
-        <span>Sounds</span>
-        <span class="hint">When you mute or deafen yourself, and undeafen.</span>
+        <span>{t("settings.sounds")}</span>
+        <span class="hint">{t("settings.soundsHint")}</span>
       </label>
       {#if settings.sounds}
         <label>
-          Sound volume
+          {t("settings.soundVolume")}
           <input
             type="range"
             min="0"
@@ -548,26 +534,36 @@
             step="0.05"
             value={settings.soundVolume}
             oninput={(e) => onChange({ soundVolume: Number(e.currentTarget.value) })}
-            aria-valuetext="{Math.round(settings.soundVolume * 100)}%"
+            aria-valuetext={t("settings.percent", { value: Math.round(settings.soundVolume * 100) })}
           />
         </label>
       {/if}
     {:else if id === "appearance"}
       <label>
-        Theme
-        <select value={settings.theme} onchange={(e) => onChange({ theme: e.currentTarget.value as ThemeSetting })}>
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-          <option value="system">As the system</option>
+        {t("settings.language")}
+        <select value={i18n.language} onchange={(e) => void i18n.setLanguage(e.currentTarget.value as Language)}>
+          <option value="auto">{t("settings.languageAuto")}</option>
+          {#each LOCALES as locale (locale)}
+            <option value={locale} lang={locale}>{LOCALE_NAMES[locale]}</option>
+          {/each}
         </select>
       </label>
 
       <label>
-        Time format
+        {t("settings.theme")}
+        <select value={settings.theme} onchange={(e) => onChange({ theme: e.currentTarget.value as ThemeSetting })}>
+          <option value="dark">{t("settings.themeDark")}</option>
+          <option value="light">{t("settings.themeLight")}</option>
+          <option value="system">{t("settings.themeSystem")}</option>
+        </select>
+      </label>
+
+      <label>
+        {t("settings.timeFormat")}
         <select value={settings.timeFormat} onchange={(e) => onChange({ timeFormat: e.currentTarget.value as TimeFormat })}>
-          <option value="auto">As the language</option>
-          <option value="24">24-hour (19:05)</option>
-          <option value="12">12-hour (7:05 PM)</option>
+          <option value="auto">{t("settings.timeAuto")}</option>
+          <option value="24">{t("settings.time24")}</option>
+          <option value="12">{t("settings.time12")}</option>
         </select>
       </label>
     {/if}

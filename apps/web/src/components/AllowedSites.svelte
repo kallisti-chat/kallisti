@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../lib/i18n.svelte";
   import type { AccountActions, AllowedSite } from "../lib/accounts";
 
   // The settings' list of other servers this account logs in to (Kallisti
@@ -35,25 +36,25 @@
 
 {#if failed}
   <div class="account">
-    <span class="label">Servers you log in to with this account</span>
-    <p class="hint" role="alert">The list did not load.</p>
-    <div><button type="button" class="secondary" onclick={load}>Try again</button></div>
+    <span class="label">{t("settings.allowedSites")}</span>
+    <p class="hint" role="alert">{t("settings.allowedSitesNotLoaded")}</p>
+    <div><button type="button" class="secondary" onclick={load}>{t("common.retry")}</button></div>
   </div>
 {:else if list.length > 0}
   <div class="account">
-    <span class="label">Servers you log in to with this account</span>
+    <span class="label">{t("settings.allowedSites")}</span>
     <ul>
       {#each list as s (s.redirect)}
         <li>
           <span class="site">{new URL(s.site).host}</span>
           <button type="button" class="secondary" disabled={busy !== null} onclick={() => revoke(s.redirect)}>
-            {busy === s.redirect ? "Removing…" : "Remove"}
+            {busy === s.redirect ? t("settings.removing") : t("common.remove")}
           </button>
         </li>
       {/each}
     </ul>
     {#if error}<p class="hint" role="alert">{error}</p>{/if}
-    <p class="hint">A removed server asks for your OK again at your next login there. Your account there stays.</p>
+    <p class="hint">{t("settings.allowedSitesHint")}</p>
   </div>
 {/if}
 

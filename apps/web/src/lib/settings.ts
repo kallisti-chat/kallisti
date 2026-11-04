@@ -1,3 +1,4 @@
+import { t } from "./i18n.svelte";
 import { DEFAULT_QUALITY, parseQuality, type Kind, type Quality } from "./stream/quality";
 import type { TimeFormat } from "./chat";
 import type { PlaybackBuffer } from "./voice/buffer";
@@ -140,18 +141,19 @@ export const pttAction = (
 export const pttBlocksDefault = (ev: { code: string; repeat: boolean; editable: boolean }, pttKey: string) =>
   ev.code === pttKey && !ev.editable;
 
-const KEY_NAMES: Record<string, string> = {
-  Backquote: "`",
-  Space: "Space",
-  CapsLock: "Caps Lock",
+const KEY_NAMES: Record<string, () => string> = {
+  Backquote: () => "`",
+  Space: () => t("settings.keySpace"),
+  CapsLock: () => t("settings.keyCapsLock"),
 };
 
 export const keyLabel = (code: string): string => {
-  if (KEY_NAMES[code]) return KEY_NAMES[code];
+  const named = KEY_NAMES[code];
+  if (named) return named();
   const m = /^(Key|Digit)(.)$/.exec(code);
   if (m) return m[2]!;
   const side = /^(Shift|Control|Alt|Meta)(Left|Right)$/.exec(code);
-  if (side) return `${side[2]} ${side[1]}`;
+  if (side) return t(side[2] === "Left" ? "settings.keyLeft" : "settings.keyRight", { key: side[1]! });
   return code;
 };
 

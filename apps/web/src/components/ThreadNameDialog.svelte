@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { t } from "../lib/i18n.svelte";
 
   // A thread's name: for a new thread (from a message) or a rename.
   let {
@@ -31,15 +32,15 @@
   <form onsubmit={submit}>
     <header>
       <h2 id="thread-name-title">{title}</h2>
-      <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+      <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
     </header>
     <label>
-      Thread name
+      {t("chat.threadName")}
       <!-- svelte-ignore a11y_autofocus -->
       <input bind:value maxlength="100" required autofocus onfocus={(e) => e.currentTarget.select()} />
     </label>
     <footer>
-      <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
+      <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
       <button type="submit" class="primary" disabled={!value.trim()}>{action}</button>
     </footer>
   </form>

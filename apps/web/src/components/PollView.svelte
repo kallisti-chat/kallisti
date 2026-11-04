@@ -1,7 +1,8 @@
 <script lang="ts">
   import { tick } from "svelte";
   import Emoji from "./Emoji.svelte";
-  import { plural, pollOpen, share, showResults, timeLeft, winners, type Poll } from "../lib/polls";
+  import { t } from "../lib/i18n.svelte";
+  import { pollOpen, share, showResults, timeLeft, winners, type Poll } from "../lib/polls";
 
   // A poll in the chat (see lib/polls): pick answers and vote; the counts
   // show after one's own vote, on "Show results" or at the end. onVote:
@@ -37,11 +38,11 @@
   };
 </script>
 
-<fieldset class="poll" bind:this={box} tabindex="-1" aria-label="Poll: {poll.question}">
+<fieldset class="poll" bind:this={box} tabindex="-1" aria-label={t("chat.pollLabel", { question: poll.question })}>
   <legend class="question">{poll.question}</legend>
   <p class="how">
-    {poll.multiple ? "Pick one or more answers" : "Pick one answer"} ·
-    {poll.anonymous ? "Votes are anonymous" : "Others see who voted for what"}
+    {poll.multiple ? t("chat.pollPickSeveral") : t("chat.pollPickOne")} ·
+    {poll.anonymous ? t("chat.pollVotesAnonymous") : t("chat.pollVotesPublic")}
   </p>
   <ul>
     {#each poll.answers as answer, i (i)}
@@ -52,10 +53,10 @@
           <div class="result" class:won={top.includes(i)} class:chosen title={answer.voters?.join(", ")}>
             <span class="bar" style:width="{percent}%"></span>
             <span class="label"
-              >{#if answer.emoji}<span class="emoji"><Emoji text={answer.emoji} /></span>{/if}{answer.text}{#if chosen}<span class="sr-only"> (your vote)</span>
+              >{#if answer.emoji}<span class="emoji"><Emoji text={answer.emoji} /></span>{/if}{answer.text}{#if chosen}<span class="sr-only"> {t("chat.pollYourVote")}</span>
                 <span aria-hidden="true">✓</span>{/if}</span
             >
-            <span class="count">{plural(answer.votes, "vote")} · {percent}%</span>
+            <span class="count">{t("chat.pollAnswerCount", { count: answer.votes, percent })}</span>
           </div>
           {#if answer.voters?.length}<p class="voters">{answer.voters.join(", ")}</p>{/if}
         {:else}
@@ -74,23 +75,23 @@
     {/each}
   </ul>
   <div class="foot">
-    <span class="status">{plural(poll.voters, "vote")} · {open ? timeLeft(poll.ends, now) : "Poll ended"}</span>
+    <span class="status">{t("chat.pollStatus", { count: poll.voters, status: open ? timeLeft(poll.ends, now) : t("chat.pollEnded") })}</span>
     {#if ending}
-      <span>End the poll now?</span>
-      <button type="button" class="primary" onclick={() => then(() => ((ending = false), onEnd?.()))}>End poll</button>
-      <button type="button" onclick={() => then(() => (ending = false))}>Cancel</button>
+      <span>{t("chat.pollEndConfirm")}</span>
+      <button type="button" class="primary" onclick={() => then(() => ((ending = false), onEnd?.()))}>{t("chat.pollEnd")}</button>
+      <button type="button" onclick={() => then(() => (ending = false))}>{t("common.cancel")}</button>
     {:else}
       {#if open && onVote && poll.mine?.length}
-        <button type="button" onclick={() => then(() => onVote([]))}>Remove vote</button>
+        <button type="button" onclick={() => then(() => onVote([]))}>{t("chat.pollRemoveVote")}</button>
       {:else if open && peek}
-        <button type="button" onclick={() => then(() => (peek = false))}>Back to voting</button>
+        <button type="button" onclick={() => then(() => (peek = false))}>{t("chat.pollBackToVoting")}</button>
       {:else if open && !results}
-        <button type="button" onclick={() => then(() => (peek = true))}>Show results</button>
+        <button type="button" onclick={() => then(() => (peek = true))}>{t("chat.pollShowResults")}</button>
         {#if onVote}
-          <button type="button" class="primary" disabled={!picked.length} onclick={() => then(() => onVote(picked))}>Vote</button>
+          <button type="button" class="primary" disabled={!picked.length} onclick={() => then(() => onVote(picked))}>{t("chat.pollVote")}</button>
         {/if}
       {/if}
-      {#if open && onEnd}<button type="button" onclick={() => (ending = true)}>End poll</button>{/if}
+      {#if open && onEnd}<button type="button" onclick={() => (ending = true)}>{t("chat.pollEnd")}</button>{/if}
     {/if}
   </div>
 </fieldset>

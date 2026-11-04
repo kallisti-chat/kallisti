@@ -4,6 +4,8 @@
 // clock), the encoded data; down to viewers with the stream's id (4 bytes)
 // in front.
 
+import { t } from "../i18n.svelte";
+
 // A stream's id: its streamer's session for a screen share, with the top
 // bit set for a camera.
 const CAMERA_BIT = 2 ** 31;
@@ -73,12 +75,11 @@ export const decodeWatch = (limit: number) => {
 // Why a stream does not play. Streams from OBS are always H.264.
 export const cannotPlay = (codec: string) =>
   codec.startsWith("avc1")
-    ? "This browser cannot play H.264 video (streams from OBS are H.264). Try another browser, for example Chrome, Edge or Firefox."
-    : "This browser cannot play this stream.";
+    ? t("media.cannotPlayH264")
+    : t("media.cannotPlayStream");
 
 // What a click on a LIVE badge does. Own streams with a self-preview (a
 // screen share, the camera) are not watched; one from OBS has none.
 export const watchAction = ({ playable, own, selfPreview }: { playable: boolean; own: boolean; selfPreview: boolean }) =>
   own && selfPreview ? "none" : playable ? "watch" : "unsupported";
 
-export const CANNOT_STREAM = "This browser cannot play streams. Lockdown Mode, for example, turns off what they need (WebCodecs).";

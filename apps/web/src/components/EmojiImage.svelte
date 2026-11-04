@@ -1,6 +1,8 @@
 <script lang="ts">
   import { encodeEmoji, loadEmojiImage, renderEmoji } from "../lib/emojiCanvas";
   import { EMOJI_SIZE, MAX_ZOOM, cropKey, cropZoom, isAnimated, keepsOriginal, middleCrop, moveCrop, zoomCrop, type Crop, type Size } from "../lib/emojiResize";
+  import { around } from "../lib/i18n";
+  import { t } from "../lib/i18n.svelte";
 
   // A new emoji's image: still images are scaled down (optionally cropped
   // to a square first), with a preview; output() gives the file to upload.
@@ -50,6 +52,7 @@
   const H = $derived(still?.image.height ?? 1);
   const rendered = $derived(still && renderEmoji(still.image, cropping ? crop : null, max));
   const preview = $derived(rendered ? rendered.toDataURL() : loaded?.url);
+  const size = $derived({ width: rendered?.width ?? 0, height: rendered?.height ?? 0 });
 
   // The file to upload: as it came if it is animated, small enough and
   // not cropped, or cannot be read (the server checks it).
@@ -72,11 +75,11 @@
 </script>
 
 {#if failed}
-  <p class="note">This image cannot be read here; it is uploaded as it is.</p>
+  <p class="note">{t("media.imageUnreadable")}</p>
 {:else if loaded?.animated}
-  <p class="note">Animated images are kept as they are (at most {limit}).</p>
+  <p class="note">{t("media.animatedKept", { limit })}</p>
 {:else if still}
-  <label class="check"><input type="checkbox" bind:checked={cropping} /> Crop to square</label>
+  <label class="check"><input type="checkbox" bind:checked={cropping} /> {t("media.cropToSquare")}</label>
   {#if cropping}
     <div
       class="crop"
@@ -90,7 +93,7 @@
       <button
         type="button"
         class="box"
-        aria-label="Crop area: arrow keys move it, + and - zoom"
+        aria-label={t("media.cropArea")}
         style:left="{(crop.x / W) * 100}%"
         style:top="{(crop.y / H) * 100}%"
         style:width="{(crop.size / W) * 100}%"
@@ -109,7 +112,7 @@
       ></button>
     </div>
     <label class="check">
-      Zoom
+      {t("media.zoom")}
       <input
         type="range"
         min="1"
@@ -122,9 +125,13 @@
   {/if}
 {/if}
 {#if preview}
-  <div class="preview" aria-label="Preview">
+  <div class="preview" aria-label={t("media.preview")}>
     <p>
-      {#if max === EMOJI_SIZE}Looks like <img class="small" src={preview} alt={`:${name}:`} /> in a message{:else}As uploaded{/if}{#if rendered}, {rendered.width}×{rendered.height} px{/if}
+      {#if max === EMOJI_SIZE}{@const [before, after] = around(rendered ? t("media.looksLikeInMessageSize", size) : t("media.looksLikeInMessage"), "emoji")}{before}<img
+          class="small"
+          src={preview}
+          alt={`:${name}:`}
+        />{after}{:else}{rendered ? t("media.asUploadedSize", size) : t("media.asUploaded")}{/if}
     </p>
     <img class="large" src={preview} alt="" />
   </div>

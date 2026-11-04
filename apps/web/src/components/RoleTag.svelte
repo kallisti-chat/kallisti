@@ -1,14 +1,15 @@
 <script lang="ts">
   import type { Badge } from "../lib/roles";
+  import { t } from "../lib/i18n.svelte";
   // A small label for admins and moderators; a channel's moderators get an
   // outlined one (only in that channel's member list).
   let { role }: { role: Badge | null } = $props();
 </script>
 
 {#if role === "channelmod"}
-  <span class="tag channel" title="Moderator of this channel">Mod</span>
+  <span class="tag channel" title={t("sidebar.channelModerator")}>{t("sidebar.tagMod")}</span>
 {:else if role}
-  <span class="tag" class:admin={role === "admin"}>{role === "admin" ? "Admin" : "Mod"}</span>
+  <span class="tag" class:admin={role === "admin"}>{t(role === "admin" ? "sidebar.tagAdmin" : "sidebar.tagMod")}</span>
 {/if}
 
 <style>

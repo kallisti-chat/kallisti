@@ -1,4 +1,5 @@
 import { channelListRequest, type ChannelList } from "./channelList";
+import { t } from "./i18n.svelte";
 import { micInfoRequest, type MicInfo } from "./voice/micInfo";
 import { endPollRequest, voteRequest, type PollBody } from "./polls";
 import { threadRequest, type ThreadAction } from "./threads";
@@ -124,7 +125,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   const tokenWaiters: Record<TokenType, ((token: string) => void)[]> = { "stream-token": [], "recording-token": [] };
   const askToken = (type: TokenType) =>
     new Promise<string>((resolve, reject) => {
-      if (ws.readyState !== WebSocket.OPEN) return reject(new Error("not connected"));
+      if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
       const waiters = tokenWaiters[type];
       const waiter = (t: string) => {
         clearTimeout(timeout);
@@ -132,7 +133,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       };
       const timeout = setTimeout(() => {
         waiters.splice(waiters.indexOf(waiter), 1);
-        reject(new Error(`no ${type} from the server`));
+        reject(new Error(t("client.noServerAnswer")));
       }, 10_000);
       waiters.push(waiter);
       ws.send(JSON.stringify({ type }));
@@ -145,8 +146,8 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   let awaiting: Waiter[] = [];
   const wait = (check: Check, request: () => void) =>
     new Promise<void>((resolve, reject) => {
-      if (ws.readyState !== WebSocket.OPEN) return reject(new Error("Not connected"));
-      const timeout = setTimeout(() => waiter.done("No answer from the server"), ANSWER_MS);
+      if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
+      const timeout = setTimeout(() => waiter.done(t("client.noAnswer")), ANSWER_MS);
       const waiter: Waiter = {
         ...check,
         done: (error) => {
@@ -305,7 +306,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     closeReason = reason;
     clearInterval(timer);
     tokenWaiter?.reject(new Error("connection closed"));
-    awaiting.forEach((w) => w.done("Not connected"));
+    awaiting.forEach((w) => w.done(t("client.notConnected")));
     confirming.forEach((fn) => fn(null));
     voice.close(); // the audio context stays: the app may reconnect with it
     streams?.close();
@@ -315,12 +316,12 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
 
   // Uploads: tokens over the WebSocket (one request), then the files over HTTP.
   const uploadTokens = (tokenRequest: string, emoji: boolean) => {
-    if (ws.readyState !== WebSocket.OPEN) throw new Error("not connected");
-    if (tokenWaiter) throw new Error("an upload is already starting");
+    if (ws.readyState !== WebSocket.OPEN) throw new Error(t("client.notConnected"));
+    if (tokenWaiter) throw new Error(t("client.uploadStarting"));
     return new Promise<string[]>((resolve, reject) => {
       // The server may answer with an error instead (rate limit): give up
       // after a while, so the next upload can try again.
-      const timeout = setTimeout(() => done(() => reject(new Error("no upload token from the server"))), 10_000);
+      const timeout = setTimeout(() => done(() => reject(new Error(t("client.uploadNoToken")))), 10_000);
       const done = (settle: () => void) => {
         clearTimeout(timeout);
         tokenWaiter = null;
@@ -403,7 +404,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     request: (action: ManageAction) => {
       const confirms = confirmsManage(action);
       if (confirms) return wait({ via: "text", confirms }, () => ws.send(manageRequest(action)));
-      if (ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error("Not connected"));
+      if (ws.readyState !== WebSocket.OPEN) return Promise.reject(new Error(t("client.notConnected")));
       ws.send(manageRequest(action));
       return Promise.resolve();
     },
@@ -533,16 +534,16 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       poll?: PollBody,
     ) =>
       new Promise<void>((resolve, reject) => {
-        if (ws.readyState !== WebSocket.OPEN) return reject(new Error("Not connected"));
+        if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
         const done = (error?: string) => {
           clearTimeout(timeout);
           confirming.delete(check);
           if (error === undefined) resolve();
           else reject(new Error(error));
         };
-        const timeout = setTimeout(() => done("No answer from the server"), SEND_ANSWER_MS);
+        const timeout = setTimeout(() => done(t("client.noAnswer")), SEND_ANSWER_MS);
         const check = (ev: ServerEvent | null) => {
-          const a = ev ? sendAnswer(ev, nonce, uploads[0]?.key) : { error: "Not connected" };
+          const a = ev ? sendAnswer(ev, nonce, uploads[0]?.key) : { error: t("client.notConnected") };
           if (a) done(a.error);
         };
         confirming.add(check);
@@ -554,12 +555,12 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     // with sendConfirmed; onFile: before each.
     uploadFiles: async (files: readonly File[], onFile?: (index: number) => void): Promise<string[]> => {
       const tokens = await uploadTokens(uploadTokenRequest(files.length), false);
-      if (tokens.length < files.length) throw new Error("too few upload tokens from the server");
+      if (tokens.length < files.length) throw new Error(t("client.uploadNoToken"));
       const keys = [];
       for (const [i, file] of files.entries()) {
         onFile?.(i);
         const body = await sendFile("/api/upload", file, tokens[i]!);
-        if (!body.key) throw new Error("upload failed");
+        if (!body.key) throw new Error(t("client.uploadFailed"));
         keys.push(body.key);
       }
       return keys;

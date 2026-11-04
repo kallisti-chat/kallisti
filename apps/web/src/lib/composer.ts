@@ -1,6 +1,7 @@
 import { sameFiles, type Pending } from "./pendingFiles";
 import { fileKey } from "./textChannels";
 import type { View } from "./place";
+import { i18n, t } from "./i18n.svelte";
 
 // The message box of a chat (see ChatPane).
 
@@ -42,9 +43,14 @@ export const refusedDraft = (draft: string, text: string) => (draft.trim() ? dra
 
 // A file over the server's limit (none known: the server decides) is
 // refused before it is sent.
-const mb = (bytes: number) => `${+(bytes / 1024 / 1024).toFixed(1)} MB`;
-export const tooLarge = (size: number, max: number | undefined) =>
-  max && size > max ? `The file is too large (at most ${mb(max)}).` : null;
+const mb = (bytes: number) =>
+  new Intl.NumberFormat(i18n.locale, { style: "unit", unit: "megabyte", maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
+// The limit (as text) when the file is over it.
+const over = (size: number, max: number | undefined) => (max && size > max ? mb(max) : null);
+export const tooLarge = (size: number, max: number | undefined) => {
+  const limit = over(size, max);
+  return limit ? t("chat.fileTooLarge", { max: limit }) : null;
+};
 // A file to upload with a message (spoiler: in its name, see lib/media);
 // its description (alt text) has at most MAX_DESCRIPTION characters, as
 // on the server.
@@ -58,19 +64,19 @@ export const MAX_DESCRIPTION = 1024;
 export const addFiles = (waiting: readonly Pending[], picked: readonly File[], max: number, sizeMax: number | undefined) => {
   const notes: string[] = [];
   const fits = picked.filter((file) => {
-    const big = tooLarge(file.size, sizeMax);
-    if (big) notes.push(`${file.name}: ${big[0]!.toLowerCase()}${big.slice(1)}`);
-    return !big;
+    const limit = over(file.size, sizeMax);
+    if (limit) notes.push(t("chat.namedFileTooLarge", { name: file.name, max: limit }));
+    return !limit;
   });
   const files = [...(max === 1 && fits.length ? [] : waiting), ...fits.map((file) => ({ file, spoiler: false }))];
-  if (files.length > max && max > 1) notes.push(max === 1 ? "One file per message on this server." : `At most ${max} files per message.`);
+  if (files.length > max && max > 1) notes.push(max === 1 ? t("chat.oneFilePerMessage") : t("chat.filesPerMessageMax", { count: max }));
   const kept = files.slice(0, max);
   return { files: kept, note: notes.join(" ") || null, changed: !sameFiles(kept.map((p) => p.file), waiting.map((p) => p.file)) };
 };
 // The upload button's tooltip, with the limit if known.
 export const uploadTitle = (max: number | undefined, count = 1) => {
-  const what = count > 1 ? "Upload files" : "Upload a file";
-  return max ? `${what} (up to ${mb(max)}${count > 1 ? " each" : ""})` : what;
+  if (!max) return t(count > 1 ? "chat.uploadFiles" : "chat.uploadFile");
+  return t(count > 1 ? "chat.uploadFilesUpToEach" : "chat.uploadFileUpTo", { size: mb(max) });
 };
 
 // The open chat, for its draft: channels by id (voice channel names

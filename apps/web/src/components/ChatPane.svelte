@@ -72,6 +72,9 @@
   import Avatar from "./Avatar.svelte";
   import EmojiMenu from "./EmojiMenu.svelte";
   import Icon from "./Icon.svelte";
+  import { around } from "../lib/i18n";
+  import { i18n, t } from "../lib/i18n.svelte";
+  import type { Key } from "../i18n/en";
 
   let {
     title,
@@ -342,7 +345,7 @@
   // loaded (all history loaded: the first loaded one).
   const mine = (m: ChatMessage | DisplayMessage) => m.actorName === me && !("webhook" in m && m.webhook);
   const unread = $derived(
-    unreadBar(messages, unreadAfter, mine, (at) => formatTimestamp(at, now, undefined, settings.value.timeFormat).replace(/^(Today|Yesterday)/, (w) => w.toLowerCase())),
+    unreadBar(messages, unreadAfter, mine, (at) => formatTimestamp(at, now, i18n.locale, settings.value.timeFormat, true)),
   );
   const lineAt = $derived(unread && (unread.loaded || !more) ? unread.first : null);
   const items = $derived(chatItems(messages, blockedUsers.has, lineAt));
@@ -461,7 +464,6 @@
   // Raw: kept files go to IndexedDB, which cannot store state proxies.
   let pending = $state.raw<Pending[]>([]);
   const pendingList = $derived(pending.map((p) => p.file));
-  const WAIT_UPLOAD = "Wait for the upload to finish";
   // Pictures' previews (object URLs) by file; those of files gone are let go.
   let previews = $state(new Map<File, string>());
   const showPending = (next: readonly Pending[] | undefined) => {
@@ -499,7 +501,7 @@
     const picked = Array.from(files ?? []);
     if (!picked.length) return;
     if (!canAttach(!!onUpload, uploading || !!sendStatus?.sending)) {
-      if (onUpload) notify(WAIT_UPLOAD);
+      if (onUpload) notify(t("chat.waitForUpload"));
       return;
     }
     const added = addFiles(pending, picked, maxUploads, uploadMax);
@@ -581,12 +583,12 @@
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
     const text = draft.trim();
-    if (slowWait > 0 && (text || pending.length)) return void notify(`Slow mode: wait ${waitText}`);
+    if (slowWait > 0 && (text || pending.length)) return void notify(t("chat.slowModeWait", { time: waitText }));
     if (pending.length && onUpload) {
       // The files wait while others are sent (see canAttach).
-      if (uploading || sendStatus?.sending) return void notify(WAIT_UPLOAD);
+      if (uploading || sendStatus?.sending) return void notify(t("chat.waitForUpload"));
       // More than the server takes (kept from another server or a reload).
-      if (pending.length > maxUploads) return void notify(`At most ${maxUploads} files per message: remove ${pending.length - maxUploads}.`);
+      if (pending.length > maxUploads) return void notify(t("chat.tooManyFiles", { max: maxUploads, count: pending.length - maxUploads }));
       const files = pending;
       const sent = { chat, caption: text, files: files.map((p) => p.file), reply: replying?.id };
       sentAway ||= away;
@@ -664,7 +666,13 @@
       () => (emojiFailedAt = typed.start),
     );
   });
-  const LIST_LABEL = { "@": "People", "#": "Channels", ":": "Emoji", from: "People", in: "Channels" } as const;
+  const LIST_LABEL: Record<"@" | "#" | ":" | "from" | "in", Key> = {
+    "@": "chat.suggestPeople",
+    "#": "chat.suggestChannels",
+    ":": "chat.suggestEmoji",
+    from: "chat.suggestPeople",
+    in: "chat.suggestChannels",
+  };
   // New text in the message box, with the caret at `at`.
   const setDraft = async (text: string, at: number) => {
     draft = text;
@@ -753,7 +761,7 @@
   const sendSticker = (s: Sticker) => {
     draftSticker = null;
     if (!onSticker) return;
-    if (slowWait > 0) return void notify(`Slow mode: wait ${waitText}`);
+    if (slowWait > 0) return void notify(t("chat.slowModeWait", { time: waitText }));
     const reply = replying?.id;
     onSticker(s.id, reply, replying ? !replying.ping : undefined).then(
       () => {
@@ -872,25 +880,25 @@
   const copy = (text: string, done: string) =>
     (navigator.clipboard?.writeText(text) ?? Promise.reject()).then(
       () => notify(done),
-      () => notify("Could not copy"),
+      () => notify(t("chat.copyFailed")),
     );
   const sheetItems = (m: ChatMessage | DisplayMessage): SheetItem[] => {
     const may = allowed(m);
     const done = (f: () => void) => () => ((sheetFor = null), f());
     const text = "source" in m && m.source ? m.source.text : htmlToText(m.text);
     return [
-      ...(may && canReply ? [{ label: "Reply", icon: "reply" as const, run: done(() => startReply(m)) }] : []),
-      ...(may && canThread(may.id) ? [{ label: "Create thread", icon: "thread" as const, run: done(() => onCreateThread?.(may.id, refsAsNames(text))) }] : []),
-      ...(text ? [{ label: "Copy text", icon: "copy" as const, run: done(() => copy(refsAsNames(text), "Text copied")) }] : []),
-      ...(may && linkTo ? [{ label: "Copy link", icon: "copy" as const, run: done(() => copy(linkTo(may.id), "Link copied")) }] : []),
-      ...(may && onMarkUnread ? [{ label: "Mark unread", icon: "unread" as const, run: done(() => onMarkUnread?.(may.id)) }] : []),
-      ...("source" in m && m.source ? [{ label: "Info", icon: "info" as const, run: done(() => showInfo(m)) }] : []),
+      ...(may && canReply ? [{ label: t("chat.reply"), icon: "reply" as const, run: done(() => startReply(m)) }] : []),
+      ...(may && canThread(may.id) ? [{ label: t("chat.createThread"), icon: "thread" as const, run: done(() => onCreateThread?.(may.id, refsAsNames(text))) }] : []),
+      ...(text ? [{ label: t("chat.copyText"), icon: "copy" as const, run: done(() => copy(refsAsNames(text), t("chat.textCopied"))) }] : []),
+      ...(may && linkTo ? [{ label: t("chat.copyLink"), icon: "copy" as const, run: done(() => copy(linkTo(may.id), t("chat.linkCopied"))) }] : []),
+      ...(may && onMarkUnread ? [{ label: t("chat.markUnread"), icon: "unread" as const, run: done(() => onMarkUnread?.(may.id)) }] : []),
+      ...("source" in m && m.source ? [{ label: t("chat.info"), icon: "info" as const, run: done(() => showInfo(m)) }] : []),
       ...(may?.canPin
-        ? [{ label: may.pinned ? "Unpin message" : "Pin message", icon: "pin" as const, run: done(() => onPin?.(may.id, !may.pinned)) }]
+        ? [{ label: may.pinned ? t("chat.unpinMessage") : t("chat.pinMessage"), icon: "pin" as const, run: done(() => onPin?.(may.id, !may.pinned)) }]
         : []),
-      ...(may?.canEdit ? [{ label: "Edit message", icon: "edit" as const, run: done(() => void startEdit(m)) }] : []),
+      ...(may?.canEdit ? [{ label: t("chat.editMessage"), icon: "edit" as const, run: done(() => void startEdit(m)) }] : []),
       ...(may?.canDelete
-        ? [{ label: "Delete message", icon: "trash" as const, danger: true, confirm: "Delete this message?", run: done(() => onDelete?.(may.id)) }]
+        ? [{ label: t("chat.deleteMessage"), icon: "trash" as const, danger: true, confirm: t("chat.deleteConfirm"), run: done(() => onDelete?.(may.id)) }]
         : []),
     ];
   };
@@ -904,7 +912,7 @@
     picking = null;
     allEmoji = null;
     await tick();
-    inLine(id, '[aria-label="Add a reaction"]')?.focus();
+    inLine(id, ".react-button")?.focus();
   };
   const startConfirm = async (id: number) => {
     confirming = id;
@@ -1091,11 +1099,12 @@
       }}
     >
       <input
+        class="message-search"
         bind:this={searchInput}
         bind:value={searchText}
-        placeholder="Search"
-        aria-label="Search messages"
-        title="Filters: from:name, in:#channel"
+        placeholder={t("common.search")}
+        aria-label={t("chat.searchMessages")}
+        title={t("chat.searchFilters")}
         {...searchBox.aria}
         oninput={searchBox.update}
         onclick={searchBox.update}
@@ -1109,7 +1118,7 @@
       {#if searchBox.items.length}
         <Suggestions
           id="{listId}-search"
-          label={LIST_LABEL[searchBox.typed!.kind]}
+          label={t(LIST_LABEL[searchBox.typed!.kind])}
           items={searchBox.items}
           active={searchBox.active}
           onPick={searchBox.pick}
@@ -1120,11 +1129,11 @@
   {/snippet}
   <header>
     {#if parts.searchIcon && searching}
-      <button class="back" onclick={closeSearch} title="Close search" aria-label="Close search"><Icon name="back" size={22} /></button>
+      <button class="back" onclick={closeSearch} title={t("chat.closeSearch")} aria-label={t("chat.closeSearch")}><Icon name="back" size={22} /></button>
       <div class="search-wrap" inert={lost}>{@render searchForm()}</div>
     {:else}
     {#if onMenu}
-      <button class="menu" onclick={onMenu} aria-label="Channels" aria-expanded={menuOpen}>
+      <button class="menu channels-toggle" onclick={onMenu} aria-label={t("chat.channelsMenu")} aria-expanded={menuOpen}>
         <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
@@ -1137,7 +1146,7 @@
     {/if}
     {#if hasDetails}
       <h1 class="ellipsis">
-        <button class="title" onclick={() => (detailsOpen = true)} aria-haspopup="dialog" aria-expanded={detailsOpen} title="Channel details"
+        <button class="title" onclick={() => (detailsOpen = true)} aria-haspopup="dialog" aria-expanded={detailsOpen} title={t("chat.channelDetails")}
           ><span class="ellipsis">{title}</span><Icon name="chevron" size={16} /></button
         >
       </h1>
@@ -1153,15 +1162,15 @@
         {@render searchForm()}
       {/if}
       {#if parts.searchIcon}
-        <button bind:this={searchOpener} onclick={openSearch} title="Search" aria-label="Search messages"><Icon name="search" size={22} /></button>
+        <button bind:this={searchOpener} onclick={openSearch} title={t("common.search")} aria-label={t("chat.searchMessages")}><Icon name="search" size={22} /></button>
       {/if}
       {#if parts.threads}
-        <button class:on={threadsOpen} onclick={onThreads} aria-pressed={threadsOpen} title="Threads" aria-label="Threads">
+        <button class:on={threadsOpen} onclick={onThreads} aria-pressed={threadsOpen} title={t("chat.threads")} aria-label={t("chat.threads")}>
           <Icon name="thread" size={20} />
         </button>
       {/if}
       {#if parts.pins}
-        <button class:on={pinsOpen} onclick={onPins} aria-pressed={pinsOpen} title="Pinned messages" aria-label="Pinned messages">
+        <button class:on={pinsOpen} onclick={onPins} aria-pressed={pinsOpen} title={t("chat.pinnedMessages")} aria-label={t("chat.pinnedMessages")}>
           <Icon name="pin" size={20} />
         </button>
       {/if}
@@ -1171,15 +1180,15 @@
           class:on={membersOpen}
           onclick={onToggleMembers}
           aria-pressed={membersOpen}
-          title={membersOpen ? "Hide member list" : "Show member list"}
-          aria-label="Member list"
+          title={membersOpen ? t("chat.hideMemberList") : t("chat.showMemberList")}
+          aria-label={t("chat.memberList")}
           class="members-toggle"
         >
           <Icon name="members" size={22} />
         </button>
       {/if}
       {#if onClose}
-        <button onclick={onClose} title="Close conversation" aria-label="Close conversation">
+        <button onclick={onClose} title={t("chat.closeConversation")} aria-label={t("chat.closeConversation")}>
           <span class="x" aria-hidden="true">×</span>
         </button>
       {/if}
@@ -1192,8 +1201,8 @@
     <!-- Over the top of the list (the anchor takes no height). -->
     <div class="unread-anchor">
       <div class="unread-bar" role="status">
-        <button type="button" class="unread-jump" onclick={() => (seekUnread = true)}>{unread.text}<span>Jump</span></button>
-        {#if onMarkRead}<button type="button" onclick={onMarkRead}>Mark as read</button>{/if}
+        <button type="button" class="unread-jump" onclick={() => (seekUnread = true)}>{unread.text}<span>{t("chat.unreadJump")}</span></button>
+        {#if onMarkRead}<button type="button" onclick={onMarkRead}>{t("chat.markAsRead")}</button>{/if}
       </div>
     </div>
   {/if}
@@ -1227,7 +1236,7 @@
       const opened = href && !e.ctrlKey && !e.metaKey && !e.shiftKey ? onLink?.(href) : null;
       if (opened) {
         e.preventDefault();
-        if (opened === "unavailable") notify("You cannot open this message here");
+        if (opened === "unavailable") notify(t("chat.cannotOpenMessage"));
         return;
       }
       const link = (e.target as Element).closest<HTMLElement>("a[data-channel]");
@@ -1239,7 +1248,7 @@
     {#if more}
       <!-- The button: for the keyboard (shown when it has the focus). -->
       <div class="older">
-        {#if loadingOlder}Loading older messages…{:else}<button onclick={onLoadOlder}>Load older messages</button>{/if}
+        {#if loadingOlder}{t("chat.loadingOlder")}{:else}<button onclick={onLoadOlder}>{t("chat.loadOlder")}</button>{/if}
       </div>
     {:else if intro}
       <div class="intro">{@render intro()}</div>
@@ -1248,17 +1257,16 @@
       <div class="intro-icon" aria-hidden="true">
         {#if kind === "dm"}@{:else}<Icon name={kind === "text" ? "hash" : "speaker"} size={36} />{/if}
       </div>
-      <h2>{kind === "dm" ? title : `Welcome to ${target}!`}</h2>
+      <h2>{kind === "dm" ? title : t("chat.welcomeTo", { target })}</h2>
       <p>
         {#if kind === "dm"}
-          This is the start of your conversation with {title}.{stored ? "" : " Private messages are not stored."}
+          {stored ? t("chat.dmStart", { name: title }) : t("chat.dmStartNotStored", { name: title })}
         {:else if kind === "text"}
-          This is the start of the {target} channel.
+          {t("chat.textChannelStart", { target })}
         {:else if stored}
-          This is the start of the {title} voice channel's chat.
+          {t("chat.voiceChatStart", { name: title })}
         {:else}
-          This is the start of the {title} voice channel's chat. These messages are not stored: you
-          only see what was sent while you were here.
+          {t("chat.voiceChatStartNotStored", { name: title })}
         {/if}
       </p>
       {#if welcomeText}
@@ -1270,9 +1278,9 @@
     <ol class="messages">
       {#each items as item (itemKey(item))}
         {#if item.kind === "day"}
-          <li class="divider" role="separator"><span>{formatDay(item.at)}</span></li>
+          <li class="divider" role="separator"><span>{formatDay(item.at, i18n.locale)}</span></li>
         {:else if item.kind === "new"}
-          <li class="new-line" role="separator" aria-label="New messages"><span>New</span></li>
+          <li class="new-line" role="separator" aria-label={t("chat.newMessagesLine")}><span>{t("chat.newLine")}</span></li>
         {:else if item.kind === "group"}
           {@render lines(item.group)}
         {:else if item.groups.some((g) => unblocked.has(groupKey(g)))}
@@ -1281,8 +1289,8 @@
           {@const n = item.groups.reduce((a, g) => a + g.messages.length, 0)}
           {@const users = new Set(item.groups.map((g) => g.actorName)).size}
           <li class="blocked-line">
-            {n === 1 ? "A message" : `${n} messages`} from {users === 1 ? "a blocked user" : "blocked users"}.
-            <button type="button" onclick={() => unblock(item.groups)}>Show</button>
+            {t(users === 1 ? "chat.blockedMessagesOneUser" : "chat.blockedMessagesUsers", { count: n })}
+            <button type="button" onclick={() => unblock(item.groups)}>{t("chat.showBlocked")}</button>
           </li>
         {/if}
       {/each}
@@ -1304,16 +1312,16 @@
       onlostpointercapture={holdTalk.release}
       oncontextmenu={(e) => e.preventDefault()}
     >
-      {talking ? "Talking…" : "Hold to talk"}
+      {talking ? t("chat.talking") : t("chat.holdToTalk")}
     </button>
   {/if}
   <form class="send" inert={lost} onsubmit={submit}>
     {#if away}
       <div class="present">
         <span
-          >{sentAway ? "Message sent" : newCount ? `${newCount} new ${newCount === 1 ? "message" : "messages"}` : "You are viewing older messages"}</span
+          >{sentAway ? t("chat.messageSent") : newCount ? t("chat.newMessages", { count: newCount }) : t("chat.viewingOlder")}</span
         >
-        <button type="button" onclick={toPresent}>{sentAway ? "Jump to your message" : "Jump to present"}</button>
+        <button type="button" onclick={toPresent}>{sentAway ? t("chat.jumpToYourMessage") : t("chat.jumpToPresent")}</button>
       </div>
     {/if}
     {#if error}
@@ -1331,10 +1339,10 @@
         <div class="pending">
           {#if sendStatus}
             <span class="pending-status ellipsis" class:failed={!sendStatus.sending} role="status"
-              >{sendStatus.sending ? (uploadStep ?? "Sending…") : `Not sent: ${sendStatus.error}`}</span
+              >{sendStatus.sending ? (uploadStep ?? t("chat.sending")) : t("chat.notSent", { error: sendStatus.error })}</span
             >
           {/if}
-          <ul class="pending-files" aria-label="Files to send">
+          <ul class="pending-files" aria-label={t("chat.filesToSend")}>
             {#each pending as p, i (p.file)}
               <li class="pending-file">
                 {#if previews.has(p.file)}
@@ -1345,15 +1353,15 @@
                 <span class="pending-actions">
                   {#if maxUploads > 1}
                     <button type="button" class="pending-spoiler" aria-pressed={!!p.description} aria-expanded={describing === p.file}
-                      disabled={sendStatus?.sending} aria-label="Description of {p.file.name}" title="Description (alt text)"
-                      onclick={() => (describing = describing === p.file ? null : p.file)}>Alt</button
+                      disabled={sendStatus?.sending} aria-label={t("chat.fileDescriptionOf", { name: p.file.name })} title={t("chat.fileDescriptionTitle")}
+                      onclick={() => (describing = describing === p.file ? null : p.file)}>{t("chat.altButton")}</button
                     >
                   {/if}
                   <button type="button" class="pending-spoiler" aria-pressed={p.spoiler} disabled={sendStatus?.sending}
-                    aria-label="Spoiler {p.file.name}" onclick={() => togglePendingSpoiler(i)}>Spoiler</button
+                    aria-label={t("chat.spoilerFile", { name: p.file.name })} onclick={() => togglePendingSpoiler(i)}>{t("chat.spoiler")}</button
                   >
                   <button type="button" class="pending-cancel" disabled={sendStatus?.sending} onclick={() => removePending(i)}
-                    aria-label="Remove {p.file.name}">×</button
+                    aria-label={t("chat.removeFile", { name: p.file.name })}>×</button
                   >
                 </span>
               </li>
@@ -1362,7 +1370,7 @@
           {#each pending as p, i (p.file)}
             {#if describing === p.file}
               <label class="pending-description">
-                <span>Description of {p.file.name} (alt text)</span>
+                <span>{t("chat.fileDescriptionLabel", { name: p.file.name })}</span>
                 <!-- Kept on change, not on each key: the files go to IndexedDB with it. -->
                 <textarea
                   rows="2"
@@ -1387,17 +1395,18 @@
         </div>
       {/if}
       {#if replying}
+        {@const [before, after] = around(t("chat.replyingTo"), "name")}
         <div class="replying">
-          <span class="ellipsis">Replying to <strong>{replying.author}</strong></span>
+          <span class="ellipsis">{before}<strong>{replying.author}</strong>{after}</span>
           {#if !replying.webhook}<button
             type="button"
             class="ping"
             class:off={!replying.ping}
             aria-pressed={replying.ping}
-            title={replying.ping ? "The author gets a mention" : "The author gets no mention"}
-            onclick={() => replying && (replying.ping = !replying.ping)}>@ {replying.ping ? "On" : "Off"}</button
+            title={replying.ping ? t("chat.replyPingOn") : t("chat.replyPingOff")}
+            onclick={() => replying && (replying.ping = !replying.ping)}>@ {replying.ping ? t("common.on") : t("common.off")}</button
           >{/if}
-          <button type="button" aria-label="Cancel reply" onclick={() => (replying = null)}>×</button>
+          <button type="button" aria-label={t("chat.cancelReply")} onclick={() => (replying = null)}>×</button>
         </div>
       {/if}
       <div class="composer" class:disabled={!onSend || cannotWrite}>
@@ -1406,8 +1415,8 @@
           class="attach"
           class:busy={uploading}
           bind:this={plusButton}
-          title={uploading ? "Uploading…" : onUpload ? uploadTitle(uploadMax, maxUploads) : "Uploads work in text channels and stored voice channel chats"}
-          aria-label={pollsHere ? "Upload a file or create a poll" : "Upload a file"}
+          title={uploading ? t("chat.uploading") : onUpload ? uploadTitle(uploadMax, maxUploads) : t("chat.uploadsWhere")}
+          aria-label={pollsHere ? t("chat.uploadOrPoll") : t("chat.uploadFile")}
           aria-expanded={pollsHere ? plusMenu : undefined}
           disabled={!pollsHere && !canAttach(!!onUpload, uploading)}
           onclick={() => (pollsHere ? (plusMenu = !plusMenu) : filePicker?.click())}
@@ -1429,9 +1438,9 @@
             }}
           >
             <button type="button" disabled={!canAttach(!!onUpload, uploading)} onclick={() => (closePlusMenu(), filePicker?.click())}>
-              <Icon name="plus" size={16} /> Upload a file
+              <Icon name="plus" size={16} /> {t("chat.uploadFile")}
             </button>
-            <button type="button" onclick={() => (closePlusMenu(), (pollForm = true))}>📊 Create a poll</button>
+            <button type="button" onclick={() => (closePlusMenu(), (pollForm = true))}>📊 {t("chat.createPoll")}</button>
           </div>
         {/if}
         <input
@@ -1445,9 +1454,9 @@
             e.currentTarget.value = "";
           }}
         />
-        <span class="sr-only" role="status">{uploading ? "Uploading…" : ""}</span>
+        <span class="sr-only" role="status">{uploading ? t("chat.uploading") : ""}</span>
         {#if box.items.length}
-          <Suggestions id={listId} label={LIST_LABEL[box.typed!.kind]} items={box.items} active={box.active} onPick={box.pick} />
+          <Suggestions id={listId} label={t(LIST_LABEL[box.typed!.kind])} items={box.items} active={box.active} onPick={box.pick} />
         {/if}
         <textarea
           rows="1"
@@ -1482,34 +1491,34 @@
           }}
           {...box.aria}
           bind:value={draft}
-          placeholder={cannotWrite ?? (pending.length ? "Add a caption (optional), Enter to send" : onSend ? `Message ${target}` : `${title} left the server`)}
+          placeholder={cannotWrite ?? (pending.length ? t("chat.captionPlaceholder") : onSend ? t("chat.messagePlaceholder", { target }) : t("chat.userLeft", { name: title }))}
           disabled={!onSend || !!cannotWrite}
-          aria-label="Message"
+          aria-label={t("chat.messageBox")}
         ></textarea>
         {#if slowWait > 0}
-          <span class="slow" role="timer" title="Slow mode: you can send again then">{waitText}</span>
+          <span class="slow" role="timer" title={t("chat.slowModeTimer")}>{waitText}</span>
         {/if}
         {#if onSend}
           <button
             type="button"
             class="emoji-button"
-            aria-label="Add an emoji"
-            title="Emoji"
+            aria-label={t("chat.addEmoji")}
+            title={t("chat.emoji")}
             onclick={(e) => (draftEmoji = e.currentTarget.getBoundingClientRect())}><Emoji text="🙂" /></button
           >
           {#if onSticker && stickers.length}
             <button
               type="button"
               class="emoji-button sticker-button"
-              aria-label="Send a sticker"
-              title="Stickers"
+              aria-label={t("chat.sendSticker")}
+              title={t("chat.stickers")}
               onclick={(e) => (draftSticker = e.currentTarget.getBoundingClientRect())}><Icon name="sticker" size={24} /></button
             >
           {/if}
           <!-- Touch screens: a send button (Enter is the only other way).
                The press keeps the keyboard open. -->
           {#if draft.trim() || pending.length}
-            <button type="submit" class="send-button" aria-label="Send" title="Send" onpointerdown={(e) => e.preventDefault()}>
+            <button type="submit" class="send-button" aria-label={t("common.send")} title={t("common.send")} onpointerdown={(e) => e.preventDefault()}>
               <Icon name="send" size={20} />
             </button>
           {/if}
@@ -1561,10 +1570,10 @@
   {@const m = allEmojiFor}
   <EmojiPicker
     {anchor}
-    label="Add a reaction"
+    label={t("chat.addReaction")}
     selected={(emoji) => mineOf(m, emoji)}
     onPick={(emoji) => react(m, id, emoji)}
-    onClose={() => ((allEmoji = null), inLine(id, '[aria-label="More emoji"]')?.focus())}
+    onClose={() => ((allEmoji = null), inLine(id, ".more-emoji")?.focus())}
   />
 {/if}
 {#if reactionsFor && reactionsMessage?.reactions?.length}
@@ -1578,8 +1587,8 @@
 {/if}
 {#if infoMessage}
   <MessageInfo
-    author={infoMessage.actorName ?? "the server"}
-    rows={infoRows({ at: infoMessage.at, edited: infoMessage.edited, pinned: infoMessage.pinned }, undefined, settings.value.timeFormat)}
+    author={infoMessage.actorName ?? t("chat.theServer")}
+    rows={infoRows({ at: infoMessage.at, edited: infoMessage.edited, pinned: infoMessage.pinned }, i18n.locale, settings.value.timeFormat)}
     reactions={infoMessage.reactions ?? []}
     onClose={closeInfo}
   />
@@ -1617,21 +1626,21 @@
         </div>
         <div class="body">
           <div class="meta">
-            <span class="author">{#if group.actorName}<UserName name={group.actorName} />{:else}Server{/if}</span>
+            <span class="author">{#if group.actorName}<UserName name={group.actorName} />{:else}{t("chat.serverAuthor")}{/if}</span>
             {#if "verified" in m && m.verified}
-              <span class="verified" title="Registered on the server">✓<span class="sr-only">registered</span></span>
+              <span class="verified" title={t("chat.registeredTitle")}>✓<span class="sr-only">{t("chat.registered")}</span></span>
             {/if}
             {#if "webhook" in m && m.webhook}
               <!-- Posted from outside (see lib/webhooks): the name may be anyone's. -->
-              <span class="app-tag" title="Posted by a webhook">App</span>
+              <span class="app-tag" title={t("chat.webhookTitle")}>{t("chat.appTag")}</span>
             {/if}
-            <time datetime={new Date(m.at).toISOString()}>{formatTimestamp(m.at, now, undefined, settings.value.timeFormat)}</time>
+            <time datetime={new Date(m.at).toISOString()}>{formatTimestamp(m.at, now, i18n.locale, settings.value.timeFormat)}</time>
           </div>
           {@render body(m)}
         </div>
       {:else}
         <div class="gutter">
-          <time class="hover-time" datetime={new Date(m.at).toISOString()}>{formatTime(m.at, undefined, settings.value.timeFormat)}</time>
+          <time class="hover-time" datetime={new Date(m.at).toISOString()}>{formatTime(m.at, i18n.locale, settings.value.timeFormat)}</time>
         </div>
         <div class="body">
           {@render body(m)}
@@ -1646,9 +1655,9 @@
   {#if "reply" in m && m.reply}
     {@const quote = m.reply}
     <button type="button" class="quote" onclick={() => quote.author && (seeking = quote.id)}>
-      {#if blockedUsers.has(quote.author)}<em>A message from a blocked user.</em>
+      {#if blockedUsers.has(quote.author)}<em>{t("chat.quoteBlocked")}</em>
       {:else if quote.author}<strong>{quote.author}</strong> <span class="ellipsis">{previewText(quote.text)}</span>
-      {:else}<em>The original message was deleted.</em>{/if}
+      {:else}<em>{t("chat.quoteDeleted")}</em>{/if}
     </button>
   {/if}
   {#if "source" in m && m.source && editing?.id === m.source.id}
@@ -1658,7 +1667,7 @@
         bind:this={editInput}
         bind:value={editing.text}
         use:autosize={editing.text}
-        aria-label="Edit message"
+        aria-label={t("chat.editMessage")}
         onkeydown={(e) => {
           if (e.isComposing || e.keyCode === 229) return;
           if (e.key === "Enter" && !e.shiftKey) {
@@ -1672,17 +1681,17 @@
       ></textarea>
       <!-- Servers before several files cannot take files off. -->
       {#if editing.files.length && maxUploads > 1}
-        <ul class="edit-files" aria-label="Files">
+        <ul class="edit-files" aria-label={t("chat.editFiles")}>
           {#each editing.files as f (f.url)}
             {@const gone = editing.removed.includes(f.url)}
             <li class:gone>
               <span class="ellipsis">{f.name}</span>
-              <button type="button" onclick={() => toggleRemoved(f.url)} aria-label="{gone ? 'Keep' : 'Remove'} {f.name}">{gone ? "Undo" : "×"}</button>
+              <button type="button" onclick={() => toggleRemoved(f.url)} aria-label={gone ? t("chat.keepFile", { name: f.name }) : t("chat.removeFile", { name: f.name })}>{gone ? t("chat.undoRemove") : "×"}</button>
             </li>
           {/each}
         </ul>
       {/if}
-      <span class="hint">Escape to cancel, Enter to save, Shift+Enter for a new line</span>
+      <span class="hint">{t("chat.editHint")}</span>
     </form>
   {:else if "poll" in m && m.poll && "source" in m && m.source}
     {@const id = m.source.id}
@@ -1723,9 +1732,9 @@
       }}
     >
       {@html safe(highlightMentions(m.text, me, allOf(m), knownNames), emojiImages.ok, custom)}
-      {#if "edited" in m && m.edited}<span class="edited" title={new Date(m.edited).toLocaleString()}>(edited)</span>{/if}
+      {#if "edited" in m && m.edited}<span class="edited" title={new Date(m.edited).toLocaleString(i18n.locale)}>{t("chat.edited")}</span>{/if}
       <!-- Styled as the edited mark. -->
-      {#if "pinned" in m && m.pinned}<span class="edited">(pinned)</span>{/if}
+      {#if "pinned" in m && m.pinned}<span class="edited">{t("chat.pinned")}</span>{/if}
     </div>
     {#if long}
       <button
@@ -1733,8 +1742,8 @@
         class="more"
         aria-expanded={open}
         aria-controls="{listId}-{key}"
-        aria-label={open ? undefined : "Show more of the message"}
-        onclick={(e) => toggleLong(key, e.currentTarget.closest("li"))}>{open ? "Show less" : "Show more"}</button
+        aria-label={open ? undefined : t("chat.showMoreLabel")}
+        onclick={(e) => toggleLong(key, e.currentTarget.closest("li"))}>{open ? t("chat.showLess") : t("chat.showMore")}</button
       >
     {/if}
   {/if}
@@ -1761,7 +1770,7 @@
           class="reaction"
           class:mine
           aria-pressed={mine}
-          aria-label="{refsAsNames(r.emoji)} {r.users.length}, from {r.users.join(', ')}"
+          aria-label={t("chat.reactionLabel", { emoji: refsAsNames(r.emoji), count: r.users.length, names: r.users.join(", ") })}
           title={r.users.join(", ")}
           aria-disabled={!canReact}
           data-own-press
@@ -1780,11 +1789,11 @@
     </div>
   {/if}
   {#if "source" in m && m.source && threadOf?.(m.source.id)}
-    {@const t = threadOf(m.source.id)!}
-    <button type="button" class="thread-box" onclick={() => onOpenThread?.(t)}>
+    {@const thread = threadOf(m.source.id)!}
+    <button type="button" class="thread-box" onclick={() => onOpenThread?.(thread)}>
       <Icon name="thread" size={16} />
-      <strong class="ellipsis">{t.name}</strong>
-      <span class="ellipsis">{t.archived ? "Archived · " : ""}{replyBoxText(t, now)}</span>
+      <strong class="ellipsis">{thread.name}</strong>
+      <span class="ellipsis">{thread.archived ? t("chat.threadArchived", { info: replyBoxText(thread, now) }) : replyBoxText(thread, now)}</span>
     </button>
   {/if}
 {/snippet}
@@ -1811,59 +1820,60 @@
               type="button"
               class="emoji"
               class:mine={mineOf(m, emoji)}
-              aria-label="React with {refsAsNames(emoji)}"
+              aria-label={t("chat.reactWith", { emoji: refsAsNames(emoji) })}
               onclick={() => react(m, id, emoji)}><Emoji text={emoji} /></button
             >
           {/each}
           <button
             type="button"
-            aria-label="More emoji"
-            title="More emoji"
+            class="more-emoji"
+            aria-label={t("chat.moreEmoji")}
+            title={t("chat.moreEmoji")}
             onclick={(e) => (allEmoji = { id, anchor: e.currentTarget.getBoundingClientRect() })}>+</button
           >
-          <button type="button" aria-label="Close" onclick={closePicker}>×</button>
+          <button type="button" aria-label={t("common.close")} onclick={closePicker}>×</button>
           {#each quick.second as emoji (emoji)}
             <button
               type="button"
               class="emoji"
               class:mine={mineOf(m, emoji)}
-              aria-label="React with {refsAsNames(emoji)}"
+              aria-label={t("chat.reactWith", { emoji: refsAsNames(emoji) })}
               onclick={() => react(m, id, emoji)}><Emoji text={emoji} /></button
             >
           {/each}
         {:else if confirming === id}
-          <span>Delete this message?</span>
-          <button type="button" class="danger" onclick={() => (onDelete?.(id), endConfirm())}>Delete</button>
-          <button type="button" bind:this={cancelButton} onclick={endConfirm}>Cancel</button>
+          <span>{t("chat.deleteConfirm")}</span>
+          <button type="button" class="danger" onclick={() => (onDelete?.(id), endConfirm())}>{t("common.delete")}</button>
+          <button type="button" bind:this={cancelButton} onclick={endConfirm}>{t("common.cancel")}</button>
         {:else}
           {#if canReact}
-            <button type="button" aria-label="Add a reaction" title="React" onclick={() => openPicker(id)}>React</button>
+            <button type="button" class="react-button" aria-label={t("chat.addReaction")} title={t("chat.react")} onclick={() => openPicker(id)}>{t("chat.react")}</button>
           {/if}
           {#if canReply}
-            <button type="button" aria-label="Reply" title="Reply" onclick={() => startReply(m)}>Reply</button>
+            <button type="button" aria-label={t("chat.reply")} title={t("chat.reply")} onclick={() => startReply(m)}>{t("chat.reply")}</button>
           {/if}
           {#if canThread(id)}
-            <button type="button" aria-label="Create thread" title="Create thread" onclick={() => onCreateThread?.(id, "source" in m && m.source ? refsAsNames(m.source.text) : "")}
-              >Thread</button
+            <button type="button" aria-label={t("chat.createThread")} title={t("chat.createThread")} onclick={() => onCreateThread?.(id, "source" in m && m.source ? refsAsNames(m.source.text) : "")}
+              >{t("chat.threadAction")}</button
             >
           {/if}
           {#if canPin}
-            <button type="button" aria-label={pinned ? "Unpin message" : "Pin message"} title={pinned ? "Unpin" : "Pin"} onclick={() => onPin?.(id, !pinned)}
-              >{pinned ? "Unpin" : "Pin"}</button
+            <button type="button" aria-label={pinned ? t("chat.unpinMessage") : t("chat.pinMessage")} title={pinned ? t("chat.unpin") : t("chat.pin")} onclick={() => onPin?.(id, !pinned)}
+              >{pinned ? t("chat.unpin") : t("chat.pin")}</button
             >
           {/if}
           {#if linkTo}
-            <button type="button" aria-label="Copy link to message" title="Copy link" onclick={() => copy(linkTo(id), "Link copied")}>Link</button>
+            <button type="button" aria-label={t("chat.copyLinkToMessage")} title={t("chat.copyLink")} onclick={() => copy(linkTo(id), t("chat.linkCopied"))}>{t("chat.linkAction")}</button>
           {/if}
           {#if onMarkUnread}
-            <button type="button" aria-label="Mark unread from here" title="Mark unread (Alt+click)" onclick={() => onMarkUnread?.(id)}>Unread</button>
+            <button type="button" aria-label={t("chat.markUnreadFromHere")} title={t("chat.markUnreadTitle")} onclick={() => onMarkUnread?.(id)}>{t("chat.unreadAction")}</button>
           {/if}
-          <button type="button" aria-label="Message info" title="Sent, edited, reactions" onclick={() => showInfo(m)}>Info</button>
+          <button type="button" aria-label={t("chat.messageInfo")} title={t("chat.messageInfoTitle")} onclick={() => showInfo(m)}>{t("chat.info")}</button>
           {#if canEdit}
-            <button type="button" aria-label="Edit message" title="Edit" onclick={() => startEdit(m)}>Edit</button>
+            <button type="button" aria-label={t("chat.editMessage")} title={t("common.edit")} onclick={() => startEdit(m)}>{t("common.edit")}</button>
           {/if}
           {#if canDelete}
-            <button type="button" aria-label="Delete message" title="Delete" onclick={() => startConfirm(id)}>Delete</button>
+            <button type="button" aria-label={t("chat.deleteMessage")} title={t("common.delete")} onclick={() => startConfirm(id)}>{t("common.delete")}</button>
           {/if}
         {/if}
       </div>
@@ -1924,14 +1934,14 @@
       {#each split.grid as upload, i (upload.url)}
         <div class="cell" class:wide={cells[i]!.cols === 6} class:tall={cells[i]!.rows > 1} style:grid-column="span {cells[i]!.cols}" style:grid-row="span {cells[i]!.rows}">
           {#if upload.spoiler && !shownFiles.has(upload.url)}
-            <button type="button" class="spoiler-file" aria-label="Spoiler, show the attachment" onclick={() => showHidden(upload)}>
+            <button type="button" class="spoiler-file" aria-label={t("chat.showSpoilerFile")} onclick={() => showHidden(upload)}>
               {@render picture(upload, "", true)}
-              <span>Spoiler</span>
+              <span>{t("chat.spoiler")}</span>
             </button>
           {:else}
             {@render imageLink(upload, split.grid, i)}
             {#if upload.spoiler}
-              <button type="button" class="rehide" onclick={() => hideAgain(upload)}>Hide</button>
+              <button type="button" class="rehide" onclick={() => hideAgain(upload)}>{t("chat.hideSpoiler")}</button>
             {/if}
           {/if}
         </div>
@@ -1941,15 +1951,15 @@
   {#each split.rest as upload (upload.url)}
     {@const view = attachmentView(upload, unplayable.has(upload.url))}
     {#if upload.spoiler && !shownFiles.has(upload.url)}
-      <button type="button" class="spoiler-file" aria-label="Spoiler, show the attachment" onclick={() => showHidden(upload)}>
+      <button type="button" class="spoiler-file" aria-label={t("chat.showSpoilerFile")} onclick={() => showHidden(upload)}>
         {#if view === "image"}{@render picture(upload, "")}{/if}
-        <span>Spoiler</span>
+        <span>{t("chat.spoiler")}</span>
       </button>
     {:else if upload.spoiler && (view === "image" || view === "video")}
       <!-- A shown spoiler can be hidden again. -->
       <div class="unspoiled">
         {@render uploadView(upload)}
-        <button type="button" class="rehide" onclick={() => hideAgain(upload)}>Hide</button>
+        <button type="button" class="rehide" onclick={() => hideAgain(upload)}>{t("chat.hideSpoiler")}</button>
       </div>
     {:else}
       {@render uploadView(upload)}
@@ -1964,7 +1974,7 @@
     href={lightboxOf(upload).url}
     target="_blank"
     rel="noopener noreferrer"
-    aria-label="View {upload.description || upload.name}"
+    aria-label={t("chat.viewImage", { name: upload.description || upload.name })}
     onclick={(e) => {
       if (!opensLightbox(e)) return;
       e.preventDefault();

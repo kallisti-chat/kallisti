@@ -4,6 +4,8 @@
 // them in the members dialog; the token is shown once (only its hash is
 // kept).
 
+import { t } from "./i18n.svelte";
+
 export type Invite = { id: number; creator: string; created: number; expires?: number; maxUses?: number; uses: number };
 
 export const inviteLink = (origin: string, token: string) => `${origin}/invite/${token}`;
@@ -42,31 +44,30 @@ export const parseInviteLink = (url: string, origin: string): string | null => {
 };
 
 // Choices when making a link (0: no end, no limit); the defaults first.
+// The labels are getters: read where shown, in the language in use.
 export const expiryChoices = [
-  { seconds: 7 * 86400, label: "7 days" },
-  { seconds: 86400, label: "1 day" },
-  { seconds: 0, label: "Never" },
+  { seconds: 7 * 86400, get label() { return t("login.inviteExpiry7Days"); } },
+  { seconds: 86400, get label() { return t("login.inviteExpiry1Day"); } },
+  { seconds: 0, get label() { return t("login.inviteExpiryNever"); } },
 ] as const;
 export const useChoices = [
-  { uses: 0, label: "No limit" },
-  { uses: 1, label: "1 use" },
-  { uses: 5, label: "5 uses" },
-  { uses: 25, label: "25 uses" },
+  { uses: 0, get label() { return t("login.inviteNoLimit"); } },
+  { uses: 1, get label() { return t("login.inviteUses", { count: 1 }); } },
+  { uses: 5, get label() { return t("login.inviteUses", { count: 5 }); } },
+  { uses: 25, get label() { return t("login.inviteUses", { count: 25 }); } },
 ] as const;
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
 export const inviteUses = (i: { uses: number; maxUses?: number }) =>
-  i.maxUses ? `${i.uses} of ${plural(i.maxUses, "use")}` : plural(i.uses, "use");
+  i.maxUses ? t("login.inviteUsesOfMax", { uses: i.uses, count: i.maxUses }) : t("login.inviteUses", { count: i.uses });
 
 export const inviteExpiry = (expires: number | undefined, now: number) => {
-  if (expires === undefined) return "never ends";
+  if (expires === undefined) return t("login.inviteNeverEnds");
   const minutes = Math.floor((expires - now) / 60_000);
-  if (expires <= now) return "ended";
-  if (minutes < 1) return "ends in under a minute";
-  if (minutes < 60) return `ends in ${plural(minutes, "minute")}`;
-  if (minutes < 24 * 60) return `ends in ${plural(Math.floor(minutes / 60), "hour")}`;
-  return `ends in ${plural(Math.floor(minutes / (24 * 60)), "day")}`;
+  if (expires <= now) return t("login.inviteEnded");
+  if (minutes < 1) return t("login.inviteEndsSoon");
+  if (minutes < 60) return t("login.inviteEndsMinutes", { count: minutes });
+  if (minutes < 24 * 60) return t("login.inviteEndsHours", { count: Math.floor(minutes / 60) });
+  return t("login.inviteEndsDays", { count: Math.floor(minutes / (24 * 60)) });
 };
 
 // Where a redeemed link leads: its text channel, else the voice channel.

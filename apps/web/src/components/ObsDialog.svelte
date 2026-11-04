@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "../lib/i18n.svelte";
+  import { around } from "../lib/i18n";
   import type { AccountActions, StreamKey } from "../lib/accounts";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
@@ -40,49 +42,43 @@
       key = { enabled: true, exists: false };
       newKey = null;
     });
+  const steps = $derived(around(t("settings.obsSteps"), "url"));
+  const bFrames = $derived(around(t("settings.obsBFrames"), "option"));
+  const newKeyText = $derived(around(t("settings.obsNewKey"), "key"));
   const copy = (text: string) => void navigator.clipboard?.writeText(text).then(() => (copied = text));
 </script>
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="obs-title">
   <header>
-    <h2 id="obs-title">Stream from OBS</h2>
-    <button class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="obs-title">{t("settings.obsTitle")}</h2>
+    <button class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
-  {#if live}<p class="live" role="status">Your stream from OBS is live.</p>{/if}
+  {#if live}<p class="live" role="status">{t("settings.obsLive")}</p>{/if}
   <p>
-    OBS 30 or newer can stream into your voice channel: it shows like a screen share. Be connected here and in a voice
-    channel where you may speak. In OBS, Settings → Stream: Service "WHIP", Server
-    <code>{account.whipUrl}</code>
-    <button class="link" onclick={() => copy(account.whipUrl)}>{copied === account.whipUrl ? "Copied" : "Copy"}</button>,
-    Bearer Token: your stream key.
+    {steps[0]}<code>{account.whipUrl}</code>
+    <button class="link" onclick={() => copy(account.whipUrl)}>{copied === account.whipUrl ? t("common.copied") : t("common.copy")}</button>{steps[1]}
   </p>
-  <p>
-    Settings → Output (Advanced): H.264 video, keyframe interval 1 or 2 s, profile baseline or main, 1080p and 8 Mbit/s
-    at most.
-  </p>
-  <p>
-    No B-frames (we forward the video as it is; with them the picture breaks up or turns pink): with x264, type
-    <code>bframes=0</code> in "x264 Options"; with NVENC, QuickSync or AMF, set B-Frames to 0.
-  </p>
+  <p>{t("settings.obsOutput")}</p>
+  <p>{bFrames[0]}<code>bframes=0</code>{bFrames[1]}</p>
   {#if newKey}
     <p class="key">
-      Your stream key (shown only now): <code>{newKey}</code>
-      <button class="link" onclick={() => copy(newKey!)}>{copied === newKey ? "Copied" : "Copy"}</button>
+      {newKeyText[0]}<code>{newKey}</code>
+      <button class="link" onclick={() => copy(newKey!)}>{copied === newKey ? t("common.copied") : t("common.copy")}</button>{newKeyText[1]}
     </p>
   {/if}
   {#if note}<p class="warn" role="status">{note}</p>{/if}
   {#if key}
     <div class="buttons">
       <button class="secondary" disabled={busy} onclick={makeKey}>
-        {busyLabel(making.state, key.exists ? "Make a new key" : "Make a stream key", "Making…")}
+        {busyLabel(making.state, key.exists ? t("settings.obsMakeNewKey") : t("settings.obsMakeKey"), t("settings.obsMaking"))}
       </button>
       {#if key.exists}
-        <button class="secondary danger" disabled={busy} onclick={removeKey}>{busyLabel(removing.state, "Remove the key", "Removing…")}</button>
+        <button class="secondary danger" disabled={busy} onclick={removeKey}>{busyLabel(removing.state, t("settings.obsRemoveKey"), t("settings.removing"))}</button>
       {/if}
     </div>
     <SaveStatus save={making.state} done="" />
-    <SaveStatus save={removing.state} done="Removed" />
-    {#if key.exists}<p>A new key, removing it, a new password or "log out everywhere" stop the old key (and a stream that uses it).</p>{/if}
+    <SaveStatus save={removing.state} done={t("settings.obsRemoved")} />
+    {#if key.exists}<p>{t("settings.obsKeyHint")}</p>{/if}
   {/if}
 </dialog>
 

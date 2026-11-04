@@ -1,3 +1,4 @@
+import { t } from "./i18n.svelte";
 import { safeGet, safeSet } from "./storage";
 
 // Other Kallisti servers in the rail (several servers in one client): the
@@ -43,7 +44,7 @@ export const loadTokens = (storage: Storage | undefined): Tokens => {
     const entries = Object.entries(v?.tokens && typeof v.tokens === "object" ? v.tokens : {});
     return {
       owner: typeof v?.owner === "string" ? v.owner : "",
-      tokens: Object.fromEntries(entries.filter(([o, t]) => isOrigin(o) && isLogin(t)).map(([o, t]) => [o, { token: t.token, name: t.name, ...(t.unsaved === true && { unsaved: true as const }) }])),
+      tokens: Object.fromEntries(entries.filter(([o, l]) => isOrigin(o) && isLogin(l)).map(([o, l]) => [o, { token: l.token, name: l.name, ...(l.unsaved === true && { unsaved: true as const }) }])),
     };
   } catch {
     return { owner: "", tokens: {} };
@@ -65,7 +66,7 @@ const host = (url: URL) => url.hostname.replace(/\.$/, "");
 // every port of a host.
 export const serverOrigin = (input: string, home: string, homeCookie = true): { origin: string } | { error: string } => {
   const text = input.trim();
-  const invalid = { error: "Enter a server address, for example chat.example.org" };
+  const invalid = { error: t("login.addressInvalid") };
   let url: URL;
   try {
     url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `https://${text}`);
@@ -81,7 +82,7 @@ export const serverOrigin = (input: string, home: string, homeCookie = true): { 
     // No home origin to compare.
   }
   const homeOrigin = homeUrl && `${homeUrl.protocol}//${host(homeUrl)}${homeUrl.port ? `:${homeUrl.port}` : ""}`;
-  if (origin === homeOrigin) return { error: "This is your home server." };
-  if (homeCookie && homeUrl && host(homeUrl) === host(url)) return { error: "Another port of your home server's host cannot be added: it would see your login there." };
+  if (origin === homeOrigin) return { error: t("login.isHomeServer") };
+  if (homeCookie && homeUrl && host(homeUrl) === host(url)) return { error: t("login.homePort") };
   return { origin };
 };

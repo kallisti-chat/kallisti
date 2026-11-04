@@ -1,6 +1,8 @@
 // The desktop app (Tauri) connects through a local bridge in the app, to any
 // Mumble server, without the Kallisti server.
 
+import { t } from "./i18n.svelte";
+
 export type BridgeInfo = { port: number; secret: string };
 export type ServerAddress = { host: string; port: number };
 
@@ -92,9 +94,9 @@ export const hasBridge = bridgeCheck(getBridge);
 // The start screen's hint for the server address, and the note for an
 // address that is not a Kallisti server in an app without the bridge.
 export const serverHint = (bridge: boolean) =>
-  bridge ? "A Kallisti server, or any Mumble server (voice.example.org:64738)." : "The address of a Kallisti server (chat.example.org).";
+  t(bridge ? "client.serverHintBridge" : "client.serverHint");
 export const notKallisti = (address: string) =>
-  `${address} is not a Kallisti server, or it cannot be reached. This app connects to Kallisti servers only.`;
+  t("client.notKallisti", { address });
 
 type ShortcutApi = {
   register: (key: string, handler: (e: { state: "Pressed" | "Released" }) => void) => Promise<void>;

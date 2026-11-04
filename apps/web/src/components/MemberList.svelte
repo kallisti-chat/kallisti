@@ -4,12 +4,13 @@
   import type { UserStatus } from "../lib/presence";
   import type { User } from "@kallisti/protocol";
   import type { Peer } from "../lib/textChannels";
-  import { onlineRows, readerRow, withoutFriends, type OnlineMember, type ReaderGroup, type ReaderRow } from "../lib/members";
+  import { onlineRows, readerGroupLabel, readerRow, withoutFriends, type OnlineMember, type ReaderGroup, type ReaderRow } from "../lib/members";
   import type { FriendRow } from "../lib/friends";
   import Avatar from "./Avatar.svelte";
   import Badge from "./Badge.svelte";
   import Emoji from "./Emoji.svelte";
   import RoleTag from "./RoleTag.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   let {
     here,
@@ -92,10 +93,10 @@
     {#if onToggleGroup}
       <button class="group" aria-expanded={!shut(key)} onclick={() => onToggleGroup(key)}>
         <svg class="chevron" class:shut={shut(key)} width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        {title} — {count}
+        {t("sidebar.groupHeading", { title, count })}
       </button>
     {:else}
-      {title} — {count}
+      {t("sidebar.groupHeading", { title, count })}
     {/if}
   </h2>
 {/snippet}
@@ -127,12 +128,12 @@
 <!-- Friends: online ones first; where they are below the name. -->
 {#snippet friendRows()}
   {#if friends.length}
-    {@render heading("friends", "Friends", friends.length)}
+    {@render heading("friends", t("sidebar.friends"), friends.length)}
     {#if !shut("friends")}
-      <ul aria-label="Friends">
+      <ul aria-label={t("sidebar.friends")}>
         {#each friends as r (`${r.friend.origin} ${r.friend.user}`)}
           {@const elsewhere = r.friend.origin !== friendsHere}
-          {@const where = [elsewhere ? (r.server ?? new URL(r.friend.origin).host) : "", r.voice ? `in ${r.voice}` : ""].filter(Boolean).join(" · ")}
+          {@const where = [elsewhere ? (r.server ?? new URL(r.friend.origin).host) : "", r.voice ? t("sidebar.friendInVoice", { channel: r.voice }) : ""].filter(Boolean).join(" · ")}
           <li>
             <button class="hover-row" class:offline={!r.online} onclick={(e) => onFriend(r, e)} oncontextmenu={(e) => onFriend(r, e)}>
               <Avatar name={r.friend.name} size={32} status={r.online ? "online" : undefined} registered={!r.online} />
@@ -148,17 +149,17 @@
   {/if}
 {/snippet}
 
-<aside aria-label="Members" {inert}>
+<aside aria-label={t("sidebar.members")} {inert}>
   {@render friendRows()}
   {#if readers}
-    {#if voiceFirst}{@render rows("here", `In ${channelName}`, own(onlineRows(here, [])))}{/if}
+    {#if voiceFirst}{@render rows("here", t("sidebar.inChannel", { channel: channelName }), own(onlineRows(here, [])))}{/if}
     {#each readers as g (g.title)}
-      {@render rows(`readers ${g.title}`, g.title, own(g.rows))}
+      {@render rows(`readers ${g.title}`, readerGroupLabel(g.title), own(g.rows))}
     {/each}
   {:else}
-    {@render rows("here", `In ${channelName}`, own(onlineRows(here, [])))}
-    {@render rows("online", "Online", own(onlineRows(elsewhere, hidden)))}
-    {@render rows("offline", "Offline", own(offline.map((p) => ({ offline: p }))))}
+    {@render rows("here", t("sidebar.inChannel", { channel: channelName }), own(onlineRows(here, [])))}
+    {@render rows("online", t("sidebar.online"), own(onlineRows(elsewhere, hidden)))}
+    {@render rows("offline", t("sidebar.offline"), own(offline.map((p) => ({ offline: p }))))}
   {/if}
 </aside>
 

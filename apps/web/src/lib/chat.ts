@@ -1,4 +1,5 @@
 import type { ChatMessage } from "@kallisti/protocol";
+import { t } from "./i18n.svelte";
 
 export type MessageGroup = {
   actor: number | null;
@@ -89,11 +90,12 @@ export const formatDay = (at: number, locale?: string) =>
   new Date(at).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
 
 // "Today at 3:58 PM", "Yesterday at 9:05 AM", else "10/1/2026 9:05 AM".
-export const formatTimestamp = (at: number, now: number, locale?: string, clock: TimeFormat = "auto") => {
+// inline: in a sentence ("… since today at 3:58 PM").
+export const formatTimestamp = (at: number, now: number, locale?: string, clock: TimeFormat = "auto", inline = false) => {
   const time = formatTime(at, locale, clock);
-  if (sameDay(at, now)) return `Today at ${time}`;
-  if (sameDay(at, now - 86_400_000)) return `Yesterday at ${time}`;
-  return `${new Date(at).toLocaleDateString(locale)} ${time}`;
+  if (sameDay(at, now)) return t(inline ? "chat.todayAtInline" : "chat.todayAt", { time });
+  if (sameDay(at, now - 86_400_000)) return t(inline ? "chat.yesterdayAtInline" : "chat.yesterdayAt", { time });
+  return t("chat.dateAndTime", { date: new Date(at).toLocaleDateString(locale), time });
 };
 
 // Unread private messages per sender name: received minus read.

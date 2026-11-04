@@ -1,31 +1,33 @@
 <script lang="ts">
   import { MOD } from "../lib/switcher";
+  import type { Key } from "../i18n/en";
+  import { t } from "../lib/i18n.svelte";
 
   // Ctrl+/ (Cmd+/ on a Mac): the keyboard shortcuts.
   let { onClose }: { onClose: () => void } = $props();
 
   let dialog: HTMLDialogElement | undefined = $state();
   $effect(() => dialog?.showModal());
-  const keys: [string, string][] = [
-    [`${MOD}+K`, "Find a channel or a person"],
-    ["Alt+↑ / Alt+↓", "Channel above / below"],
-    ["Alt+Shift+↑ / ↓", "Unread channel above / below"],
-    ["↑", "Edit your last message (empty message box)"],
-    ["Shift+Enter", "New line in a message"],
-    ["Esc", "Cancel a reply or an edit, close a dialog"],
-    [`${MOD}+/`, "This list"],
+  const keys: [string, Key][] = [
+    [`${MOD}+K`, "client.shortcutSwitcher"],
+    ["Alt+↑ / Alt+↓", "client.shortcutChannelStep"],
+    ["Alt+Shift+↑ / ↓", "client.shortcutUnreadStep"],
+    ["↑", "client.shortcutEditLast"],
+    ["Shift+Enter", "client.shortcutNewLine"],
+    ["Esc", "client.shortcutEscape"],
+    [`${MOD}+/`, "client.shortcutThisList"],
   ];
 </script>
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="shortcuts-title">
   <header>
-    <h2 id="shortcuts-title">Keyboard shortcuts</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="shortcuts-title">{t("client.shortcutsTitle")}</h2>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
   <dl>
     {#each keys as [key, what] (key)}
       <dt><kbd>{key}</kbd></dt>
-      <dd>{what}</dd>
+      <dd>{t(what)}</dd>
     {/each}
   </dl>
 </dialog>

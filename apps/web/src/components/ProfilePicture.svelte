@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../lib/i18n.svelte";
   import { encodeAvatar } from "../lib/avatarEncode";
   import Avatar from "./Avatar.svelte";
 
@@ -21,7 +22,7 @@
     try {
       onSet(await encodeAvatar(file));
     } catch {
-      error = "Could not use this picture. Try a PNG, JPEG, GIF or WebP file.";
+      error = t("settings.pictureError");
     } finally {
       if (input) input.value = "";
     }
@@ -31,19 +32,19 @@
 <div class="profile">
   <Avatar {name} size={64} />
   <div class="actions">
-    <span class="label">Profile picture</span>
+    <span class="label">{t("settings.profilePicture")}</span>
     <div class="buttons">
       {#if registered}
         <button type="button" class="secondary" onclick={() => input?.click()}>
-          {hasPicture ? "Change picture" : "Choose picture"}
+          {hasPicture ? t("settings.changePicture") : t("settings.choosePicture")}
         </button>
       {/if}
       {#if hasPicture}
-        <button type="button" class="secondary" onclick={() => onSet(new Uint8Array())}>Remove</button>
+        <button type="button" class="secondary" onclick={() => onSet(new Uint8Array())}>{t("common.remove")}</button>
       {/if}
     </div>
     {#if error}<p class="hint warn" role="status">{error}</p>{/if}
-    {#if !registered}<p class="hint">Register an account to set a profile picture.</p>{/if}
+    {#if !registered}<p class="hint">{t("settings.pictureRegisterHint")}</p>{/if}
   </div>
   <input
     bind:this={input}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { AccountsApi } from "../lib/accounts";
+  import { t } from "../lib/i18n.svelte";
 
   // Another server asks who you are here (Kallisti as a login provider):
   // allowed once per site, later logins there go through at once.
@@ -30,20 +31,20 @@
 <div class="screen">
   <div class="card">
     {#if ask}
-      <h1>Log in to {host(ask.site)}</h1>
+      <h1>{t("login.logInTo", { host: host(ask.site) })}</h1>
+      <!-- The site and the name in bold, wherever the language puts them. -->
       <p class="sub">
-        <strong>{host(ask.site)}</strong> wants to know who you are on {serverName}. It sees your name,
-        <strong>{ask.account}</strong>, and nothing else.
+        {#each t("login.oauthAsk").split(/(\{site\}|\{server\}|\{account\})/) as part, i (i)}{#if part === "{site}"}<strong>{host(ask.site)}</strong>{:else if part === "{server}"}{serverName}{:else if part === "{account}"}<strong>{ask.account}</strong>{:else}{part}{/if}{/each}
       </p>
       {#if error}<p class="error" role="alert">{error}</p>{/if}
-      <button class="primary" disabled={busy} onclick={allow}>Allow</button>
-      <button class="link" disabled={busy} onclick={() => location.assign(ask!.deny)}>Cancel</button>
+      <button class="primary" disabled={busy} onclick={allow}>{t("login.allow")}</button>
+      <button class="link" disabled={busy} onclick={() => location.assign(ask!.deny)}>{t("common.cancel")}</button>
     {:else if error}
-      <h1>Cannot log in there</h1>
+      <h1>{t("login.cannotLogInThere")}</h1>
       <p class="error" role="alert">{error}</p>
-      <button class="link" onclick={() => location.assign("/")}>Back to {serverName}</button>
+      <button class="link" onclick={() => location.assign("/")}>{t("login.backTo", { server: serverName })}</button>
     {:else}
-      <p class="sub" aria-busy="true">Loading…</p>
+      <p class="sub" aria-busy="true">{t("common.loading")}</p>
     {/if}
   </div>
 </div>

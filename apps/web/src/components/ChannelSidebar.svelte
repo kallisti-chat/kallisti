@@ -14,6 +14,7 @@
   import Avatar from "./Avatar.svelte";
   import Badge from "./Badge.svelte";
   import Icon from "./Icon.svelte";
+  import { t } from "../lib/i18n.svelte";
 
   let {
     server,
@@ -143,7 +144,10 @@
   // A heading's "+" (staff; a category's moderators in it).
   const createIn = (kind: ChannelKind, id?: number, name?: string) =>
     onCreate && (id !== undefined || canCreate[kind])
-      ? { label: name ? `Create text channel in ${name}` : `Create ${kind} channel`, run: () => onCreate(kind, id) }
+      ? {
+          label: name ? t("sidebar.createTextChannelIn", { category: name }) : t(kind === "voice" ? "sidebar.createVoiceChannel" : "sidebar.createTextChannel"),
+          run: () => onCreate(kind, id),
+        }
       : undefined;
   const INDENT = 16;
 </script>
@@ -167,13 +171,13 @@
       title={htmlToText(node.channel.description) || undefined}
     >
       {#if node.channel.id in listenOnly}
-        <Icon name="headphones" size={20} /><span class="sr-only">Listen only:</span>
+        <Icon name="headphones" size={20} /><span class="sr-only">{t("sidebar.listenOnly")}</span>
       {:else}
         <Icon name="speaker" size={20} />
       {/if}
       <span class="name ellipsis">{node.channel.name}</span>
       {#if node.channel.id in privateChannels}{@render lock()}{/if}
-      {#if recording.has(node.channel.id)}<span class="rec" title="This channel is being recorded">REC</span>{/if}
+      {#if recording.has(node.channel.id)}<span class="rec" title={t("sidebar.recordingNow")}>{t("sidebar.recBadge")}</span>{/if}
       {#if node.channel.id !== currentChannel}<Badge count={mentionVoice[node.channel.id]} label="mentions" />{/if}
     </button>
     {#if users.length}
@@ -190,30 +194,31 @@
               <span class="name ellipsis"><UserName name={user.name} /></span>
               <span class="flags">
                 {#if localMuted.has(user.session)}
-                  <span title="Muted for you">
-                    <Icon name="speaker" off size={16} /><span class="sr-only">Muted for you</span>
+                  <span title={t("sidebar.mutedForYou")}>
+                    <Icon name="speaker" off size={16} /><span class="sr-only">{t("sidebar.mutedForYou")}</span>
                   </span>
                 {/if}
                 {#if user.selfMute || user.mute || user.suppress}
-                  <span title="Muted">
-                    <Icon name="mic" off size={16} /><span class="sr-only">Muted</span>
+                  <span title={t("sidebar.muted")}>
+                    <Icon name="mic" off size={16} /><span class="sr-only">{t("sidebar.muted")}</span>
                   </span>
                 {/if}
                 {#if user.selfDeaf || user.deaf}
-                  <span title="Deafened">
-                    <Icon name="headphones" off size={16} /><span class="sr-only">Deafened</span>
+                  <span title={t("sidebar.deafened")}>
+                    <Icon name="headphones" off size={16} /><span class="sr-only">{t("sidebar.deafened")}</span>
                   </span>
                 {/if}
                 <Badge count={unread[user.name]} />
               </span>
             </button>
             {#each [streamId(user.session, false), streamId(user.session, true)].filter((id) => live.has(id)) as id (id)}
-              {@const what = isCamera(id) ? "camera" : "screen"}
-              {#if user.session === server.session && !(obsLive && !isCamera(id))}
-                <span class="live" title="You are sharing your {what}">{@render badge(id)}</span>
+              {@const camera = isCamera(id)}
+              {#if user.session === server.session && !(obsLive && !camera)}
+                <span class="live" title={t(camera ? "sidebar.sharingCamera" : "sidebar.sharingScreen")}>{@render badge(id)}</span>
               {:else}
+                {@const watch = t(camera ? "sidebar.watchCamera" : "sidebar.watchScreen", { name: user.name })}
                 <span class="live-wrap">
-                  <button class="live" title="Watch {user.name}'s {what}" aria-label="Watch {user.name}'s {what}" onclick={() => onWatch?.(id)}>{@render badge(id)}</button>
+                  <button class="live" title={watch} aria-label={watch} onclick={() => onWatch?.(id)}>{@render badge(id)}</button>
                   {#if previews[id]}
                     <img class="live-preview" src={previews[id]} alt="" />
                   {/if}
@@ -235,11 +240,11 @@
 {/snippet}
 
 {#snippet badge(id: number)}
-  {#if isCamera(id)}<Icon name="camera" size={14} />{:else}LIVE{/if}
+  {#if isCamera(id)}<Icon name="camera" size={14} />{:else}{t("sidebar.liveBadge")}{/if}
 {/snippet}
 
 {#snippet lock()}
-  <span class="lock" title="Private channel"><Icon name="lock" size={14} /><span class="sr-only">(private)</span></span>
+  <span class="lock" title={t("sidebar.privateChannel")}><Icon name="lock" size={14} /><span class="sr-only">{t("sidebar.privateMark")}</span></span>
 {/snippet}
 
 {#snippet category(label: string, isCollapsed: boolean, toggle: () => void, create?: { label: string; run: () => void }, menu?: (e: MouseEvent) => void, locked = false)}
@@ -262,7 +267,7 @@
       {#if locked}{@render lock()}{/if}
     </button>
     {#if create}
-      <button class="add" title="Create channel" aria-label={create.label} onclick={create.run}>
+      <button class="add" title={t("sidebar.createChannel")} aria-label={create.label} onclick={create.run}>
         <Icon name="plus" size={16} />
       </button>
     {/if}
@@ -291,33 +296,33 @@
           <span class="name ellipsis">{ch.name}</span>
           {#if isLocked({ private: privateChannels, channels: textChannels, categories }, ch)}{@render lock()}{/if}
           {#if unreadText.has(ch.id) && ch.id !== currentText}
-            <span class="sr-only">unread</span>
+            <span class="sr-only">{t("sidebar.unreadMark")}</span>
           {/if}
           {#if ch.id !== currentText}<Badge count={mentionText[ch.id]} label="mentions" />{/if}
         </button>
         {#if threadsOf(ch.id).length}
           <ul class="threads">
-            {#each threadsOf(ch.id) as t (t.id)}
-              {@const here = t.id === currentThread}
+            {#each threadsOf(ch.id) as th (th.id)}
+              {@const here = th.id === currentThread}
               <li>
                 <button
                   use:longPress
                   class="channel thread hover-row"
                   class:current={here}
-                  class:unread={unreadText.has(t.id) && !here}
-                  class:muted={mutedText.has(t.id) || !follows.has(t.id)}
+                  class:unread={unreadText.has(th.id) && !here}
+                  class:muted={mutedText.has(th.id) || !follows.has(th.id)}
                   aria-current={here ? "page" : undefined}
-                  onclick={() => onOpenThread?.(t)}
+                  onclick={() => onOpenThread?.(th)}
                   oncontextmenu={(e) => {
                     if (!onThreadMenu) return;
                     e.preventDefault();
-                    onThreadMenu(t.id, e);
+                    onThreadMenu(th.id, e);
                   }}
                 >
                   <Icon name="thread" size={16} />
-                  <span class="name ellipsis">{t.name}</span>
-                  {#if unreadText.has(t.id) && !here}<span class="sr-only">unread</span>{/if}
-                  {#if !here}<Badge count={mentionText[t.id]} label="mentions" />{/if}
+                  <span class="name ellipsis">{th.name}</span>
+                  {#if unreadText.has(th.id) && !here}<span class="sr-only">{t("sidebar.unreadMark")}</span>{/if}
+                  {#if !here}<Badge count={mentionText[th.id]} label="mentions" />{/if}
                 </button>
               </li>
             {/each}
@@ -328,9 +333,9 @@
   </ul>
 {/snippet}
 
-<nav aria-label="Channels">
+<nav aria-label={t("sidebar.channels")}>
   {#if groups[0]!.channels.length || canCreate.text}
-    {@render category("Text channels", textCollapsed, () => (textCollapsed = !textCollapsed), createIn("text"))}
+    {@render category(t("sidebar.textChannels"), textCollapsed, () => (textCollapsed = !textCollapsed), createIn("text"))}
     {#if !textCollapsed}{@render textList(groups[0]!.channels)}{/if}
   {/if}
   {#each groups.slice(1) as g (g.category!.id)}
@@ -346,7 +351,7 @@
     )}
     {@render textList(shut ? shownCollapsed(g.channels, currentText, loud) : g.channels)}
   {/each}
-  {@render category("Voice channels", collapsed, () => (collapsed = !collapsed), createIn("voice"))}
+  {@render category(t("sidebar.voiceChannels"), collapsed, () => (collapsed = !collapsed), createIn("voice"))}
   {#if tree && !collapsed}
     {#if lobby}
       <ul>
@@ -359,10 +364,10 @@
     {/if}
   {/if}
   {#if onShowHidden && hiddenCount}
-    <button type="button" class="hidden-channels" onclick={onShowHidden}>Hidden channels ({hiddenCount})</button>
+    <button type="button" class="hidden-channels" onclick={onShowHidden}>{t("sidebar.hiddenChannels", { count: hiddenCount })}</button>
   {/if}
   {#if directs.length && onOpenDirect}
-    {@render category("Direct messages", directCollapsed, () => (directCollapsed = !directCollapsed))}
+    {@render category(t("sidebar.directMessages"), directCollapsed, () => (directCollapsed = !directCollapsed))}
     {#if !directCollapsed}
       <ul class="text-channels">
         {#each directs as d (d.channel)}
@@ -383,7 +388,7 @@
             >
               <Avatar name={d.peer.name} registered size={20} />
               <span class="name ellipsis"><UserName name={d.peer.name} /></span>
-              {#if d.pinned}<span class="pinned" title="Pinned"><Icon name="pin" size={14} /><span class="sr-only">(pinned)</span></span>{/if}
+              {#if d.pinned}<span class="pinned" title={t("sidebar.pinned")}><Icon name="pin" size={14} /><span class="sr-only">{t("sidebar.pinnedMark")}</span></span>{/if}
               {#if d.channel !== currentDirect}<Badge count={mentionText[d.channel]} label="unread messages" />{/if}
             </button>
           </li>

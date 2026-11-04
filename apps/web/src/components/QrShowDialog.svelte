@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../lib/i18n.svelte";
   import { onDestroy } from "svelte";
   import type { QrStart, QrState } from "../lib/accounts";
   import { pollState, qrLink } from "../lib/qrLogin";
@@ -82,37 +83,33 @@
   };
 </script>
 
-<QrDialog title={code?.kind === "request" ? "Log in with a QR code" : "Log in on another device"} {onClose}>
+<QrDialog title={code?.kind === "request" ? t("settings.qrLoginTitle") : t("settings.otherDevice")} {onClose}>
   {#if phase === "loading"}
-    <p class="note">Making a code…</p>
+    <p class="note">{t("settings.qrMaking")}</p>
   {:else if phase === "showing" && code}
-    <div class="code"><QrCode text={qrLink(origin, code.code)} label="Login code" /></div>
+    <div class="code"><QrCode text={qrLink(origin, code.code)} label={t("settings.qrCodeLabel")} /></div>
     <p class="note">
-      {#if code.kind === "offer"}
-        Scan this code with the Kallisti app (or the camera) on the device you want to log in. You confirm here.
-      {:else}
-        Scan this code with the Kallisti app (or the camera) on a phone where you are logged in, and confirm there.
-      {/if}
-      The code is valid for 2 minutes.
+      {code.kind === "offer" ? t("settings.qrOfferHint") : t("settings.qrRequestHint")}
+      {t("settings.qrValid")}
     </p>
   {:else if phase === "ask"}
-    <p><strong>Log in on {other}?</strong></p>
-    <p class="note">Only if you scanned the code yourself, just now.</p>
+    <p><strong>{t("settings.qrAsk", { device: other })}</strong></p>
+    <p class="note">{t("settings.qrAskHint")}</p>
     <div class="buttons">
-      <button type="button" class="secondary" onclick={() => answer(false)}>No</button>
-      <button type="button" class="primary" onclick={() => answer(true)}>Log in</button>
+      <button type="button" class="secondary" onclick={() => answer(false)}>{t("common.no")}</button>
+      <button type="button" class="primary" onclick={() => answer(true)}>{t("settings.qrLogIn")}</button>
     </div>
   {:else if phase === "confirm"}
-    <p>Confirm on {other}…</p>
+    <p>{t("settings.qrConfirmOn", { device: other })}</p>
   {:else if phase === "approving"}
-    <p>Logging in on {other}…</p>
+    <p>{t("settings.qrLoggingIn", { device: other })}</p>
   {:else if phase === "done"}
-    <p>{code?.kind === "offer" ? `Logged in on ${other}.` : "Logged in."}</p>
+    <p>{code?.kind === "offer" ? t("settings.qrLoggedInOn", { device: other }) : t("settings.qrLoggedIn")}</p>
   {:else if phase === "refused" || phase === "expired"}
-    <p>{phase === "refused" ? "Not logged in: the login was refused." : "The code expired."}</p>
-    <div class="buttons"><button type="button" class="primary" onclick={start}>New code</button></div>
+    <p>{phase === "refused" ? t("settings.qrRefused") : t("settings.qrExpired")}</p>
+    <div class="buttons"><button type="button" class="primary" onclick={start}>{t("settings.qrNewCode")}</button></div>
   {:else}
     <p role="alert">{error}</p>
-    <div class="buttons"><button type="button" class="primary" onclick={start}>Try again</button></div>
+    <div class="buttons"><button type="button" class="primary" onclick={start}>{t("common.retry")}</button></div>
   {/if}
 </QrDialog>

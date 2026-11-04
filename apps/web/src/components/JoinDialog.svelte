@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { t } from "../lib/i18n.svelte";
+  import { around } from "../lib/i18n";
+
   // Before a link (or an invite) joins a voice channel: asked first, with
   // the server it goes to (a link on one server may lead to another), and
   // told when it ends a call here or takes voice from another device.
@@ -16,17 +19,18 @@
     onJoin();
     dialog?.close();
   };
+  const [before, after] = $derived(around(t("login.joinChannelText"), "server"));
 </script>
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="join-dialog-title">
-  <h2 id="join-dialog-title">Join {name}?</h2>
-  <p>A link leads to this voice channel on <strong>{server}</strong>. Others there hear you once you join.</p>
-  {#if call === "here"}<p class="note">This ends your current call.</p>{/if}
-  {#if call === "device"}<p class="note">You are in voice on another device: joining here moves your voice to this one.</p>{/if}
+  <h2 id="join-dialog-title">{t("login.joinChannelTitle", { name })}</h2>
+  <p>{before}<strong>{server}</strong>{after}</p>
+  {#if call === "here"}<p class="note">{t("login.joinEndsCall")}</p>{/if}
+  {#if call === "device"}<p class="note">{t("login.joinMovesVoice")}</p>{/if}
   <footer>
-    <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
+    <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
     <!-- svelte-ignore a11y_autofocus -->
-    <button type="button" class="primary" onclick={join} autofocus>Join</button>
+    <button type="button" class="primary" onclick={join} autofocus>{t("login.join")}</button>
   </footer>
 </dialog>
 

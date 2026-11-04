@@ -1,4 +1,5 @@
 <script lang="ts" generics="Id extends string">
+  import { t } from "../lib/i18n.svelte";
   import { tick, untrack, type Snippet } from "svelte";
   import { groupsOf, startCategory, type Category } from "../lib/dialogCategories";
 
@@ -78,15 +79,15 @@
   <header>
     {#if phone && current}
       <button class="back" onclick={() => (section = null)}>‹ {title}</button>
-      <h2 id="{id}-title" class="sr-only">{title}: {current.title}</h2>
+      <h2 id="{id}-title" class="sr-only">{t("settings.categoryHeading", { title, category: current.title })}</h2>
     {:else}
       <h2 id="{id}-title">{title}</h2>
     {/if}
-    <button class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <button class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
   <div class="layout">
     {#if !phone || !current}
-      <nav class="menu" aria-label="{title} categories">
+      <nav class="menu" aria-label={t("settings.categoriesLabel", { title })}>
         {@render menuTop?.(open)}
         {#each groups as g (g.id)}
           <p class="group">{g.title}</p>

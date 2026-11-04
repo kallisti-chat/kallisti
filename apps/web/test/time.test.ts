@@ -13,6 +13,11 @@ describe("formatTimestamp", () => {
     expect(formatTimestamp(at(2026, 10, 13, 9, 5), now, L)).toBe("Yesterday at 9:05 AM");
   });
 
+  it("writes today and yesterday in lower case inside a sentence", () => {
+    expect(formatTimestamp(at(2026, 10, 14, 15, 58), now, L, "auto", true)).toBe("today at 3:58 PM");
+    expect(formatTimestamp(at(2026, 10, 13, 9, 5), now, L, "auto", true)).toBe("yesterday at 9:05 AM");
+  });
+
   it("uses the date for older messages", () => {
     expect(formatTimestamp(at(2026, 10, 1, 9, 5), now, L)).toBe("10/1/2026 9:05 AM");
   });

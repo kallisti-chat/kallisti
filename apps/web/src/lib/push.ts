@@ -3,6 +3,7 @@
 // worker (sw.ts, at /sw.js) shows them. It is registered only while push
 // is on. A subscription belongs to one account on one server (owner).
 import { isDesktop } from "./desktop";
+import { t } from "./i18n.svelte";
 import { localStore, safeGet, safeSet } from "./storage";
 
 // "install": iOS has push only for apps on the home screen (16.4+).
@@ -83,10 +84,10 @@ const send = async (t: Target, method: "POST" | "DELETE", body: unknown) => {
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `request failed (${res.status})`);
 };
 
-const serverKey = async (t: Target): Promise<string> => {
-  const res = await fetch(`${t.base}/api/push`, request(t));
+const serverKey = async (target: Target): Promise<string> => {
+  const res = await fetch(`${target.base}/api/push`, request(target));
   const key = res.ok ? ((await res.json().catch(() => ({}))) as { publicKey?: unknown }).publicKey : null;
-  if (typeof key !== "string" || !key) throw new Error("this server has no push notifications");
+  if (typeof key !== "string" || !key) throw new Error(t("client.pushUnavailable"));
   return key;
 };
 
@@ -150,13 +151,13 @@ const changed = () => void globalThis.dispatchEvent?.(new Event("kallisti-push")
 
 // null: on; else why not.
 export const turnOnPush = async (base: string, name: string, prefs: PushPrefs): Promise<string | null> => {
-  if ((await Notification.requestPermission()) !== "granted") return "The browser does not allow notifications for this site.";
+  if ((await Notification.requestPermission()) !== "granted") return t("client.pushNotAllowed");
   try {
     await subscribe(home(base), pushOwner(base, name), prefs);
     changed();
     return null;
   } catch (err) {
-    return `Push notifications did not turn on: ${err instanceof Error ? err.message : err}`;
+    return t("client.pushFailed", { error: err instanceof Error ? err.message : String(err) });
   }
 };
 

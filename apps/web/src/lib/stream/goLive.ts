@@ -1,5 +1,6 @@
 import { Perm } from "@kallisti/protocol";
 import type { Kind } from "./quality";
+import { t } from "../i18n.svelte";
 
 // The "Go live" menu of the voice bar: share the screen, the camera, or set
 // up OBS.
@@ -28,9 +29,9 @@ export const goLiveEntries = (s: GoLiveState): GoLiveEntry[] => {
     return [{ action: kind, label: start, ...(off && { off }) }];
   };
   return [
-    ...entry("screen", "Stop sharing", "Share your screen", s.obsLive ? "Stop the OBS stream first" : null),
-    ...entry("camera", "Turn off camera", "Turn on camera"),
-    ...(s.whip && s.password ? [{ action: "obs" as const, label: "Stream from OBS…" }] : []),
+    ...entry("screen", t("media.stopSharing"), t("media.shareScreen"), s.obsLive ? t("media.stopObsFirst") : null),
+    ...entry("camera", t("media.cameraOff"), t("media.cameraOn")),
+    ...(s.whip && s.password ? [{ action: "obs" as const, label: t("media.streamFromObs") }] : []),
   ];
 };
 
@@ -41,7 +42,7 @@ export const isLive = (s: Pick<GoLiveState, "sharing" | "obsLive">) => s.sharing
 // known yet, then the server decides).
 export const streamBlock = (me: { mute: boolean; suppress: boolean }, permissions: number | undefined): string | null =>
   me.mute
-    ? "A moderator muted you"
+    ? t("media.mutedByModerator")
     : me.suppress || (permissions !== undefined && (permissions & Perm.Speak) === 0)
-      ? "You may not speak in this channel"
+      ? t("media.mayNotSpeak")
       : null;

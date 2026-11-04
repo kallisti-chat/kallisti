@@ -1,6 +1,7 @@
 import { encode } from "uqr";
 import type { QrState } from "./accounts";
 import { isDesktop } from "./desktop";
+import { t } from "./i18n.svelte";
 
 // Log in with a QR code (see the server's auth/qr.go): the code is a link
 // <server>/qr/<token>; a phone's camera opens it in the browser, the
@@ -40,7 +41,7 @@ export const deviceLabel = (ua: string, app: boolean, touch = 0): string => {
               ? "Linux"
               : "";
   const browser = app
-    ? "Kallisti app"
+    ? t("login.kallistiApp")
     : /Edg\//.test(ua)
       ? "Edge"
       : /Firefox\//.test(ua)
@@ -49,8 +50,8 @@ export const deviceLabel = (ua: string, app: boolean, touch = 0): string => {
           ? "Chrome"
           : /Safari\//.test(ua)
             ? "Safari"
-            : "A browser";
-  return system ? `${browser} on ${system}` : browser;
+            : t("login.someBrowser");
+  return system ? t("login.deviceOn", { browser, system }) : browser;
 };
 
 // A code as an SVG path of its dark cells (a light border of 4 cells, as

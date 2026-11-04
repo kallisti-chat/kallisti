@@ -4,8 +4,10 @@ import { androidApp, currentWindow, isDesktop, openInBrowser, setVoiceService } 
 import { openLinksOutside } from "./lib/externalLinks";
 import { watchKeyboard } from "./lib/keyboard";
 import { watchWindowHidden } from "./lib/windowHidden";
+import { i18n } from "./lib/i18n.svelte";
 import "./app.css";
 
+await i18n.init();
 const app = mount(App, { target: document.getElementById("app")! });
 
 // After mount: Svelte's own document listener (for elements outside the

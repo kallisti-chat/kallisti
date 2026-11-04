@@ -6,6 +6,7 @@
 
 <script lang="ts">
   import UserName from "./UserName.svelte";
+  import { t } from "../lib/i18n.svelte";
   import type { User } from "@kallisti/protocol";
   import { toggleDeaf, toggleMute, type SelfState } from "../lib/voice";
   import { menuAnchor } from "../lib/menu";
@@ -20,7 +21,7 @@
 
   let {
     me,
-    status = "Voice connected",
+    status = t("client.voiceConnected"),
     active = true,
     micError,
     noVoice = false,
@@ -65,19 +66,19 @@
   };
 </script>
 
-<section class="panel" aria-label="Your status">
+<section class="panel" aria-label={t("client.yourStatus")}>
   <button
     class="me"
     disabled={!onStatus}
     aria-haspopup="menu"
-    title={onStatus ? "Set your status" : undefined}
+    title={onStatus ? t("client.setYourStatus") : undefined}
     onclick={(e) => (menu = menuAnchor(e, e.currentTarget.getBoundingClientRect()))}
   >
     <Avatar name={me.name} size={32} status={presence} />
     <div class="who">
       <div class="name ellipsis"><UserName name={me.name} /></div>
       {#if micError}
-        <div class="status error ellipsis" title={micError}>{noVoice ? "No voice in this browser" : "No microphone"}</div>
+        <div class="status error ellipsis" title={micError}>{noVoice ? t("client.noVoiceInBrowser") : t("client.noMicrophone")}</div>
       {:else if custom}
         <div class="status custom ellipsis" title={custom.text}><Emoji text={custom.emoji} /> {custom.text}</div>
       {:else}
@@ -87,14 +88,14 @@
   </button>
   {#if info}<ConnectionInfo {info} />{/if}
   <button
-    title={me.selfMute ? "Unmute" : "Mute"}
+    title={me.selfMute ? t("client.unmute") : t("client.mute")}
     aria-pressed={me.selfMute}
     onclick={() => onSelfState(toggleMute(me))}
   >
     <Icon name="mic" off={me.selfMute} size={20} />
   </button>
   <button
-    title={me.selfDeaf ? "Undeafen" : "Deafen"}
+    title={me.selfDeaf ? t("client.undeafen") : t("client.deafen")}
     aria-pressed={me.selfDeaf}
     onclick={() => {
       if (!me.selfDeaf) mutedBeforeDeaf.set(voiceKey, me.selfMute);
@@ -103,13 +104,13 @@
   >
     <Icon name="headphones" off={me.selfDeaf} size={20} />
   </button>
-  <button title="Settings" onclick={onSettings}>
+  <button title={t("common.settings")} onclick={onSettings}>
     <Icon name="gear" size={20} />
   </button>
 </section>
 
 {#if menu}
-  <ContextMenu x={menu.x} y={menu.y} label="Your status" onClose={() => (menu = null)}>
+  <ContextMenu x={menu.x} y={menu.y} label={t("client.yourStatus")} onClose={() => (menu = null)}>
     {#each ["online", "idle", "dnd"] as const as p (p)}
       <button class="item" aria-pressed={own.status === p} onclick={() => choose({ ...own, status: p })}>
         <span class="dot" style:background="var(--{p})"></span>
@@ -118,10 +119,10 @@
     {/each}
     <div class="sep"></div>
     <button class="item" onclick={() => ((editing = true), (menu = null))}>
-      {custom ? "Edit custom status…" : "Set a custom status…"}
+      {custom ? t("client.editCustomStatus") : t("client.setCustomStatus")}
     </button>
     {#if custom}
-      <button class="item" onclick={() => choose({ status: own.status })}>Clear custom status</button>
+      <button class="item" onclick={() => choose({ status: own.status })}>{t("client.clearCustomStatus")}</button>
     {/if}
   </ContextMenu>
 {/if}

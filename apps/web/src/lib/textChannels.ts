@@ -1,6 +1,7 @@
 import { parseChannelList, type ChannelList } from "./channelList";
 import { escapeHtml, type ChatMessage } from "@kallisti/protocol";
 import { markdown } from "./markdown";
+import { i18n, t } from "./i18n.svelte";
 import { spoilerUpload } from "./media";
 import type { Reaction } from "./reactions";
 import type { LinkPreview } from "./linkPreview";
@@ -1050,7 +1051,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
     case "thread-archive":
       return { ...state, threadArchive: event.seconds };
     case "no-thread":
-      return { ...state, notice: { text: "You cannot open this message here", n: (state.notice?.n ?? 0) + 1 } };
+      return { ...state, notice: { text: t("client.cannotOpenMessage"), n: (state.notice?.n ?? 0) + 1 } };
     case "history":
       return {
         ...state,
@@ -1378,9 +1379,10 @@ export const httpBase = (wsUrl: string) => {
 };
 
 export const formatSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const one = (n: number) => n.toLocaleString(i18n.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+  if (bytes < 1024) return t("client.sizeBytes", { n: bytes });
+  if (bytes < 1024 * 1024) return t("client.sizeKb", { n: one(bytes / 1024) });
+  return t("client.sizeMb", { n: one(bytes / 1024 / 1024) });
 };
 
 export { linkify } from "./markdown";

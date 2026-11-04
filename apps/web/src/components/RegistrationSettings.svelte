@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { expiryChoices, inviteExpiry, inviteUses, useChoices, type Invite } from "../lib/invites";
+  import { t } from "../lib/i18n.svelte";
   import { createSave } from "../lib/saveFeedback.svelte";
   import SaveStatus from "./SaveStatus.svelte";
 
@@ -27,7 +28,7 @@
     copied = false;
   });
   const copy = () => links.run(async () => {
-    if (!navigator.clipboard) throw new Error("Select and copy the link below.");
+    if (!navigator.clipboard) throw new Error(t("admin.copyFallback"));
     await navigator.clipboard.writeText(link);
     copied = true;
   });
@@ -35,45 +36,45 @@
 
 <label class="toggle">
   <input type="checkbox" checked={on} disabled={policy.busy} onchange={(e) => change(e.currentTarget)} />
-  Invite-only server
+  {t("admin.inviteOnly")}
 </label>
-<p>New accounts need an invitation. New guests cannot join. Existing accounts and registered Mumble users keep their access.</p>
+<p>{t("admin.inviteOnlyNote")}</p>
 <SaveStatus save={policy.state} />
 
-<h3>Account invitations</h3>
-<p>Share a link with a friend to let them create an account. These links do not grant access to private channels.</p>
+<h3>{t("admin.accountInvites")}</h3>
+<p>{t("admin.accountInvitesNote")}</p>
 <div class="choices">
-  <label>Expires in
+  <label>{t("admin.expiresIn")}
     <select bind:value={seconds} disabled={links.busy}>
       {#each expiryChoices as choice}<option value={choice.seconds}>{choice.label}</option>{/each}
     </select>
   </label>
-  <label>Uses
+  <label>{t("admin.uses")}
     <select bind:value={uses} disabled={links.busy}>
       {#each useChoices as choice}<option value={choice.uses}>{choice.label}</option>{/each}
     </select>
   </label>
-  <button type="button" disabled={links.busy} onclick={create}>Create invitation</button>
+  <button type="button" disabled={links.busy} onclick={create}>{t("admin.createInvitation")}</button>
 </div>
 {#if link}
-  <label>New account invitation
+  <label>{t("admin.newAccountInvitation")}
     <input readonly value={link} onfocus={(e) => e.currentTarget.select()} />
   </label>
-  <button type="button" disabled={links.busy} onclick={copy}>{copied ? "Copied" : "Copy link"}</button>
-  <p>Copy it now; the link is shown only here until you close this page or create another invitation.</p>
+  <button type="button" disabled={links.busy} onclick={copy}>{copied ? t("common.copied") : t("admin.copyLink")}</button>
+  <p>{t("admin.invitationCopyNow")}</p>
 {/if}
 <SaveStatus save={links.state} />
-<button type="button" disabled={links.busy} onclick={() => links.run(onLoad)}>Refresh invitations</button>
+<button type="button" disabled={links.busy} onclick={() => links.run(onLoad)}>{t("admin.refreshInvitations")}</button>
 {#if invites === null}
-  <p>Loading invitations…</p>
+  <p>{t("admin.loadingInvitations")}</p>
 {:else if invites.length === 0}
-  <p>No account invitations.</p>
+  <p>{t("admin.noAccountInvitations")}</p>
 {:else}
-  <ul aria-label="Account invitations">
+  <ul aria-label={t("admin.accountInvites")}>
     {#each invites as invite (invite.id)}
       <li>
-        <span>By {invite.creator}: {inviteUses(invite)}, {inviteExpiry(invite.expires, Date.now())}</span>
-        <button type="button" disabled={links.busy} onclick={() => links.run(async () => { await onDelete(invite.id); link = ""; })}>Revoke</button>
+        <span>{t("admin.invitationLine", { creator: invite.creator, uses: inviteUses(invite), expiry: inviteExpiry(invite.expires, Date.now()) })}</span>
+        <button type="button" disabled={links.busy} onclick={() => links.run(async () => { await onDelete(invite.id); link = ""; })}>{t("admin.revoke")}</button>
       </li>
     {/each}
   </ul>

@@ -2,6 +2,7 @@
   import type { ConnectionInfo } from "../lib/connectionInfo.svelte";
   import { biggerBuffer, connectionLabel, WINDOW_MS } from "../lib/connectionQuality";
   import { settings } from "../lib/settings.svelte";
+  import { i18n, t } from "../lib/i18n.svelte";
   import { bufferLabel, type PlaybackBuffer } from "../lib/voice/buffer";
 
   // The signal icon next to "Voice connected", as in Discord; its popup has
@@ -15,7 +16,8 @@
   const label = $derived(connectionLabel(info.level, info.rtt));
   // Bars lit: good 3, fair 2, poor 1, not known yet 0.
   const bars = $derived(info.level === "good" ? 3 : info.level === "fair" ? 2 : info.level === "poor" ? 1 : 0);
-  const ms = (v: number) => `${Math.round(v)} ms`;
+  const percent = (v: number, digits = 0) =>
+    t("client.percent", { value: v.toLocaleString(i18n.locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }) });
   // Much late audio: offer the next playback buffer. After a change the
   // old late audio stays in the window: no second offer until it is out
   // (checked with each ping, when `info` changes).
@@ -61,24 +63,24 @@
     </svg>
   </button>
   {#if open}
-    <div class="popup" {id} role="group" aria-label="Connection">
+    <div class="popup" {id} role="group" aria-label={t("client.connection")}>
       <dl>
-        <dt>Ping</dt>
-        <dd>{info.rtt === null ? "Measuring…" : `${ms(info.rtt)} (± ${ms(info.spread ?? 0)})`}</dd>
-        <dt>Audio late or missing</dt>
-        <dd>{info.bad === null ? "No audio heard" : `${info.bad.toFixed(1)} %`}</dd>
-        <dt>Transport</dt>
+        <dt>{t("client.ping")}</dt>
+        <dd>{info.rtt === null ? t("client.measuring") : t("client.pingValue", { ms: Math.round(info.rtt), spread: Math.round(info.spread ?? 0) })}</dd>
+        <dt>{t("client.audioLate")}</dt>
+        <dd>{info.bad === null ? t("client.noAudioHeard") : percent(info.bad, 1)}</dd>
+        <dt>{t("client.transport")}</dt>
         <dd>{info.transport}</dd>
       </dl>
-      <p>Over the last {WINDOW_MS / 1000} s.</p>
+      <p>{t("client.overLast", { seconds: WINDOW_MS / 1000 })}</p>
       <!-- Always there, so screen readers announce the change. -->
       <div role="status">
         {#if justChanged}
-          <p class="tip">Playback buffer: {bufferLabel(justChanged)}.</p>
+          <p class="tip">{t("client.bufferChanged", { buffer: bufferLabel(justChanged) })}</p>
         {:else if next}
           <p class="tip">
-            Late audio: {Math.round(info.late ?? 0)} %. Try a larger playback buffer.
-            <button type="button" class="link" onclick={() => useBuffer(next)}>Use {bufferLabel(next)}</button>
+            {t("client.lateAudioTip", { percent: Math.round(info.late ?? 0) })}
+            <button type="button" class="link" onclick={() => useBuffer(next)}>{t("client.useBuffer", { buffer: bufferLabel(next) })}</button>
           </p>
         {/if}
       </div>

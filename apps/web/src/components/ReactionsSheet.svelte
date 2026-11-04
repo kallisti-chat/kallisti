@@ -1,6 +1,7 @@
 <script lang="ts">
   import BottomSheet from "./BottomSheet.svelte";
   import ReactionList from "./ReactionList.svelte";
+  import { t } from "../lib/i18n.svelte";
   import type { Reaction } from "../lib/reactions";
 
   // Phones: who reacted (a long press on a reaction, as in Discord).
@@ -16,11 +17,11 @@
   const menu = $derived(chosen ? emojiMenu?.(chosen) : null);
 </script>
 
-<BottomSheet label="Reactions" {onClose}>
-  <h2 class="title">Reactions</h2>
+<BottomSheet label={t("chat.reactions")} {onClose}>
+  <h2 class="title">{t("chat.reactions")}</h2>
   <ReactionList {reactions} {start} bind:chosen />
   {#if menu}
-    <button type="button" class="sheet-item" onclick={menu}>Emoji options</button>
+    <button type="button" class="sheet-item" onclick={menu}>{t("chat.emojiOptions")}</button>
   {/if}
 </BottomSheet>
 

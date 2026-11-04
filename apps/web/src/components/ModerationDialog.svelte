@@ -2,7 +2,10 @@
   import { banAddress, type Ban, type Registered } from "@kallisti/protocol";
   import { untrack } from "svelte";
   import CategoryDialog from "./CategoryDialog.svelte";
-  import { SERVER_GROUP_TITLES, serverSections, type ServerSectionId } from "../lib/serverSettingsSections";
+  import { serverGroupTitles, serverSections, type ServerSectionId } from "../lib/serverSettingsSections";
+  import { around } from "../lib/i18n";
+  import { i18n, t } from "../lib/i18n.svelte";
+  import type { Key } from "../i18n/en";
   import type { CaptchaLevel } from "../lib/captcha";
   import { ARCHIVE_TIMES } from "../lib/threads";
   import { emojiFormError, type CustomEmoji } from "../lib/customEmoji";
@@ -225,7 +228,7 @@
     downloadError = null;
     onDownloadRecording?.(id).catch((err) => (downloadError = err instanceof Error ? err.message : String(err)));
   };
-  const when = (t: number) => new Date(t).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const when = (at: number) => new Date(at).toLocaleString(i18n.locale, { dateStyle: "medium", timeStyle: "short" });
 
   // The message rules: loaded when their category opens, the form filled with
   // what the server has (again after a save: it tidies the lists).
@@ -271,13 +274,19 @@
 
 
   const duration = (seconds: number) =>
-    seconds === 0 ? "for ever" : seconds >= 86400 ? `${Math.round(seconds / 86400)} days` : `${Math.round(seconds / 3600)} hours`;
+    seconds === 0
+      ? t("admin.banForever")
+      : seconds >= 86400
+        ? t("admin.banDays", { count: Math.round(seconds / 86400) })
+        : t("admin.banHours", { count: Math.round(seconds / 3600) });
+  const LEVELS: Record<string, Key> = { good: "admin.levelGood", fair: "admin.levelFair", poor: "admin.levelPoor" };
+  const limitNew = $derived(around(t("admin.rulesLimitNew"), "minutes"));
 </script>
 
 <CategoryDialog
-  title="Server settings"
+  title={t("admin.serverSettingsTitle")}
   categories={sections}
-  groupTitles={SERVER_GROUP_TITLES}
+  groupTitles={serverGroupTitles()}
   start={onServerName ? undefined : "bans"}
   {phone}
   bind:section
@@ -286,9 +295,9 @@
   {#snippet content(id: ServerSectionId)}
     {#if id === "bans"}
       {#if bans === null}
-        <p class="note">Loading…</p>
+        <p class="note">{t("common.loading")}</p>
       {:else if bans.length === 0}
-        <p class="note">Nobody is banned.</p>
+        <p class="note">{t("admin.nobodyBanned")}</p>
       {:else}
         <ul>
           {#each bans as ban, i (i)}
@@ -296,72 +305,66 @@
               <div class="what">
                 <strong>{ban.name || banAddress(ban)}</strong>
                 <span class="detail">
-                  {banAddress(ban)} · {duration(ban.duration)}{ban.start ? ` · since ${ban.start.slice(0, 10)}` : ""}
+                  {banAddress(ban)} · {duration(ban.duration)}{ban.start ? ` · ${t("admin.banSince", { date: ban.start.slice(0, 10) })}` : ""}
                   {#if ban.reason} · {ban.reason}{/if}
                 </span>
               </div>
               {#if rights.editBans}
                 <button type="button" disabled={saves.bans.busy} onclick={() => saves.bans.run(() => onSetBans(bans.filter((_, k) => k !== i)))}>
-                  Remove
+                  {t("common.remove")}
                 </button>
               {/if}
             </li>
           {/each}
         </ul>
-        <SaveStatus save={saves.bans.state} done="Removed" />
-        {#if !rights.editBans}<p class="note">Only admins change the ban list.</p>{/if}
+        <SaveStatus save={saves.bans.state} done={t("admin.banRemoved")} />
+        {#if !rights.editBans}<p class="note">{t("admin.onlyAdminsEditBans")}</p>{/if}
       {/if}
     {:else if id === "server"}
       <form class="rules" onsubmit={saveName}>
         <label>
-          Name
+          {t("admin.serverName")}
           <input bind:value={nameDraft} required maxlength="100" />
         </label>
-        <button type="submit" disabled={saves.name.busy || !nameDraft.trim()}>{busyLabel(saves.name.state, "Save")}</button>
+        <button type="submit" disabled={saves.name.busy || !nameDraft.trim()}>{busyLabel(saves.name.state, t("common.save"), t("common.saving"))}</button>
         <SaveStatus save={saves.name.state} />
       </form>
-      <p class="note">In the top left, as the tab's title and on the login page. Mumble clients see it as the name of the root channel.</p>
+      <p class="note">{t("admin.serverNameNote")}</p>
       {#if onUploadLogo}
         <div class="logo-row">
-          {#if logo}<img class="logo" src={logo} alt="The server's logo" />{/if}
-          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label="Logo image" disabled={saves.logo.busy} onchange={(e) => uploadLogo(e.currentTarget)} />
+          {#if logo}<img class="logo" src={logo} alt={t("admin.logoAlt")} />{/if}
+          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label={t("admin.logoInput")} disabled={saves.logo.busy} onchange={(e) => uploadLogo(e.currentTarget)} />
           {#if logo && onRemoveLogo}
-            <button type="button" disabled={saves.logo.busy} onclick={() => saves.logo.run(onRemoveLogo)}>Remove</button>
+            <button type="button" disabled={saves.logo.busy} onclick={() => saves.logo.run(onRemoveLogo)}>{t("common.remove")}</button>
           {/if}
           <SaveStatus save={saves.logo.state} />
         </div>
-        <p class="note">
-          The logo: a square picture (PNG, JPEG, GIF or WebP, at most 2 MB; the middle of others). In the top left, as the tab's icon,
-          on the login page and as the installed app's icon (installed apps may show a new one only later).
-        </p>
+        <p class="note">{t("admin.logoNote")}</p>
       {/if}
       {#if onLoadHomeServers}
-        <h4>Accounts from other servers</h4>
+        <h4>{t("admin.homesHeading")}</h4>
         {#if homeServers === null}
-          <p class="note">Loading…</p>
+          <p class="note">{t("common.loading")}</p>
         {:else}
           <form class="rules" onsubmit={saveHomes}>
             <label>
-              Who may log in with an account from another server
+              {t("admin.homesMode")}
               <select bind:value={homesMode}>
-                <option value="all">Accounts from all servers</option>
-                <option value="block">All but the servers below</option>
-                <option value="allow">Only the servers below</option>
+                <option value="all">{t("admin.homesAll")}</option>
+                <option value="block">{t("admin.homesBlock")}</option>
+                <option value="allow">{t("admin.homesAllow")}</option>
               </select>
             </label>
             {#if homesMode !== "all"}
-              <label for="home-hosts">Servers, one address per line</label>
+              <label for="home-hosts">{t("admin.homesHosts")}</label>
               <textarea id="home-hosts" rows="4" bind:value={homesHosts} placeholder="chat.example.org"></textarea>
             {/if}
             <div class="row">
-              <button type="submit" disabled={saves.homes.busy}>{busyLabel(saves.homes.state, "Save")}</button>
+              <button type="submit" disabled={saves.homes.busy}>{busyLabel(saves.homes.state, t("common.save"), t("common.saving"))}</button>
               <SaveStatus save={saves.homes.state} />
             </div>
           </form>
-          <p class="note">
-            Another Kallisti server or a fediverse server (Mastodon and others) where the account lives. Accounts that log in only
-            with a server you exclude are logged out here when you save.
-          </p>
+          <p class="note">{t("admin.homesNote")}</p>
         {/if}
       {/if}
     {:else if id === "registration" && inviteOnly !== null && onInviteOnly && onLoadRegistrationInvites && onCreateRegistrationInvite && onDeleteRegistrationInvite}
@@ -369,110 +372,77 @@
     {:else if id === "guests"}
       <label class="check">
         <input type="checkbox" checked={guestsReadOnly === true} disabled={saves.guests.busy} onchange={(e) => setGuests(e.currentTarget)} />
-        Guests may only read
+        {t("admin.guestsReadOnly")}
       </label>
       <SaveStatus save={saves.guests.state} />
-      <p class="note">
-        Guests (without an account, or with a guest account) can still read and talk, but they cannot write, react, upload or send
-        direct messages. Use it during a spam wave.
-      </p>
+      <p class="note">{t("admin.guestsReadOnlyNote")}</p>
       <label class="check">
-        Browser check for new accounts and guests
+        {t("admin.captchaLabel")}
         <select value={captcha} disabled={saves.captcha.busy} onchange={(e) => setCaptcha(e.currentTarget)}>
-          <option value="off">Off</option>
-          <option value="normal">Normal</option>
-          <option value="hard">Hard</option>
+          <option value="off">{t("common.off")}</option>
+          <option value="normal">{t("admin.captchaNormal")}</option>
+          <option value="hard">{t("admin.captchaHard")}</option>
         </select>
       </label>
       <SaveStatus save={saves.captcha.state} />
-      <p class="note">
-        Before a web browser creates an account or joins as a guest, it does some work by itself: about 1 to 2 seconds (Normal) or 4
-        times as long (Hard). This slows down scripts that make many accounts. No third party is involved. Mumble clients and logins
-        do no check.
-      </p>
+      <p class="note">{t("admin.captchaNote")}</p>
     {:else if id === "threads"}
       <label class="check">
-        Archive threads after
+        {t("admin.archiveAfter")}
         <select value={threadArchive} disabled={saves.archive.busy} onchange={(e) => setArchive(e.currentTarget)}>
-          {#each ARCHIVE_TIMES as t (t.seconds)}<option value={t.seconds}>{t.label}</option>{/each}
+          {#each ARCHIVE_TIMES as a (a.seconds)}<option value={a.seconds}>{t(a.label)}</option>{/each}
         </select>
       </label>
       <SaveStatus save={saves.archive.state} />
-      <p class="note">
-        A thread without new messages for this time is archived: it leaves the channel list, but stays readable and searchable in the
-        channel's thread list. A new message opens it again.
-      </p>
+      <p class="note">{t("admin.archiveNote")}</p>
     {:else if id === "rules"}
       {#if messageRules === null}
-        <p class="note">Loading…</p>
+        <p class="note">{t("common.loading")}</p>
       {:else}
         <form class="rules" onsubmit={saveRules}>
           <label>
-            Limit new accounts for
-            <input class="minutes" bind:value={rulesMinutes} inputmode="numeric" aria-label="Minutes" oninput={() => (rulesError = null)} />
-            minutes (0: off)
+            {limitNew[0]}<input class="minutes" bind:value={rulesMinutes} inputmode="numeric" aria-label={t("admin.rulesMinutes")} oninput={() => (rulesError = null)} />{limitNew[1]}
           </label>
-          <p class="note">
-            Accounts younger than this, and guests, cannot post links, upload files or mention @everyone or @here, and send one
-            message every 5 seconds. Accounts from before this setting existed count as old.
-          </p>
-          <label for="blocked-words">Blocked words and phrases, one per line</label>
+          <p class="note">{t("admin.rulesNewNote")}</p>
+          <label for="blocked-words">{t("admin.rulesWords")}</label>
           <textarea id="blocked-words" rows="5" bind:value={rulesWords}></textarea>
-          <p class="note">
-            Whole words in any case. Accents, lookalike letters (Cyrillic а), spaced letters (s p a m) and a letter three times or
-            more (spaaam) do not get past it. No patterns.
-          </p>
-          <label for="blocked-domains">Blocked link domains, one per line</label>
+          <p class="note">{t("admin.rulesWordsNote")}</p>
+          <label for="blocked-domains">{t("admin.rulesDomains")}</label>
           <textarea id="blocked-domains" rows="4" bind:value={rulesDomains}></textarea>
-          <p class="note">With their subdomains: example.com also blocks www.example.com.</p>
-          <label for="replacements">Word replacements, one phrase per line</label>
-          <textarea id="replacements" rows="4" bind:value={rulesReplacements} placeholder="nice ass => beautiful behind | lovely posterior"
+          <p class="note">{t("admin.rulesDomainsNote")}</p>
+          <label for="replacements">{t("admin.rulesReplacements")}</label>
+          <textarea id="replacements" rows="4" bind:value={rulesReplacements} placeholder={t("admin.rulesReplacementsPlaceholder")}
           ></textarea>
           {#each replacements.errors as error (error)}<p class="error" role="alert">{error}</p>{/each}
-          <p class="note">
-            A message with the phrase is posted with one of its replacements, picked at random, for everyone (staff too). Matched as
-            blocked words, but not in code, links or mentions. Replacements are plain text: letters, digits, emoji, spaces and ' .
-            , ! ? -.
-          </p>
+          <p class="note">{t("admin.rulesReplacementsNote")}</p>
           {#if rulesError}<p class="error" role="alert">{rulesError}</p>{/if}
           <div class="row">
-            <button type="submit" disabled={saves.rules.busy}>{busyLabel(saves.rules.state, "Save")}</button>
+            <button type="submit" disabled={saves.rules.busy}>{busyLabel(saves.rules.state, t("common.save"), t("common.saving"))}</button>
             <SaveStatus save={saves.rules.state} />
           </div>
         </form>
-        <p class="note">
-          Staff are exempt from the limits and blocks. The author of a refused message sees why (Mumble clients as "permission denied"); the server log notes
-          blocked words and domains.
-        </p>
+        <p class="note">{t("admin.rulesStaffNote")}</p>
       {/if}
     {:else if id === "connections"}
       {#if sorted === null}
-        <p class="note">Loading…</p>
+        <p class="note">{t("common.loading")}</p>
       {:else if sorted.length === 0}
-        <p class="note">Nobody is connected.</p>
+        <p class="note">{t("admin.nobodyConnected")}</p>
       {:else}
         <div class="table">
           <table>
             <thead>
               <tr>
-                <th>User</th>
-                <th>Voice</th>
-                <th title="How their voice reaches the server lately: Opus band and bitrate">Sound</th>
-                <th title="What a web user's browser says about their microphone (filters on hover)">Microphone</th>
-                <th>Ping</th>
-                <th
-                  title="Late or lost voice in the last 30 to 40 s. ↑ from the user, as the server counted it; ↓ to the user, as their client reported it (Mumble clients count UDP only). –: too little voice."
-                >
-                  Late/lost ↑ · ↓
-                </th>
-                <th title="In the same time: voice frames the server dropped for this user (their queue was full) · text messages they lost">
-                  Dropped
-                </th>
-                <th title="Since they connected: stream pictures · stream sound the server dropped for this viewer (their connection was full)">
-                  Stream lost
-                </th>
-                <th>Online</th>
-                <th>Client</th>
+                <th>{t("admin.connUser")}</th>
+                <th>{t("admin.connVoice")}</th>
+                <th title={t("admin.connSoundTitle")}>{t("admin.connSound")}</th>
+                <th title={t("admin.connMicTitle")}>{t("admin.connMic")}</th>
+                <th>{t("admin.connPing")}</th>
+                <th title={t("admin.connLateTitle")}>{t("admin.connLate")}</th>
+                <th title={t("admin.connDroppedTitle")}>{t("admin.connDropped")}</th>
+                <th title={t("admin.connStreamLostTitle")}>{t("admin.connStreamLost")}</th>
+                <th>{t("admin.connOnline")}</th>
+                <th>{t("admin.connClient")}</th>
               </tr>
             </thead>
             <tbody>
@@ -481,14 +451,14 @@
                 {@const sound = formatSound(c)}
                 {@const mic = formatMic(c)}
                 <tr>
-                  <td><span class="level {level ?? 'unknown'}" title={level ?? "not measured yet"}></span>{c.name}</td>
+                  <td><span class="level {level ?? 'unknown'}" title={level ? t(LEVELS[level]!) : t("admin.levelUnknown")}></span>{c.name}</td>
                   <td>{c.transport === "websocket" ? "WebSocket" : c.transport.toUpperCase()}</td>
                   <td class:muffled={sound.muffled}
-                    title={sound.muffled ? "Narrow band sounds muffled: often a Bluetooth headset in its phone mode, or a low-quality microphone" : undefined}
+                    title={sound.muffled ? t("admin.muffledTitle") : undefined}
                     >{sound.muffled ? "⚠ " : ""}{sound.text}</td
                   >
                   <td class="detail" class:muffled={mic.phoneMode}
-                    title={[mic.phoneMode ? "16 kHz or less: often a Bluetooth headset in its phone mode" : "", mic.filters].filter(Boolean).join(" · ") || undefined}
+                    title={[mic.phoneMode ? t("admin.phoneModeTitle") : "", mic.filters].filter(Boolean).join(" · ") || undefined}
                     >{mic.phoneMode ? "⚠ " : ""}{mic.text}</td
                   >
                   <td>{formatPing(c.ping)}</td>
@@ -502,13 +472,13 @@
             </tbody>
           </table>
         </div>
-        <p class="note">Worst first; updates every few seconds. No addresses: admins see them in Mumble's user information.</p>
+        <p class="note">{t("admin.connNote")}</p>
       {/if}
     {:else if id === "recordings"}
       {#if recordings === null}
-        <p class="note">Loading…</p>
+        <p class="note">{t("common.loading")}</p>
       {:else if recordings.length === 0}
-        <p class="note">No recordings. Record a voice channel from its menu (right-click).</p>
+        <p class="note">{t("admin.noRecordings")}</p>
       {:else}
         <ul>
           {#each recordings as r (r.id)}
@@ -517,15 +487,15 @@
               <div class="what">
                 <strong>{r.channelName} · {when(r.started)}</strong>
                 <span class="detail">
-                  {d.length} · {d.size} · {d.speakers} · by {r.by}{r.reason === "stopped" ? "" : ` · ended: ${r.reason}`} · until {when(r.expires)}
+                  {t(r.reason === "stopped" ? "admin.recordingDetail" : "admin.recordingDetailEnded", { ...d, by: r.by, reason: r.reason, expires: when(r.expires) })}
                 </span>
               </div>
-              <button type="button" onclick={() => download(r.id)}>Download</button>
+              <button type="button" onclick={() => download(r.id)}>{t("admin.download")}</button>
             </li>
           {/each}
         </ul>
         {#if downloadError}<p class="note error" role="alert">{downloadError}</p>{/if}
-        <p class="note">A zip with one Ogg Opus file per speaker. All files start when the recording started, so they line up in an audio editor.</p>
+        <p class="note">{t("admin.recordingNote")}</p>
       {/if}
     {:else if id === "stickers"}
       <StickerList list={stickers} onAdd={onAddSticker} onEdit={onEditSticker} onDelete={onDeleteSticker} />
@@ -535,17 +505,17 @@
         formError={(name, file) => emojiFormError(name, file, emoji)}
         onAdd={onAddEmoji}
         onDelete={onDeleteEmoji}
-        empty="This server has no custom emoji yet."
+        empty={t("admin.noCustomEmoji")}
       />
     {:else if registered === null}
-      <p class="note">Loading…</p>
+      <p class="note">{t("common.loading")}</p>
     {:else}
       <ul>
         {#each registered as user (user.userId)}
           <li>
             <div class="what">
               <strong>{user.name}</strong>
-              <span class="detail">#{user.userId}{confirming === user.userId ? " · account and roles go; messages stay" : ""}</span>
+              <span class="detail">#{user.userId}{confirming === user.userId ? ` · ${t("admin.userDeleteNote")}` : ""}</span>
             </div>
             {#if mayDelete(user.userId)}
               {#if confirming === user.userId}
@@ -555,11 +525,11 @@
                   disabled={saves.users.busy}
                   onclick={() => (saves.users.run(() => onUnregister(user.userId)), (confirming = null))}
                 >
-                  Delete user
+                  {t("admin.deleteUser")}
                 </button>
-                <button type="button" onclick={() => (confirming = null)}>Cancel</button>
+                <button type="button" onclick={() => (confirming = null)}>{t("common.cancel")}</button>
               {:else}
-                <button type="button" onclick={() => (confirming = user.userId)}>Delete user…</button>
+                <button type="button" onclick={() => (confirming = user.userId)}>{t("admin.deleteUserAsk")}</button>
               {/if}
             {/if}
           </li>

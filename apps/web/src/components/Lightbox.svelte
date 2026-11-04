@@ -1,5 +1,6 @@
 <script lang="ts">
   import { step, swipeStep } from "../lib/fileGrid";
+  import { t } from "../lib/i18n.svelte";
 
   // Images large over the app, one at a time from `start`: the arrow keys,
   // the buttons or a swipe go to the next or the one before. Closes with
@@ -50,11 +51,11 @@
 >
   <div class="stage">
     {#if items.length > 1}
-      <button type="button" class="step before" disabled={index === 0} onclick={() => go(-1)} aria-label="The picture before">‹</button>
+      <button type="button" class="step before" disabled={index === 0} onclick={() => go(-1)} aria-label={t("media.previousPicture")}>‹</button>
     {/if}
     <img src={item.url} alt={item.description || item.name} />
     {#if items.length > 1}
-      <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label="The next picture"
+      <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label={t("media.nextPicture")}
         >›</button
       >
     {/if}
@@ -65,14 +66,14 @@
   <footer>
     <span class="name ellipsis">{item.name}</span>
     {#if items.length > 1}
-      <span class="count" aria-live="polite">{index + 1} of {items.length}</span>
+      <span class="count" aria-live="polite">{t("media.pictureCount", { index: index + 1, count: items.length })}</span>
     {/if}
     {#if item.download}
-      <a href={item.download}>Download original</a>
+      <a href={item.download}>{t("media.downloadOriginal")}</a>
     {:else}
-      <a href={item.url} target="_blank" rel="noopener noreferrer">Open original</a>
+      <a href={item.url} target="_blank" rel="noopener noreferrer">{t("media.openOriginal")}</a>
     {/if}
-    <button type="button" class="close" onclick={close} aria-label="Close">×</button>
+    <button type="button" class="close" onclick={close} aria-label={t("common.close")}>×</button>
   </footer>
 </dialog>
 

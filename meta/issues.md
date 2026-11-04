@@ -29,3 +29,4 @@
   - [ ] [QR login: the apps' scanner](issues/qr-login-apps.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
 - [ ] [Apps: voice over UDP on Kallisti servers](issues/app-udp-voice-kallisti.md)
+- [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)

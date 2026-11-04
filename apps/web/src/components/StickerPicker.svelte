@@ -3,6 +3,7 @@
   import { fitMenu } from "../lib/menu";
   import { gridMove } from "../lib/emojiPicker";
   import { stickerGroups, stickerSearch, type Sticker } from "../lib/stickers";
+  import { t } from "../lib/i18n.svelte";
 
   // The server's stickers to send: search (name, description, pack,
   // emoji), grouped by pack. A popup at `anchor` (the button that opened
@@ -67,7 +68,7 @@
   role="dialog"
   aria-modal="true"
   tabindex="-1"
-  aria-label="Stickers"
+  aria-label={t("media.stickers")}
   style:left="{placement.x}px"
   style:top="{placement.y}px"
   onkeydown={(e) => {
@@ -83,8 +84,8 @@
       bind:this={search}
       bind:value={query}
       type="search"
-      placeholder="Find a sticker"
-      aria-label="Search stickers"
+      placeholder={t("media.stickerSearchPlaceholder")}
+      aria-label={t("media.stickerSearch")}
       onkeydown={(e) => {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -99,12 +100,12 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="grid" bind:this={grid} onkeydown={onGridKey}>
     {#if stickers.length === 0}
-      <p class="note">This server has no stickers yet.</p>
+      <p class="note">{t("media.noStickers")}</p>
     {:else if found.length === 0}
-      <p class="note">No sticker found.</p>
+      <p class="note">{t("media.noStickerFound")}</p>
     {/if}
     {#each groups as g (g.pack)}
-      {#if g.pack || groups.length > 1}<h3>{g.pack || "Stickers"}</h3>{/if}
+      {#if g.pack || groups.length > 1}<h3>{g.pack || t("media.stickersWithoutPack")}</h3>{/if}
       <div class="cells">
         {#each g.stickers as s (s.id)}
           <button

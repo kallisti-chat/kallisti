@@ -1,6 +1,7 @@
 <script lang="ts">
   import { downloadUrl, finite, formatDuration, onlyOne, releaseOnDestroy, shownLength } from "../lib/media";
   import { formatSize } from "../lib/textChannels";
+  import { t } from "../lib/i18n.svelte";
 
   // An audio attachment: the file card with a player row.
   // onError: it cannot play (the caller shows the file instead).
@@ -21,14 +22,14 @@
       <a class="name ellipsis" href={url} target="_blank" rel="noopener noreferrer">{name}</a>
       <span class="size">{formatSize(size)}</span>
     </span>
-    <a class="icon" href={downloadUrl(url)} download={name} aria-label="Download {name}" title="Download">
+    <a class="icon" href={downloadUrl(url)} download={name} aria-label={t("media.downloadFile", { name })} title={t("media.download")}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
         ><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg
       >
     </a>
   </div>
   <div class="bar">
-    <button class="icon" aria-label={paused ? `Play ${name}` : `Pause ${name}`} onclick={() => (paused ? audio?.play().catch(() => {}) : audio?.pause())}>
+    <button class="icon" aria-label={paused ? t("media.playFile", { name }) : t("media.pauseFile", { name })} onclick={() => (paused ? audio?.play().catch(() => {}) : audio?.pause())}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"
         >{#if paused}<path d="M7 4v16l13-8z" />{:else}<path d="M6 4h4v16H6zM14 4h4v16h-4z" />{/if}</svg
       >
@@ -40,10 +41,10 @@
       max={finite(duration)}
       step="0.1"
       value={time}
-      aria-label="Position"
+      aria-label={t("media.position")}
       oninput={(e) => audio && (audio.currentTime = Number(e.currentTarget.value))}
     />
-    <button class="icon" aria-label={muted ? "Unmute" : "Mute"} aria-pressed={muted} onclick={() => (muted = !muted)}>
+    <button class="icon" aria-label={muted ? t("media.unmute") : t("media.mute")} aria-pressed={muted} onclick={() => (muted = !muted)}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
         ><path d="M4 9h4l5-4v14l-5-4H4z" />{#if muted}<path d="M17 9l4 6M21 9l-4 6" />{:else}<path d="M16 9a4 4 0 0 1 0 6" />{/if}</svg
       >

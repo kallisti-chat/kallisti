@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ListKind } from "../lib/channelList";
+  import { t } from "../lib/i18n.svelte";
   import Icon from "./Icon.svelte";
 
   // The channels the user hid from their list (see lib/channelList), each
@@ -16,24 +17,24 @@
 
 <dialog bind:this={dialog} onclose={onClose} aria-labelledby="hidden-dialog-title">
   <header>
-    <h2 id="hidden-dialog-title">Hidden channels</h2>
-    <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+    <h2 id="hidden-dialog-title">{t("admin.hiddenTitle")}</h2>
+    <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
   </header>
-  <p class="note">Only you do not see these. A mention of you shows the channel until you read it.</p>
+  <p class="note">{t("admin.hiddenNote")}</p>
   {#if channels.length}
     <ul>
       {#each channels as c (`${c.kind}${c.id}`)}
         <li>
           <span class="name">
-            <Icon name={c.kind === "text" ? "hash" : "speaker"} size={16} /><span class="sr-only">{c.kind === "text" ? "Text channel" : "Voice channel"}</span>
+            <Icon name={c.kind === "text" ? "hash" : "speaker"} size={16} /><span class="sr-only">{c.kind === "text" ? t("admin.textChannel") : t("admin.voiceChannel")}</span>
             <span class="ellipsis">{c.name}</span>
           </span>
-          <button type="button" class="secondary" aria-label="Show {c.name}" onclick={() => onShow(c.kind, c.id)}>Show</button>
+          <button type="button" class="secondary" aria-label={t("admin.showNamed", { name: c.name })} onclick={() => onShow(c.kind, c.id)}>{t("admin.show")}</button>
         </li>
       {/each}
     </ul>
   {:else}
-    <p class="note">None.</p>
+    <p class="note">{t("admin.hiddenNone")}</p>
   {/if}
 </dialog>
 

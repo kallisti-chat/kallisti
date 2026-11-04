@@ -3,6 +3,8 @@
   import type { ChannelForm, ChannelKind } from "../lib/channelForm";
   import type { ListenOnly, Speaker } from "../lib/listenOnly";
   import { SLOW_MODES, slowModeLabel } from "../lib/slowMode";
+  import { around } from "../lib/i18n";
+  import { t } from "../lib/i18n.svelte";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import SaveStatus from "./SaveStatus.svelte";
@@ -33,7 +35,6 @@
   const start = untrack(() => form);
   // Staff making a text channel may make a category instead.
   let kind = $state(start.kind);
-  const noun = $derived(kind === "category" ? "category" : "channel");
   // A text channel's category (0: none); the choice is for staff.
   const categories = start.mode === "delete" ? undefined : start.categories;
   const startCategory = start.mode === "delete" ? undefined : start.category;
@@ -61,7 +62,15 @@
   $effect(() => dialog?.showModal());
 
   const title = $derived(
-    form.mode === "create" && form.parent ? "Create subchannel" : `${form.mode === "create" ? "Create" : form.mode === "edit" ? "Edit" : "Delete"} ${noun}`,
+    form.mode === "create" && form.parent
+      ? t("admin.createSubchannel")
+      : kind === "category"
+        ? t(form.mode === "create" ? "admin.createCategory" : form.mode === "edit" ? "admin.editCategory" : "admin.deleteCategory")
+        : t(form.mode === "create" ? "admin.createChannel" : form.mode === "edit" ? "admin.editChannel" : "admin.deleteChannel"),
+  );
+  // The delete question, around the channel's name.
+  const deleteAsk = $derived(
+    around(t(form.kind === "voice" ? "admin.deleteVoiceAsk" : form.kind === "category" ? "admin.deleteCategoryAsk" : "admin.deleteTextAsk"), "name"),
   );
   // Closes once the server confirms; a refusal shows here.
   const save = createSave();
@@ -86,63 +95,54 @@
   <form onsubmit={submit}>
     <header>
       <h2 id="channel-dialog-title">{title}</h2>
-      <button type="button" class="close" onclick={() => dialog?.close()} aria-label="Close">×</button>
+      <button type="button" class="close" onclick={() => dialog?.close()} aria-label={t("common.close")}>×</button>
     </header>
     {#if form.mode === "delete"}
-      <p>
-        Delete <strong>{form.kind === "text" ? `#${form.name}` : form.name}</strong>?
-        {form.kind === "voice"
-          ? "Its subchannels go too; people in them move up."
-          : form.kind === "category"
-            ? "Its channels stay, without a category."
-            : "Its messages are kept and come back if a channel of this name is made again."}
-      </p>
+      <p>{deleteAsk[0]}<strong>{form.kind === "text" ? `#${form.name}` : form.name}</strong>{deleteAsk[1]}</p>
     {:else}
       {#if start.mode === "create" && start.canCategory}
-        <div class="kinds" role="radiogroup" aria-label="What to create">
-          <label class="check"><input type="radio" bind:group={kind} value="text" /> Text channel</label>
-          <label class="check"><input type="radio" bind:group={kind} value="category" /> Category</label>
+        <div class="kinds" role="radiogroup" aria-label={t("admin.whatToCreate")}>
+          <label class="check"><input type="radio" bind:group={kind} value="text" /> {t("admin.kindText")}</label>
+          <label class="check"><input type="radio" bind:group={kind} value="category" /> {t("admin.kindCategory")}</label>
         </div>
       {/if}
       <label>
-        {kind === "category" ? "Category" : "Channel"} name
+        {kind === "category" ? t("admin.categoryName") : t("admin.channelName")}
         <!-- svelte-ignore a11y_autofocus -->
         <input bind:value={name} maxlength={kind === "voice" ? 100 : 32} required autofocus readonly={start.mode === "edit" && start.topicOnly}
-          placeholder={kind === "text" ? "new-channel" : kind === "category" ? "New category" : "New channel"} />
+          placeholder={kind === "text" ? t("admin.textChannelPlaceholder") : kind === "category" ? t("admin.categoryPlaceholder") : t("admin.channelPlaceholder")} />
       </label>
       {#if categories?.length && kind === "text"}
         <label>
-          Category
+          {t("admin.categoryField")}
           <select bind:value={category}>
-            <option value={0}>No category</option>
+            <option value={0}>{t("admin.noCategory")}</option>
             {#each categories as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
           </select>
         </label>
       {/if}
       {#if form.mode === "edit" && kind !== "category"}
         <label>
-          {kind === "text" ? "Topic" : "Description"}
+          {kind === "text" ? t("admin.topic") : t("admin.description")}
           <textarea bind:value={description} rows="3" maxlength={kind === "text" ? 200 : undefined}></textarea>
         </label>
       {/if}
       {#if startSlowMode !== undefined}
         <label>
-          Slow mode
+          {t("admin.slowMode")}
           <select bind:value={slowMode}>
             {#each SLOW_MODES as s (s)}<option value={s}>{slowModeLabel(s)}</option>{/each}
           </select>
-          <span class="note hint">How often each member may post here. Admins and moderators (also this channel's) are exempt.</span>
+          <span class="note hint">{t("admin.slowModeHint")}</span>
         </label>
       {/if}
       {#if canPrivate}
         <label class="check">
           <input type="checkbox" bind:checked={isPrivate} />
           <span>
-            {kind === "category" ? "Private category" : "Private channel"}
+            {kind === "category" ? t("admin.privateCategory") : t("admin.privateChannel")}
             <span class="note">
-              {kind === "category"
-                ? "Only its members, admins and moderators see the channels in it (a private channel in it also lets in its own members). Add members in the category menu (Members…)."
-                : "Only its members, admins and moderators see it. Add members in the channel menu (Members…)."}
+              {kind === "category" ? t("admin.privateCategoryNote") : t("admin.privateChannelNote")}
             </span>
           </span>
         </label>
@@ -151,47 +151,47 @@
         <label class="check">
           <input type="checkbox" bind:checked={listenOnly} />
           <span>
-            Listen only
-            <span class="note">Only the people below can speak. Everyone else listens, also admins and moderators.</span>
+            {t("admin.listenOnly")}
+            <span class="note">{t("admin.listenOnlyNote")}</span>
           </span>
         </label>
         {#if listenOnly}
           <div class="speakers">
-            <span class="label">Who can speak</span>
+            <span class="label">{t("admin.whoCanSpeak")}</span>
             {#if speakers.length}
               <ul>
                 {#each speakers as s (s.id)}
                   <li>
                     {s.name}
-                    <button type="button" aria-label="Remove {s.name}" onclick={() => (speakers = speakers.filter((x) => x.id !== s.id))}>×</button>
+                    <button type="button" aria-label={t("admin.removeNamed", { name: s.name })} onclick={() => (speakers = speakers.filter((x) => x.id !== s.id))}>×</button>
                   </li>
                 {/each}
               </ul>
             {/if}
             {#if addable.length}
-              <select aria-label="Add someone who can speak" value="" onchange={addSpeaker}>
-                <option value="" disabled>Add someone (registered and online)…</option>
+              <select aria-label={t("admin.addSpeaker")} value="" onchange={addSpeaker}>
+                <option value="" disabled>{t("admin.addSpeakerOption")}</option>
                 {#each addable as u (u.id)}<option value={String(u.id)}>{u.name}</option>{/each}
               </select>
             {:else if !speakers.length}
-              <p class="note">Nobody can speak. You can add registered users who are online.</p>
+              <p class="note">{t("admin.nobodyCanSpeak")}</p>
             {/if}
           </div>
         {/if}
       {/if}
       {#if temporary}
-        <p class="note">A temporary channel: it goes away when the last person leaves.</p>
+        <p class="note">{t("admin.temporaryNote")}</p>
       {/if}
     {/if}
     <footer>
       <SaveStatus save={save.state} />
-      <button type="button" class="secondary" onclick={() => dialog?.close()}>Cancel</button>
+      <button type="button" class="secondary" onclick={() => dialog?.close()}>{t("common.cancel")}</button>
       <button type="submit" class:danger={form.mode === "delete"} disabled={save.busy}>
         {form.mode === "create"
-          ? busyLabel(save.state, "Create", "Creating…")
+          ? busyLabel(save.state, t("common.create"), t("admin.creating"))
           : form.mode === "edit"
-            ? busyLabel(save.state, "Save")
-            : busyLabel(save.state, "Delete", "Deleting…")}
+            ? busyLabel(save.state, t("common.save"), t("common.saving"))
+            : busyLabel(save.state, t("common.delete"), t("admin.deleting"))}
       </button>
     </footer>
   </form>

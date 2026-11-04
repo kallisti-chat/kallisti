@@ -1,6 +1,7 @@
 import { getContext, setContext } from "svelte";
 import { emojiParts } from "./emoji";
 import type { EmojiEntry } from "./emojiPicker";
+import { t } from "./i18n.svelte";
 
 // Custom server emoji: a name and an image on the server. In messages and
 // as reactions they are ":name:"; Mumble clients see that text.
@@ -138,13 +139,13 @@ export const customEntries = (list: readonly CustomEmoji[]): EmojiEntry[] =>
 
 // Why a new emoji cannot be added (null: it can); the server checks again.
 export const emojiFormError = (name: string, file: { size: number; type: string } | null, list: readonly CustomEmoji[]): string | null => {
-  if (name.length < 2 || name.length > 32) return "A name has 2 to 32 characters.";
-  if (!NAME.test(name)) return "A name has only lower case letters, digits and _.";
-  if (list.some((e) => e.name === name)) return "An emoji with this name exists.";
-  if (list.length >= MAX_EMOJI) return `This server has the most emoji it can have (${MAX_EMOJI}).`;
-  if (!file) return "Choose an image.";
-  if (!EMOJI_TYPES.includes(file.type)) return "The image must be PNG, GIF, WebP or JPEG.";
-  if (file.size > MAX_BYTES) return "The image can be at most 256 KB.";
+  if (name.length < 2 || name.length > 32) return t("media.emojiNameLength");
+  if (!NAME.test(name)) return t("media.emojiNameLetters");
+  if (list.some((e) => e.name === name)) return t("media.emojiNameTaken");
+  if (list.length >= MAX_EMOJI) return t("media.serverEmojiFull", { max: MAX_EMOJI });
+  if (!file) return t("media.chooseImage");
+  if (!EMOJI_TYPES.includes(file.type)) return t("media.emojiImageType");
+  if (file.size > MAX_BYTES) return t("media.emojiImageSize");
   return null;
 };
 

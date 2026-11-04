@@ -352,3 +352,4 @@
 - [x] [Security audit (GitHub #10)](issues/security-audit-10.md)
 - [x] [Import a Murmur server](issues/murmur-import.md)
 - [x] [Delete users: also their web account](issues/delete-account-on-unregister.md)
+- [x] [Localization](issues/localization.md)

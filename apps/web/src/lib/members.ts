@@ -1,6 +1,7 @@
 import { byName } from "@kallisti/protocol";
 import { roleOf, type Roles } from "./roles";
 import type { Peer } from "./textChannels";
+import { t } from "./i18n.svelte";
 
 // Registered users by id (built-in server, without guest accounts): the
 // member list shows those who are offline, like Discord.
@@ -46,6 +47,8 @@ export const onlineRows = <U extends { name: string }>(users: readonly U[], hidd
 // us (me) if we are neither (the server sends members to readers only).
 export type ReaderRow<U> = OnlineRow<U> | { offline: Peer };
 export type ReaderGroup<U> = { title: "Members" | "Staff"; rows: ReaderRow<U>[] };
+// A group's title to show (title itself is a stable id: collapsed groups are saved by it).
+export const readerGroupLabel = (title: ReaderGroup<unknown>["title"]) => t(title === "Staff" ? "client.readersStaff" : "client.readersMembers");
 export const readerGroups = <U extends { name: string; userId: number | null }>(
   members: readonly Peer[],
   roles: Roles,

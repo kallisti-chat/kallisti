@@ -2,6 +2,7 @@ import { createStreamStats, type StreamStats } from "./stats";
 import { voiceDecoder, type VoiceDecoder } from "../voice/codec";
 import { shouldFallBack } from "../voice/fallback";
 import { createPlayout, lastDue, type Playout } from "./playout";
+import { t } from "../i18n.svelte";
 import { cannotPlay, decodeFrame, decodeWatch, encodeFrame, pickCodec, previewSize } from "./protocol";
 import { DEFAULT_LIMITS, DEFAULT_QUALITY, KINDS, cameraConstraints, encoding, nextCamera, parseLimits, sources, type Kind, type Quality } from "./quality";
 import Ticker from "./ticker.worker?worker";
@@ -136,18 +137,18 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
   const open = (): Promise<WebSocket> => {
     if (ws?.readyState === WebSocket.OPEN) return Promise.resolve(ws);
     opening ??= (async () => {
-      const t = await token();
+      const auth = await token();
       const sock = new WebSocket(url);
       sock.binaryType = "arraybuffer";
       await new Promise<void>((resolve, reject) => {
-        sock.onopen = () => sock.send(JSON.stringify({ type: "auth", token: t }));
+        sock.onopen = () => sock.send(JSON.stringify({ type: "auth", token: auth }));
         sock.onmessage = (e) => {
           const m = typeof e.data === "string" ? (JSON.parse(e.data) as Text) : null;
           if (m?.type !== "ready") return;
           limits = parseLimits(m.limits);
           resolve();
         };
-        sock.onclose = () => reject(new Error("cannot connect for streaming"));
+        sock.onclose = () => reject(new Error(t("media.streamConnectFailed")));
       });
       if (closed) {
         sock.close();
@@ -236,7 +237,7 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
       const together = () => sharing[kind === "screen" ? "camera" : "screen"];
       let enc = encoding({ width: settings.width || 1280, height: settings.height || 720 }, quality[kind], kind, limits, together());
       const codec = live(await pickCodec(async (c) => (await VideoEncoder.isConfigSupported(encoderConfig(c, enc))).supported === true));
-      if (!codec) throw new Error("this browser cannot encode video for streaming");
+      if (!codec) throw new Error(t("media.cannotEncode"));
       const configure = () => {
         if (o.encoder?.state !== "closed") o.encoder?.close();
         o.encoder = new VideoEncoder({
@@ -245,7 +246,7 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
             chunk.copyTo(data);
             if (sock.readyState === WebSocket.OPEN) sock.send(encodeFrame(chunk.type === "key", chunk.timestamp, data, false, kind === "camera"));
           },
-          error: (e) => (error = `Video encoder failed: ${e.message}`),
+          error: (e) => (error = t("media.encoderFailed", { message: e.message })),
         });
         o.encoder.configure(encoderConfig(codec, enc));
         o.forceKey = true;

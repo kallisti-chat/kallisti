@@ -1,5 +1,6 @@
 <script lang="ts">
   import { qualityLabel, type Kind, type Quality } from "../lib/stream/quality";
+  import { t } from "../lib/i18n.svelte";
 
   // The streamer's own screen share or camera, small, with its quality
   // (changed while live), a camera switch (onSwitch: more than one camera)
@@ -27,33 +28,33 @@
     video.srcObject = s;
     return { update: (next: MediaStream) => (video.srcObject = next) };
   };
-  const what = $derived(kind === "camera" ? "camera" : "screen share");
+  const camera = $derived(kind === "camera");
   // Your own camera as in a mirror (not a phone's back camera).
   const mirror = $derived(kind === "camera" && stream.getVideoTracks()[0]?.getSettings().facingMode !== "environment");
 </script>
 
-<section class="preview" aria-label="Your {what}">
+<section class="preview" aria-label={camera ? t("media.yourCamera") : t("media.yourScreenShare")}>
   <video use:show={stream} class:mirror autoplay muted playsinline></video>
   <div class="bar">
-    <span class="live">{kind === "camera" ? "CAMERA" : "LIVE"}</span>
-    <span class="viewers" title={viewers.length ? viewers.join(", ") : "Nobody is watching yet"}>
-      {viewers.length} watching<span class="sr-only">: {viewers.join(", ")}</span>
+    <span class="live">{camera ? t("media.cameraBadge") : t("media.liveBadge")}</span>
+    <span class="viewers" title={viewers.length ? viewers.join(", ") : t("media.nobodyWatching")}>
+      {t("media.watchingCount", { count: viewers.length })}<span class="sr-only">: {viewers.join(", ")}</span>
     </span>
-    <button onclick={onStop} aria-label="Stop your {what}">Stop</button>
+    <button onclick={onStop} aria-label={camera ? t("media.stopYourCamera") : t("media.stopYourScreenShare")}>{t("media.stop")}</button>
   </div>
-  <div class="bar quality" title="Quality: {qualityLabel(quality)}">
-    <select aria-label="Resolution of your {what}" value={quality.height} onchange={(e) => onQuality({ ...quality, height: Number(e.currentTarget.value) })}>
+  <div class="bar quality" title={t("media.qualityTitle", { quality: qualityLabel(quality) })}>
+    <select aria-label={camera ? t("media.cameraResolution") : t("media.screenResolution")} value={quality.height} onchange={(e) => onQuality({ ...quality, height: Number(e.currentTarget.value) })}>
       {#each options.heights as h (h)}
         <option value={h}>{h}p</option>
       {/each}
     </select>
-    <select aria-label="Frame rate of your {what}" value={quality.fps} onchange={(e) => onQuality({ ...quality, fps: Number(e.currentTarget.value) })}>
+    <select aria-label={camera ? t("media.cameraFrameRate") : t("media.screenFrameRate")} value={quality.fps} onchange={(e) => onQuality({ ...quality, fps: Number(e.currentTarget.value) })}>
       {#each options.fps as f (f)}
-        <option value={f}>{f} fps</option>
+        <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
       {/each}
     </select>
     {#if onSwitch}
-      <button onclick={onSwitch} title="Switch camera">Switch</button>
+      <button onclick={onSwitch} title={t("media.switchCameraHint")}>{t("media.switchCamera")}</button>
     {/if}
   </div>
 </section>

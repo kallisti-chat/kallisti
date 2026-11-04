@@ -6,6 +6,7 @@
   import { recentEmoji, skinTone } from "../lib/emojiPrefs.svelte";
   import { customEmojiFor, customEntries } from "../lib/customEmoji";
   import { personalEntries } from "../lib/personalEmoji";
+  import { t } from "../lib/i18n.svelte";
 
   // All emoji: search, recently used, categories, skin tone. A popup at
   // `anchor` (the button that opened it); on phones a sheet at the bottom.
@@ -19,7 +20,7 @@
     onPick,
     onClose,
     selected = () => false,
-    label = "Emoji",
+    label = t("media.emoji"),
     personal = true,
   }: {
     anchor: DOMRect;
@@ -67,9 +68,9 @@
     const recent = recentEmoji.value.flatMap((e) => byEmoji.get(normalEmoji(e)) ?? []);
     const groups = data.groups.map((g, i) => ({ ...g, emoji: data!.emoji.filter((e) => e.group === i) }));
     return [
-      ...(custom.length ? [{ name: "Server", icon: custom[0]!.emoji, emoji: custom }] : []),
-      ...(mine.length ? [{ name: "My emoji", icon: mine[0]!.emoji, emoji: mine }] : []),
-      ...(recent.length ? [{ name: "Recently used", icon: "🕒", emoji: recent }] : []),
+      ...(custom.length ? [{ name: t("media.emojiServerSection"), icon: custom[0]!.emoji, emoji: custom }] : []),
+      ...(mine.length ? [{ name: t("media.emojiMineSection"), icon: mine[0]!.emoji, emoji: mine }] : []),
+      ...(recent.length ? [{ name: t("media.emojiRecentSection"), icon: "🕒", emoji: recent }] : []),
       ...groups,
     ];
   });
@@ -155,8 +156,8 @@
       bind:value={query}
       oninput={() => (shown = null)}
       type="search"
-      placeholder="Find the perfect emoji"
-      aria-label="Search emoji"
+      placeholder={t("media.emojiSearchPlaceholder")}
+      aria-label={t("media.emojiSearch")}
       onkeydown={(e) => {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -171,26 +172,26 @@
       type="button"
       class="tone"
       bind:this={toneButton}
-      aria-label="Skin tone"
+      aria-label={t("media.skinTone")}
       aria-expanded={choosingTone}
-      title="Skin tone"
+      title={t("media.skinTone")}
       onclick={() => (choosingTone = !choosingTone)}><Emoji text={TONES[skinTone.value] ?? TONES[0]!} /></button
     >
     {#if choosingTone}
-      <div class="tones" role="group" aria-label="Skin tones">
-        {#each TONES as t, i (t)}
+      <div class="tones" role="group" aria-label={t("media.skinTones")}>
+        {#each TONES as tone, i (tone)}
           <button
             type="button"
-            aria-label={i === 0 ? "No skin tone" : `Skin tone ${i}`}
+            aria-label={i === 0 ? t("media.noSkinTone") : t("media.skinToneNumber", { number: i })}
             aria-pressed={skinTone.value === i}
-            onclick={() => (skinTone.set(i), (choosingTone = false), search?.focus())}><Emoji text={t} /></button
+            onclick={() => (skinTone.set(i), (choosingTone = false), search?.focus())}><Emoji text={tone} /></button
           >
         {/each}
       </div>
     {/if}
   </div>
   {#if !results && sections.length}
-    <nav class="groups" aria-label="Emoji categories">
+    <nav class="groups" aria-label={t("media.emojiCategories")}>
       {#each sections as s, i (s.name)}
         <button type="button" title={s.name} aria-label={s.name} onclick={() => jump(i)}><Emoji text={s.icon} /></button>
       {/each}
@@ -216,11 +217,11 @@
       </div>
     {/snippet}
     {#if failed}
-      <p class="note">The emoji list did not load.</p>
+      <p class="note">{t("media.emojiListFailed")}</p>
     {:else if !data}
-      <p class="note">Loading…</p>
+      <p class="note">{t("common.loading")}</p>
     {:else if results}
-      {#if results.length}{@render cells(results)}{:else}<p class="note">No emoji found.</p>{/if}
+      {#if results.length}{@render cells(results)}{:else}<p class="note">{t("media.noEmojiFound")}</p>{/if}
     {:else}
       {#each sections as s, i (s.name)}
         <section data-section={i}>

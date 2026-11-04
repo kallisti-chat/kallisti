@@ -1,3 +1,6 @@
+import type { Key } from "../i18n/en";
+import { t } from "./i18n.svelte";
+
 // Polls, as in Discord (see the server's sidecar/polls.go): a message with
 // a question and answers. Counts show after one's own vote or the end;
 // anonymous polls come without names.
@@ -46,15 +49,16 @@ export const withPoll = <M extends { poll?: Poll }>(m: M, poll: Poll): M =>
 export const POLL_QUESTION_MAX = 300;
 export const POLL_ANSWER_MAX = 55;
 export const POLL_ANSWERS_MAX = 10;
-export const POLL_DURATIONS = [
-  [1, "1 hour"],
-  [4, "4 hours"],
-  [8, "8 hours"],
-  [24, "24 hours"],
-  [72, "3 days"],
-  [168, "1 week"],
-  [336, "2 weeks"],
-] as const;
+// The texts: keys (t() where shown).
+export const POLL_DURATIONS: readonly (readonly [number, Key])[] = [
+  [1, "chat.pollDuration1Hour"],
+  [4, "chat.pollDuration4Hours"],
+  [8, "chat.pollDuration8Hours"],
+  [24, "chat.pollDuration24Hours"],
+  [72, "chat.pollDuration3Days"],
+  [168, "chat.pollDuration1Week"],
+  [336, "chat.pollDuration2Weeks"],
+];
 export type PollDraft = { question: string; answers: { text: string; emoji?: string }[]; multiple: boolean; anonymous: boolean; hours: number };
 export const emptyPollDraft = (): PollDraft => ({ question: "", answers: [{ text: "" }, { text: "" }], multiple: false, anonymous: false, hours: 24 });
 
@@ -64,11 +68,11 @@ const filled = (d: PollDraft) => d.answers.map((a) => ({ ...a, text: oneLine(a.t
 
 export const pollProblem = (d: PollDraft): string | null => {
   const q = oneLine(d.question);
-  if (!q) return "Ask a question.";
-  if ([...q].length > POLL_QUESTION_MAX) return `The question has at most ${POLL_QUESTION_MAX} characters.`;
+  if (!q) return t("chat.pollAskQuestion");
+  if ([...q].length > POLL_QUESTION_MAX) return t("chat.pollQuestionTooLong", { max: POLL_QUESTION_MAX });
   const answers = filled(d);
-  if (answers.length < 2) return "A poll needs at least 2 answers.";
-  if (answers.some((a) => [...a.text].length > POLL_ANSWER_MAX)) return `An answer has at most ${POLL_ANSWER_MAX} characters.`;
+  if (answers.length < 2) return t("chat.pollTooFewAnswers");
+  if (answers.some((a) => [...a.text].length > POLL_ANSWER_MAX)) return t("chat.pollAnswerTooLong", { max: POLL_ANSWER_MAX });
   return null;
 };
 
@@ -93,11 +97,9 @@ export const winners = (p: Poll) => {
   return best ? p.answers.flatMap((a, i) => (a.votes === best ? [i] : [])) : [];
 };
 
-export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-const unit = (n: number, word: string) => `${plural(n, word)} left`;
 export const timeLeft = (ends: number, now: number) => {
   const minutes = Math.max(1, Math.ceil((ends - now) / 60_000));
-  if (minutes <= 60) return unit(minutes, "minute");
+  if (minutes <= 60) return t("chat.pollMinutesLeft", { count: minutes });
   const hours = Math.round(minutes / 60);
-  return hours < 48 ? unit(hours, "hour") : unit(Math.round(hours / 24), "day");
+  return hours < 48 ? t("chat.pollHoursLeft", { count: hours }) : t("chat.pollDaysLeft", { count: Math.round(hours / 24) });
 };

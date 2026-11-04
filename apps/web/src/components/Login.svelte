@@ -12,6 +12,9 @@
   import type { Credentials } from "../lib/connection.svelte";
   import { iconHref, showIcons } from "../lib/serverLogo";
   import { localStore, safeGet, safeSet, tabStorage } from "../lib/storage";
+  import { t } from "../lib/i18n.svelte";
+  import { around } from "../lib/i18n";
+  import type { Key } from "../i18n/en";
 
   let {
     error,
@@ -65,10 +68,10 @@
   const current = (used: AccountsApi, at: string) => open && used === api && shown() === at;
 
   type Mode = "guest" | "login" | "create";
-  const MODES: [Mode, string][] = [
-    ["login", "Log in"],
-    ["create", "Create account"],
-    ["guest", "Guest"],
+  const MODES: [Mode, Key][] = [
+    ["login", "login.modeLogin"],
+    ["create", "login.modeCreate"],
+    ["guest", "login.modeGuest"],
   ];
   // An account invitation: from the address, or kept over a fediverse
   // login (see fediLogin); the kept one is taken once either way.
@@ -94,7 +97,7 @@
   const inviteToken = () => {
     if (!accountInvite.trim()) return undefined;
     const token = registrationToken(accountInvite.trim(), api.base || location.origin);
-    if (!token) throw new Error("Enter an account invitation for this server.");
+    if (!token) throw new Error(t("login.inviteForThisServer"));
     return token;
   };
   const clearInvite = () => {
@@ -256,7 +259,7 @@
     event.preventDefault();
     const parsed = serverOrigin(homeAddress, "", false);
     if ("error" in parsed) return void (homeError = parsed.error);
-    if (parsed.origin === location.origin) return void (homeError = "That is this server.");
+    if (parsed.origin === location.origin) return void (homeError = t("login.homeIsThisServer"));
     safeSet(localStore(), "kallisti-home", homeAddress.trim());
     location.assign(`${parsed.origin}/?join=${encodeURIComponent(location.href)}`);
   };
@@ -307,10 +310,10 @@
       // Another login is here now (another tab): show it, or none.
       const answer = await used.check();
       if (!current(used, at)) return;
-      if (answer === "unknown") apiError = "Another login is active in this browser now. Reload the page.";
+      if (answer === "unknown") apiError = t("login.otherLoginActive");
       else onAccountChange(answer);
     } else if (ok) onAccountChange(null);
-    else apiError = "Logging out did not finish: you may still be logged in. Try again.";
+    else apiError = t("login.logoutUnfinished");
   };
 </script>
 
@@ -318,98 +321,96 @@
   {#if certificate}
     <div class="card">
       {#if certificate.kind === "unknown"}
-        <h1>New server</h1>
-        <p class="sub">
-          First connection to <strong>{certificate.server}</strong>. Its certificate fingerprint is:
-        </p>
+        {@const [before, after] = around(t("login.firstConnection"), "server")}
+        <h1>{t("login.newServerTitle")}</h1>
+        <p class="sub">{before}<strong>{certificate.server}</strong>{after}</p>
       {:else}
-        <h1>Certificate changed</h1>
-        <p class="error" role="alert">
-          The certificate of <strong>{certificate.server}</strong> is not the one you trusted before. This can mean
-          that someone is listening in. Continue only if the server admin told you about a new certificate.
-        </p>
+        {@const [before, after] = around(t("login.certificateChanged"), "server")}
+        <h1>{t("login.certificateChangedTitle")}</h1>
+        <p class="error" role="alert">{before}<strong>{certificate.server}</strong>{after}</p>
       {/if}
       <code class="fingerprint">{formatFingerprint(certificate.fingerprint)}</code>
-      <p class="hint">If you can, compare it with the server admin.</p>
+      <p class="hint">{t("login.compareFingerprint")}</p>
       {#if certificate.kind === "unknown"}
-        <button class="primary" onclick={onTrust}>Trust and connect</button>
-        <button class="link" onclick={onCancelTrust}>Cancel</button>
+        <button class="primary" onclick={onTrust}>{t("login.trustAndConnect")}</button>
+        <button class="link" onclick={onCancelTrust}>{t("common.cancel")}</button>
       {:else}
         <!-- A changed certificate: the safe choice is the main button. -->
-        <button class="primary" onclick={onCancelTrust}>Cancel</button>
-        <button class="link danger" onclick={onTrust}>Trust the new certificate anyway</button>
+        <button class="primary" onclick={onCancelTrust}>{t("common.cancel")}</button>
+        <button class="link danger" onclick={onTrust}>{t("login.trustAnyway")}</button>
       {/if}
     </div>
   {:else if account}
+    {@const [before, after] = around(t(account.temporary ? "login.yourGuestAccount" : "login.loggedInAs"), "name")}
     <div class="card">
-      <h1>{(apiError ?? error) ? "Could not connect" : "Welcome back"}</h1>
+      <h1>{(apiError ?? error) ? t("login.couldNotConnect") : t("login.welcomeBack")}</h1>
       {@render serverLine()}
-      <p class="sub">
-        {account.temporary ? "Your guest account" : "Logged in as"} <strong>{account.name}</strong>
-      </p>
+      <p class="sub">{before}<strong>{account.name}</strong>{after}</p>
       {#if apiError ?? error}<p class="error" role="alert">{apiError ?? error}</p>{/if}
       <!-- Shown after a failed connection (a saved session connects by
            itself, see App): again by hand, not in a loop. -->
-      <button class="primary" onclick={() => connectAs(account.name, true)}>Try again</button>
-      <button class="link" onclick={logout}>Log out</button>
+      <button class="primary" onclick={() => connectAs(account.name, true)}>{t("common.retry")}</button>
+      <button class="link" onclick={logout}>{t("login.logOut")}</button>
     </div>
   {:else if fediSignup}
     {#if signup && !chooseName}
+      {@const [before, after] = around(t("login.makingAccount"), "name")}
       <div class="card">
-        <h1>Welcome</h1>
-        <p class="sub" role="status">Making your account <strong><UserName name={signup.remote || signup.handle} /></strong>…</p>
-        {#if checking}<p class="hint" role="status">Checking your browser…</p>{/if}
+        <h1>{t("login.welcome")}</h1>
+        <p class="sub" role="status">{before}<strong><UserName name={signup.remote || signup.handle} /></strong>{after}</p>
+        {#if checking}<p class="hint" role="status">{t("login.checkingBrowser")}</p>{/if}
         {#if apiError}
           <p class="error" role="alert">{apiError}</p>
           {@render inviteField(false)}
-          <button class="primary" disabled={busy} onclick={() => void createFromFedi()}>Try again</button>
-          <button type="button" class="link" onclick={onFediSignupDone}>Cancel</button>
+          <button class="primary" disabled={busy} onclick={() => void createFromFedi()}>{t("common.retry")}</button>
+          <button type="button" class="link" onclick={onFediSignupDone}>{t("common.cancel")}</button>
         {/if}
       </div>
     {:else if signup}
+      {@const [before, after] = around(t("login.nameTakenHere", { remote: signup.remote }), "handle")}
       <form class="card" onsubmit={createFromFedi}>
-        <h1>Choose your name</h1>
-        <p class="sub">Welcome, <strong>{signup.handle}</strong>. {signup.remote} is taken here: choose the name people see here.</p>
+        <h1>{t("login.chooseNameTitle")}</h1>
+        <p class="sub">{before}<strong>{signup.handle}</strong>{after}</p>
         <label>
-          Name
+          {t("login.name")}
           <input bind:value={username} required maxlength="32" autocomplete="username" />
         </label>
         {#if inviteOnly || accountInvite}{@render inviteField(inviteOnly)}{/if}
         {#if apiError}<p class="error" role="alert">{apiError}</p>{/if}
-        {#if checking}<p class="hint" role="status">Checking your browser…</p>{/if}
-        <button class="primary" type="submit" disabled={busy}>Create account</button>
-        <button type="button" class="link" onclick={onFediSignupDone}>Cancel</button>
+        {#if checking}<p class="hint" role="status">{t("login.checkingBrowser")}</p>{/if}
+        <button class="primary" type="submit" disabled={busy}>{t("login.createAccount")}</button>
+        <button type="button" class="link" onclick={onFediSignupDone}>{t("common.cancel")}</button>
       </form>
     {:else}
       <div class="card">
-        <h1>Log in with the fediverse</h1>
-        <p class="sub" role="status">{signup === null ? "The fediverse login expired. Please try again." : "Loading…"}</p>
-        {#if signup === null}<button class="primary" onclick={onFediSignupDone}>Back</button>{/if}
+        <h1>{t("login.fediTitle")}</h1>
+        <p class="sub" role="status">{signup === null ? t("login.fediExpired") : t("common.loading")}</p>
+        {#if signup === null}<button class="primary" onclick={onFediSignupDone}>{t("common.back")}</button>{/if}
       </div>
     {/if}
   {:else}
     {#if desktop && !desktop.kind}
     <form class="card" onsubmit={pickServer}>
-      <h1>Welcome to Kallisti</h1>
+      <h1>{t("login.welcomeTo", { name: "Kallisti" })}</h1>
       <label>
-        Server address
+        {t("login.serverAddress")}
         <input bind:value={server} required placeholder="chat.example.org" autocomplete="url" />
       </label>
       {#if desktop.bridge !== null}<p class="hint">{serverHint(desktop.bridge)}</p>{/if}
       {#if error}<p class="error" role="alert">{error}</p>{/if}
-      <button class="primary" type="submit" disabled={busy}>{busy ? "Looking…" : "Continue"}</button>
+      <button class="primary" type="submit" disabled={busy}>{busy ? t("login.looking") : t("login.continue")}</button>
       {#if onScan}
-        <p class="hint">Or scan a login code from a device where you are logged in (its Settings): the code knows the server.</p>
-        <button class="secondary" type="button" onclick={onScan}>Scan a QR code</button>
+        <p class="hint">{t("login.scanHint")}</p>
+        <button class="secondary" type="button" onclick={onScan}>{t("login.scanQr")}</button>
       {/if}
     </form>
     {:else}
     <form class="card" onsubmit={submit}>
       {#if logo}<img class="logo" src={logo} alt="" />{/if}
-      <h1>Welcome to {serverName ?? "Kallisti"}</h1>
+      <h1>{t("login.welcomeTo", { name: serverName ?? "Kallisti" })}</h1>
       {@render serverLine()}
       {#if !mumbleOnly}
-      <div class="tabs" role="group" aria-label="How to join">
+      <div class="tabs" role="group" aria-label={t("login.howToJoin")}>
         {#each MODES.filter(([value]) => !inviteOnly || value !== "guest") as [value, label] (value)}
           <button
             type="button"
@@ -418,24 +419,24 @@
             onclick={() => {
               mode = value;
               apiError = null;
-            }}>{label}</button
+            }}>{t(label)}</button
           >
         {/each}
       </div>
       {/if}
-      {#if inviteOnly}<p class="hint">This server is invite-only. Existing users can log in; new accounts need an invitation from an admin.</p>{/if}
+      {#if inviteOnly}<p class="hint">{t("login.inviteOnly")}</p>{/if}
       <label>
-        Name
+        {t("login.name")}
         <input bind:value={username} required maxlength={mode === "login" ? 128 : 32} autocomplete="username" />
       </label>
       {#if mumbleOnly}
         <label>
-          Password <span class="optional">(if the server or your name needs one)</span>
+          {t("login.password")} <span class="optional">{t("login.passwordMumbleOptional")}</span>
           <input bind:value={password} type="password" autocomplete="current-password" />
         </label>
       {:else if mode !== "guest"}
         <label>
-          Password
+          {t("login.password")}
           <input
             bind:value={password}
             type="password"
@@ -447,27 +448,27 @@
       {/if}
       {#if !mumbleOnly && mode === "guest" && askServerPassword}
       <label>
-        Server password <span class="optional">(only if the server has one)</span>
+        {t("login.serverPassword")} <span class="optional">{t("login.serverPasswordOptional")}</span>
         <input bind:value={serverPassword} type="password" autocomplete="off" />
       </label>
       {/if}
       {#if apiError ?? error}<p class="error" role="alert">{apiError ?? error}</p>{/if}
       {#if mode === "create" && (inviteOnly || accountInvite)}{@render inviteField(inviteOnly)}{/if}
       {#if mode === "create"}
-        <p class="hint">An account keeps your name: nobody else can use it.</p>
+        <p class="hint">{t("login.accountKeepsName")}</p>
       {/if}
-      {#if checking}<p class="hint" role="status">Checking your browser…</p>{/if}
+      {#if checking}<p class="hint" role="status">{t("login.checkingBrowser")}</p>{/if}
       <button class="primary" type="submit" disabled={busy}>
-        {mumbleOnly ? "Connect" : mode === "guest" ? "Join as guest" : mode === "login" ? "Log in" : "Create account"}
+        {t(mumbleOnly ? "login.connect" : mode === "guest" ? "login.joinAsGuest" : mode === "login" ? "login.logIn" : "login.createAccount")}
       </button>
     </form>
     {#if !mumbleOnly}
       <div class="card fedi">
-        <p class="hint">Logged in on another device already? No password needed.</p>
+        <p class="hint">{t("login.otherDeviceHint")}</p>
         {#if onScan}
-          <button class="secondary" type="button" onclick={onScan}>Scan a QR code</button>
+          <button class="secondary" type="button" onclick={onScan}>{t("login.scanQr")}</button>
         {:else}
-          <button class="secondary" type="button" onclick={() => (qrShown = true)}>Log in with a QR code</button>
+          <button class="secondary" type="button" onclick={() => (qrShown = true)}>{t("login.qrLogin")}</button>
         {/if}
       </div>
     {/if}
@@ -475,22 +476,22 @@
     {#if invite}
       <form class="card fedi" onsubmit={openAtHome}>
         <label>
-          Have an account on another Kallisti server?
+          {t("login.homeAccountLabel")}
           <input bind:value={homeAddress} placeholder="chat.example.org" autocomplete="url" aria-describedby="home-hint" oninput={() => (homeError = null)} />
         </label>
-        <p class="hint" id="home-hint">Open this invite there: this server joins your server list.</p>
+        <p class="hint" id="home-hint">{t("login.homeAccountHint")}</p>
         {#if homeError}<p class="error" role="alert">{homeError}</p>{/if}
-        <button class="secondary" type="submit" disabled={!homeAddress.trim()}>Open in my Kallisti</button>
+        <button class="secondary" type="submit" disabled={!homeAddress.trim()}>{t("login.openAtHome")}</button>
       </form>
     {/if}
     {#if fediOn && !desktop}
       <form class="card fedi" onsubmit={fediLogin}>
         <label>
-          Or use your account on another server
-          <input bind:value={instance} placeholder="chat.example.org or @you@mastodon.social" autocomplete="url" aria-describedby="fedi-hint" />
+          {t("login.fediLabel")}
+          <input bind:value={instance} placeholder={t("login.fediPlaceholder")} autocomplete="url" aria-describedby="fedi-hint" />
         </label>
-        <p class="hint" id="fedi-hint">Another Kallisti server, or the fediverse: Mastodon, Pleroma, Akkoma, GoToSocial and others. New here? You choose a name next.</p>
-        <button class="secondary" type="submit" disabled={busy || !instance.trim()}>Continue with that account</button>
+        <p class="hint" id="fedi-hint">{t("login.fediHint")}</p>
+        <button class="secondary" type="submit" disabled={busy || !instance.trim()}>{t("login.continueWithAccount")}</button>
       </form>
     {/if}
   {/if}
@@ -507,8 +508,8 @@
 {/if}
 
 {#snippet inviteField(required: boolean)}
-  <label>Account invitation
-    <input bind:value={accountInvite} {required} autocomplete="off" spellcheck={false} placeholder="Paste your invitation link" />
+  <label>{t("login.accountInvitation")}
+    <input bind:value={accountInvite} {required} autocomplete="off" spellcheck={false} placeholder={t("login.invitationPlaceholder")} />
   </label>
 {/snippet}
 
@@ -516,8 +517,8 @@
 {#snippet serverLine()}
   {#if desktop}
     <p class="server">
-      <span class="ellipsis">{desktop.server}{mumbleOnly ? " (Mumble server)" : ""}</span>
-      <button type="button" class="link" onclick={desktop.onChangeServer}>Change</button>
+      <span class="ellipsis">{mumbleOnly ? t("login.mumbleServer", { server: desktop.server }) : desktop.server}</span>
+      <button type="button" class="link" onclick={desktop.onChangeServer}>{t("login.changeServer")}</button>
     </p>
   {/if}
 {/snippet}

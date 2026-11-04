@@ -1,5 +1,6 @@
 import { may, Perm, selfOf, type ServerState } from "@kallisti/protocol";
 import { roleOf } from "./roles";
+import { t } from "./i18n.svelte";
 import type { TextState } from "./textChannels";
 
 // Guests read only (built-in server): while it is on, guests (without a
@@ -15,6 +16,6 @@ export const mayChangeGuests = (server: ServerState, text: TextState) => text.vo
 
 // How a guest gets to write: a guest account gets a password (in the
 // settings), others log in or make an account.
-export const loginAction = (guestAccount: boolean) => (guestAccount ? "Set a password" : "Log in");
+export const loginAction = (guestAccount: boolean) => t(guestAccount ? "client.setPassword" : "client.logIn");
 export const readOnlyNote = (guestAccount: boolean) =>
-  guestAccount ? "Set a password to write." : "Log in or make an account to write.";
+  t(guestAccount ? "client.setPasswordToWrite" : "client.logInToWrite");

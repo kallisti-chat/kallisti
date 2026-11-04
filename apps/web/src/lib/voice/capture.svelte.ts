@@ -1,6 +1,7 @@
 import type { OutgoingAudio } from "@kallisti/protocol";
 import { createEncoderRotation } from "./encoderRotation";
 import { shouldFallBack } from "./fallback";
+import { t } from "../i18n.svelte";
 import { levelDb, shouldTransmit, vadStep, voiceLevel, type TransmitMode, type VadState } from "./vad";
 import rnnoiseUrl from "@jitsi/rnnoise-wasm/dist/rnnoise.wasm?url";
 import { fallbackMode, noiseLabel, type NoiseMode } from "./noise";
@@ -38,7 +39,7 @@ const sharedDfn = (ctx: AudioContext): Promise<SharedDfn> => {
       shared.ready = w.ready;
       // Errors while it runs (the package then passes the microphone through).
       w.node.port.addEventListener("message", (e: MessageEvent<{ type?: string; message?: string }>) => {
-        if (e.data.type === "error") shared.handlers?.error(e.data.message ?? "it stopped");
+        if (e.data.type === "error") shared.handlers?.error(e.data.message ?? t("client.noiseStopped"));
       });
       return shared;
     })();
@@ -108,7 +109,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
       },
       error: (err) => {
         console.warn("encoder error", err);
-        micError = `Voice encoder failed: ${err.message}`;
+        micError = t("client.encoderFailed", { error: err.message });
         encoders.fail(encoder);
       },
     });
@@ -203,7 +204,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
         const shared = await sharedDfn(ctx);
         if (closed || filter() !== "strongest" || dfn) return;
         shared.handlers = {
-          overload: () => noiseFailed("strongest", "this computer is too slow for it"),
+          overload: () => noiseFailed("strongest", t("client.noiseTooSlow")),
           error: (why) => noiseFailed("strongest", why),
         };
         shared.node.connect(node);
@@ -224,7 +225,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
   const noiseFailed = (from: NoiseMode, why: string) => {
     if (filter() !== from || from === "browser") return;
     noise = fallbackMode(from);
-    noiseError = `${noiseLabel(from)} could not run (${why}). Now on: ${noiseLabel(noise)}.`;
+    noiseError = t("client.noiseFailed", { filter: noiseLabel(from), reason: why, now: noiseLabel(noise) });
     void applyNoise();
     if (noise === "browser" && stream) void start(device);
   };

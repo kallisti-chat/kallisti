@@ -1,4 +1,5 @@
 import { BUFFERS, type PlaybackBuffer } from "./voice/buffer";
+import { t } from "./i18n.svelte";
 
 // The connection info next to "Voice connected": ping and late or lost
 // audio over the last 30 s, and a level from them.
@@ -53,9 +54,11 @@ export const biggerBuffer = (late: number | null, buffer: PlaybackBuffer): Playb
   late !== null && late >= LIMITS[0]![2] ? (BUFFERS[BUFFERS.indexOf(buffer) + 1] ?? null) : null;
 
 export const connectionLabel = (level: Level | null, rtt: number | null) =>
-  level === null || rtt === null ? "Connection: measuring" : `Connection: ${level}, ${Math.round(rtt)} ms`;
+  level === null || rtt === null
+    ? t("client.connectionMeasuring")
+    : t(level === "good" ? "client.connectionGood" : level === "fair" ? "client.connectionFair" : "client.connectionPoor", { ms: Math.round(rtt) });
 
 // The desktop app's bridge (see lib/desktop bridgeUrl) sends voice over UDP
 // while UDP works; the page cannot see which.
 export const transportOf = (url: string) =>
-  url.startsWith("ws://127.0.0.1:") && url.includes("secret=") ? "UDP or TCP (desktop app)" : "WebSocket";
+  url.startsWith("ws://127.0.0.1:") && url.includes("secret=") ? t("client.transportDesktop") : "WebSocket";

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { EMOJI_TYPES, emojiNameFromFile, type CustomEmoji } from "../lib/customEmoji";
+  import type { Key } from "../i18n/en";
+  import { t } from "../lib/i18n.svelte";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import EmojiImage from "./EmojiImage.svelte";
@@ -32,7 +34,7 @@
   let renaming = $state<{ name: string; to: string } | null>(null);
   let fileInput: HTMLInputElement | undefined = $state();
   let image: EmojiImage | undefined = $state();
-  let done = $state("Deleted");
+  let done = $state<Key>("admin.deleted");
 
   const submit = (e: SubmitEvent) => {
     e.preventDefault();
@@ -41,7 +43,7 @@
       // Checked as uploaded: still images are scaled down first.
       const out = (await image?.output()) ?? null;
       const problem = formError(n, out);
-      if (problem || !out) throw new Error(problem ?? "Choose an image.");
+      if (problem || !out) throw new Error(problem ?? t("admin.chooseImage"));
       await onAdd(n, out);
       name = "";
       file = null;
@@ -53,7 +55,7 @@
     if (!renaming || !onRename) return;
     const { name: from, to } = renaming;
     renaming = null;
-    done = "Renamed";
+    done = "admin.renamed";
     if (to.trim() && to.trim() !== from) change.run(() => onRename(from, to.trim()));
   };
 </script>
@@ -64,17 +66,17 @@
     type="file"
     disabled={add.busy}
     accept={EMOJI_TYPES.join(",")}
-    aria-label="Emoji image"
+    aria-label={t("admin.emojiImage")}
     onchange={(e) => {
       file = e.currentTarget.files?.[0] ?? null;
       if (file && !name) name = emojiNameFromFile(file.name);
     }}
   />
-  <input bind:value={name} placeholder="name" aria-label="Emoji name" maxlength="32" />
-  <button type="submit" disabled={add.busy}>{busyLabel(add.state, "Add", "Adding…")}</button>
-  <SaveStatus save={add.state} done="Added" />
+  <input bind:value={name} placeholder={t("admin.namePlaceholder")} aria-label={t("admin.emojiName")} maxlength="32" />
+  <button type="submit" disabled={add.busy}>{busyLabel(add.state, t("common.add"), t("admin.adding"))}</button>
+  <SaveStatus save={add.state} done={t("admin.added")} />
 </form>
-<p class="note">PNG, GIF, WebP or JPEG; still images are scaled to fit 96×96 px. Names: 2 to 32 lower case letters, digits or _.</p>
+<p class="note">{t("admin.emojiNote")}</p>
 <EmojiImage bind:this={image} {file} name={name.trim()} />
 {#if list.length === 0}
   <p class="note">{empty}</p>
@@ -86,9 +88,9 @@
         {#if renaming?.name === e.name}
           <form class="rename" onsubmit={rename}>
             <!-- svelte-ignore a11y_autofocus -->
-            <input bind:value={renaming.to} aria-label="New name for :{e.name}:" maxlength="32" autofocus />
-            <button type="submit">Save</button>
-            <button type="button" onclick={() => (renaming = null)}>Cancel</button>
+            <input bind:value={renaming.to} aria-label={t("admin.emojiNewName", { name: e.name })} maxlength="32" autofocus />
+            <button type="submit">{t("common.save")}</button>
+            <button type="button" onclick={() => (renaming = null)}>{t("common.cancel")}</button>
           </form>
         {:else}
           <div class="what"><strong>:{e.name}:</strong></div>
@@ -97,21 +99,21 @@
               type="button"
               class="danger"
               disabled={change.busy}
-              onclick={() => ((done = "Deleted"), change.run(() => onDelete(e.name)), (confirming = null))}
+              onclick={() => ((done = "admin.deleted"), change.run(() => onDelete(e.name)), (confirming = null))}
             >
-              Delete
+              {t("common.delete")}
             </button>
-            <button type="button" onclick={() => (confirming = null)}>Cancel</button>
+            <button type="button" onclick={() => (confirming = null)}>{t("common.cancel")}</button>
           {:else}
-            {#if onRename}<button type="button" onclick={() => (renaming = { name: e.name, to: e.name })}>Rename</button>{/if}
-            <button type="button" onclick={() => (confirming = e.name)}>Delete…</button>
+            {#if onRename}<button type="button" onclick={() => (renaming = { name: e.name, to: e.name })}>{t("common.rename")}</button>{/if}
+            <button type="button" onclick={() => (confirming = e.name)}>{t("admin.deleteAsk")}</button>
           {/if}
         {/if}
       </li>
     {/each}
   </ul>
 {/if}
-<SaveStatus save={change.state} {done} />
+<SaveStatus save={change.state} done={t(done)} />
 
 <style>
   .add-emoji {

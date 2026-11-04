@@ -1,3 +1,4 @@
+import { t } from "./i18n.svelte";
 import { CUSTOM_NAME, PERSONAL_REF, refsAsNames } from "./customEmoji";
 
 // A small Markdown subset for chat messages, on text that is already
@@ -26,7 +27,9 @@ const CUSTOM_EMOJI = new RegExp(`${PERSONAL_REF.replace("<", "&lt;").replace(">"
 
 // ||text|| (also over lines): hidden until clicked (see ChatPane).
 const SPOILER = /\|\|([^|][\s\S]*?)\|\|/g;
-const SPOILER_HTML = '<span class="spoiler" role="button" tabindex="0" aria-expanded="false" aria-label="Spoiler">$1</span>';
+const attr = (text: string) => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+const spoilerHtml = (_: string, inner: string) =>
+  `<span class="spoiler" role="button" tabindex="0" aria-expanded="false" aria-label="${attr(t("chat.spoiler"))}">${inner}</span>`;
 
 // For plain text that shows the message (reply quotes, notifications,
 // search results). Also an open spoiler at the end: the server cuts reply
@@ -39,7 +42,7 @@ export const withoutSpoilers = (text: string) => text.replace(SPOILER, " ");
 
 const inline = (s: string) =>
   s
-    .replace(SPOILER, SPOILER_HTML)
+    .replace(SPOILER, spoilerHtml)
     .replace(/\*\*\*(?=\S)([^\n]*?\S)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(?=\S)([^\n]*?\S)\*\*/g, "<strong>$1</strong>")
     .replace(/~~(?=\S)([^\n]*?\S)~~/g, "<del>$1</del>")
@@ -104,7 +107,7 @@ export const toggleSpoiler = (target: Element): boolean => {
   if (shown && target.closest("a[href]")) return false;
   spoiler.classList.toggle("shown", !shown);
   spoiler.setAttribute("aria-expanded", String(!shown));
-  if (shown) spoiler.setAttribute("aria-label", "Spoiler");
+  if (shown) spoiler.setAttribute("aria-label", t("chat.spoiler"));
   else spoiler.removeAttribute("aria-label"); // the text is read out
   return true;
 };
