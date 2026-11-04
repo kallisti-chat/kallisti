@@ -555,9 +555,12 @@ func migrate(db *sql.DB) error {
 	if err := addColumns(db, "channels", [][2]string{{"slow_mode", "INTEGER NOT NULL DEFAULT 0"}, {"category_id", "INTEGER"}}); err != nil {
 		return err
 	}
-	// Message ids counted from before the counter: the newest there is.
+	// Message and account ids counted from before the counters: the newest
+	// there are.
 	_, err := db.Exec(`INSERT OR IGNORE INTO store_meta (key, value)
-		SELECT 'last_message_id', coalesce(max(id), 0) FROM messages`)
+		SELECT 'last_message_id', coalesce(max(id), 0) FROM messages;
+		INSERT OR IGNORE INTO store_meta (key, value)
+		SELECT 'last_account_id', coalesce(max(id), 0) FROM accounts`)
 	return err
 }
 

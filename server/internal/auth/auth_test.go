@@ -319,7 +319,7 @@ func TestDeleteAccount(t *testing.T) {
 	resp, _ := post(t, srv, "/api/accounts", map[string]string{"name": "gina", "password": "longpassword"}, nil)
 	cookie := sessionCookie(resp)
 	acc, _ := a.AccountFor(requestWith(cookie))
-	if err := a.DeleteAccount("Gina"); err != nil {
+	if err := a.DeleteAccount(acc); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := a.AccountFor(requestWith(cookie)); ok {

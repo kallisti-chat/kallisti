@@ -2,6 +2,7 @@ package mumbled
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -257,10 +258,39 @@ func TestOnlySuperUserDeletesAdmins(t *testing.T) {
 		}
 	}
 	alice.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(bobID)}}})
-	alice.expectDenied(pb.PermissionDenied_Text)
+	if d := alice.expectDenied(pb.PermissionDenied_Text); !strings.Contains(d.GetReason(), "SuperUser") {
+		t.Fatalf("denied: %v", d)
+	}
 	if r, _ := s.cfg.DB.UserByID(bobID); r == nil {
 		t.Fatal("an admin deleted an admin")
 	}
 	su.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(bobID)}}})
 	eventually(t, func() bool { r, _ := s.cfg.DB.UserByID(bobID); return r == nil })
+}
+
+// Also an admin by a certificate ACL, offline.
+func TestAdminsByCertificateAreSuperUsersToDelete(t *testing.T) {
+	s, addr := rolesServer(t)
+	su := superUser(t, addr)
+	alice, aliceID := registered(t, addr, "alice")
+	s.SetAdmin(su.session, aliceID, true)
+	bob, bobID := registered(t, addr, "bob")
+	r, _ := s.cfg.DB.UserByID(bobID)
+	s.mu.Lock()
+	root := s.state.Channels[0]
+	root.ACLs = append(root.ACLs, ACL{ApplyHere: true, ApplySubs: true, Group: "$" + r.CertHash, Allow: Write})
+	s.mu.Unlock()
+	bob.conn.Close()
+	eventually(t, func() bool {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.state.Users[bob.session] == nil
+	})
+	alice.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(bobID)}}})
+	if d := alice.expectDenied(pb.PermissionDenied_Text); !strings.Contains(d.GetReason(), "SuperUser") {
+		t.Fatalf("denied: %v", d)
+	}
+	if r, _ := s.cfg.DB.UserByID(bobID); r == nil {
+		t.Fatal("an admin deleted a certificate admin")
+	}
 }

@@ -450,9 +450,14 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 	defer s.saveMu.Unlock()
 	for _, e := range m.Users {
 		id := e.GetUserId()
+		r, err := db.UserByID(id)
+		if err != nil || r == nil {
+			c.deny(deny(pb.PermissionDenied_Text, "Cannot change user %d.", id))
+			continue
+		}
 		s.mu.Lock()
 		admin := s.state.Has(u, 0, Write)
-		target := &User{Registered: true, UserID: id}
+		target := s.registeredLocked(r)
 		protected := s.state.isStaff(target) && !admin
 		targetAdmin := s.state.aclPermissions(target, 0)&Write != 0
 		s.mu.Unlock()
@@ -461,11 +466,9 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 			continue
 		}
 		var refused string // a reason the user may see
-		var err error
-		account := s.accountName(id)
 		if e.Name != nil && s.cfg.ReservedName != nil && s.cfg.ReservedName(names.Key(e.GetName())) {
 			refused = "The name belongs to a Kallisti account."
-		} else if e.Name != nil && account != "" {
+		} else if e.Name != nil && s.isAccount(r) {
 			// Its name is the account's: renamed, the account could not join.
 			refused = "This registration belongs to a Kallisti account: its name cannot change."
 		} else if e.Name != nil {
@@ -474,8 +477,8 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 			refused = "Only admins can delete users."
 		} else if targetAdmin && !isSuperUser(u) {
 			refused = "Only SuperUser can delete admins."
-		} else if account != "" && s.cfg.DeleteAccount != nil {
-			if err = s.cfg.DeleteAccount(account); err == nil {
+		} else if s.cfg.DeleteAccount != nil {
+			if err = s.cfg.DeleteAccount(r.Name, r.CertHash); err == nil {
 				err = db.UnregisterUser(id)
 			}
 		} else {
@@ -495,18 +498,22 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 	}
 }
 
-// accountName: the name of the Kallisti web account whose registration
-// this is ("" if none): its name and certificate.
-func (s *Server) accountName(id uint32) string {
-	if s.cfg.ReservedName == nil {
-		return ""
+// isAccount: the registration is a Kallisti web account's (its name and
+// certificate).
+func (s *Server) isAccount(r *Registered) bool {
+	return s.cfg.ReservedName != nil && s.cfg.ReservedName(names.Key(r.Name)) &&
+		(s.cfg.WebAccountExists == nil || s.cfg.WebAccountExists(r.Name, r.CertHash))
+}
+
+// registeredLocked is a registered user for permission checks: online, as
+// it is (tokens, channel), else by id and certificate.
+func (s *Server) registeredLocked(r *Registered) *User {
+	for _, u := range s.state.Users {
+		if u.Registered && u.UserID == r.ID {
+			return u
+		}
 	}
-	r, err := s.cfg.DB.UserByID(id)
-	if err != nil || r == nil || !s.cfg.ReservedName(names.Key(r.Name)) ||
-		(s.cfg.WebAccountExists != nil && !s.cfg.WebAccountExists(r.Name, r.CertHash)) {
-		return ""
-	}
-	return r.Name
+	return &User{Registered: true, UserID: r.ID, Hash: r.CertHash}
 }
 
 // registrationChangedLocked updates an online user after a rename (name

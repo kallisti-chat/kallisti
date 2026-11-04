@@ -304,3 +304,30 @@ func TestAccountIDsAreNotReused(t *testing.T) {
 		t.Fatalf("carol %d, bob was %d", carol.ID, bob.ID)
 	}
 }
+
+// A database from before the counter: the highest id at the upgrade
+// counts, also when that account is deleted before the next one comes.
+func TestAccountIDsAreNotReusedAfterAnUpgrade(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "k.db")
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"alice", "bob"} {
+		if _, err := s.CreateAccount(Account{Name: name, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s.db.Exec(`DELETE FROM store_meta WHERE key = 'last_account_id'`)
+	s.Close()
+	if s, err = Open(path); err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	bob, _ := s.AccountByName("bob")
+	s.DeleteAccount(bob.ID)
+	carol, err := s.CreateAccount(Account{Name: "carol", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
+	if err != nil || carol.ID != bob.ID+1 {
+		t.Fatalf("carol %d (%v), bob was %d", carol.ID, err, bob.ID)
+	}
+}

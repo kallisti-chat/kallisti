@@ -67,6 +67,25 @@ func accountExists(db *store.Store) func(name string) bool {
 	}
 }
 
+// deleteWebAccount deletes the account with this name and certificate, if
+// there is one (see mumbled.Config.DeleteAccount); a database error stops
+// the deletion.
+func deleteWebAccount(db *store.Store, del func(store.Account) error) func(name, certHash string) error {
+	return func(name, certHash string) error {
+		acc, err := db.AccountByName(name)
+		if errors.Is(err, store.ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if accountCertHash(acc) != certHash {
+			return nil
+		}
+		return del(acc)
+	}
+}
+
 // accountLogin: Mumble clients may log in with an account's password.
 // Guest accounts have none; on a database error the name stays reserved.
 // Names without an account skip argon2: ReservedName tells them anyway.
@@ -89,7 +108,7 @@ func accountLogin(db *store.Store) func(name, pw string) (*mumbled.WebAccount, b
 // startBuiltin starts the server. With a hub, voice channels get stored
 // chats (publicBase: the server's address, for upload links).
 // deleteAccount: see mumbled.Config.DeleteAccount.
-func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, publicBase string, deleteAccount func(name string) error) (*builtin, error) {
+func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, publicBase string, deleteAccount func(name, certHash string) error) (*builtin, error) {
 	mdb, err := mumbled.OpenDB(db.DB())
 	if err != nil {
 		return nil, fmt.Errorf("Mumble tables: %w", err)

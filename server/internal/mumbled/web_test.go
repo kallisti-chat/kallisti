@@ -245,11 +245,13 @@ func TestUnregisteringAnAccountDeletesIt(t *testing.T) {
 	deleted := make(chan string, 4)
 	s, addr := startServerAndListen(t, "127.0.0.1", Config{DB: db, ReservedName: func(n string) bool { return reserved[n] },
 		WebAccountExists: func(_, hash string) bool { return hash == "aaa" || hash == "eee" },
-		DeleteAccount: func(name string) error {
+		DeleteAccount: func(name, hash string) error {
 			if name == "erin" {
 				return errors.New("disk full")
 			}
-			deleted <- name
+			if hash == "aaa" { // dave's account has another certificate
+				deleted <- name
+			}
 			return nil
 		}}, nil)
 	joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("203.0.113.5"), Account: &WebAccount{Name: "alice", CertHash: "aaa"}}, "alice"))

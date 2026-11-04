@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"io"
+	"slices"
 	"testing"
 	"time"
 
@@ -156,4 +157,29 @@ func TestBuiltinUsesSavedRegistrationPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	join("after", false, false)
+}
+
+// An admin's deletion takes the account with the registration's name and
+// certificate only; a database error stops it.
+func TestDeleteWebAccount(t *testing.T) {
+	db, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	certPEM, keyPEM, _ := certs.Generate("alice")
+	alice, _ := db.CreateAccount(store.Account{Name: "alice", PasswordHash: "x", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now(), "")
+	var deleted []string
+	del := deleteWebAccount(db, func(a store.Account) error { deleted = append(deleted, a.Name); return nil })
+	for _, c := range []struct{ name, hash string }{{"bob", "b"}, {"alice", "another"}, {"Alice", accountCertHash(alice)}} {
+		if err := del(c.name, c.hash); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !slices.Equal(deleted, []string{"alice"}) {
+		t.Fatalf("deleted %v", deleted)
+	}
+	db.Close()
+	if err := del("alice", accountCertHash(alice)); err == nil {
+		t.Error("a database error deleted nothing, silently")
+	}
 }
