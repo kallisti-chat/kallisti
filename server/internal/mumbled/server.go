@@ -47,6 +47,10 @@ type Config struct {
 	// that log in with it. It returns the account, or nil if the name has
 	// no account with a password; ok false: wrong password. Nil: none.
 	AccountLogin func(name, password string) (a *WebAccount, ok bool)
+	// DeleteAccount deletes the Kallisti account with this name and ends
+	// its logins, before an admin's unregistration removes its
+	// registration (else it would register again). Nil: none.
+	DeleteAccount func(name string) error
 	// OnChannelText gets every text a client sends to a channel (as plain
 	// text), for example to store it. It runs outside the server's lock.
 	OnChannelText func(ChannelText)

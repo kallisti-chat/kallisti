@@ -88,7 +88,8 @@ func accountLogin(db *store.Store) func(name, pw string) (*mumbled.WebAccount, b
 
 // startBuiltin starts the server. With a hub, voice channels get stored
 // chats (publicBase: the server's address, for upload links).
-func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, publicBase string) (*builtin, error) {
+// deleteAccount: see mumbled.Config.DeleteAccount.
+func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, publicBase string, deleteAccount func(name string) error) (*builtin, error) {
 	mdb, err := mumbled.OpenDB(db.DB())
 	if err != nil {
 		return nil, fmt.Errorf("Mumble tables: %w", err)
@@ -186,6 +187,7 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 			return err == nil && acc.Temporary
 		},
 		AccountLogin:            accountLogin(db),
+		DeleteAccount:           deleteAccount,
 		OnChannelText:           onText,
 		CheckChannelText:        checkText,
 		OnPrivateText:           onPrivate,

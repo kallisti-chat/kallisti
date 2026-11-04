@@ -427,6 +427,20 @@ func (a *Service) endLogins(acc store.Account, keep string) {
 	a.endPasswordLogins(acc)
 }
 
+// DeleteAccount deletes an account (an admin removes its registration):
+// its sessions go with it, and its logins end. Its messages stay.
+func (a *Service) DeleteAccount(name string) error {
+	acc, err := a.Store.AccountByName(name)
+	if err != nil {
+		return err
+	}
+	if err := a.Store.DeleteAccount(acc.ID); err != nil {
+		return err
+	}
+	a.endLogins(acc, "")
+	return nil
+}
+
 func (a *Service) endPasswordLogins(acc store.Account) {
 	if a.EndPasswordLogins != nil {
 		a.EndPasswordLogins(acc)

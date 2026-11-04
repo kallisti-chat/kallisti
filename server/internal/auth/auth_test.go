@@ -3,6 +3,7 @@ package auth
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -305,6 +306,34 @@ func TestEndedSessionsAreRevoked(t *testing.T) {
 	check("password change", map[*http.Cookie]bool{first: true, second: false}, []string{"gina"})
 	post(t, srv, "/api/logout-all", map[string]string{}, second)
 	check("logout-all", map[*http.Cookie]bool{first: true, second: true}, []string{"gina"})
+}
+
+// An admin deletes an account (removing its registration): its sessions
+// and logins end, and its name is free.
+func TestDeleteAccount(t *testing.T) {
+	a, srv := setup(t)
+	var match func(int64, string) bool
+	a.Revoke = func(m func(int64, string) bool) { match = m }
+	var ended []string
+	a.EndPasswordLogins = func(acc store.Account) { ended = append(ended, acc.Name) }
+	resp, _ := post(t, srv, "/api/accounts", map[string]string{"name": "gina", "password": "longpassword"}, nil)
+	cookie := sessionCookie(resp)
+	acc, _ := a.AccountFor(requestWith(cookie))
+	if err := a.DeleteAccount("Gina"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := a.AccountFor(requestWith(cookie)); ok {
+		t.Error("the session lives on")
+	}
+	if _, err := a.Store.AccountByName("gina"); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("account: %v", err)
+	}
+	if match == nil || !match(acc.ID, "") || match(acc.ID+1, "") || !slices.Equal(ended, []string{"gina"}) {
+		t.Errorf("logins not ended: %v", ended)
+	}
+	if resp, _ := post(t, srv, "/api/login", map[string]string{"name": "gina", "password": "longpassword"}, nil); resp.StatusCode == http.StatusOK {
+		t.Error("logged in again")
+	}
 }
 
 func TestExpiredSessionsAreRevoked(t *testing.T) {

@@ -28,7 +28,7 @@ func TestWebAccountsJoinTheBuiltInServer(t *testing.T) {
 	defer db.Close()
 	certPEM, keyPEM, _ := certs.Generate("alice")
 	db.CreateAccount(store.Account{Name: "alice", PasswordHash: "x", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now(), "")
-	b, err := startBuiltin(&config.Builtin{Listen: "127.0.0.1:0", ServerName: "Test", MaxUsers: 10, CertDir: t.TempDir()}, db, nil, "")
+	b, err := startBuiltin(&config.Builtin{Listen: "127.0.0.1:0", ServerName: "Test", MaxUsers: 10, CertDir: t.TempDir()}, db, nil, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestBuiltinUsesSavedRegistrationPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b, err := startBuiltin(&config.Builtin{Listen: "127.0.0.1:0", ServerName: "Test", CertDir: t.TempDir()}, db, nil, "")
+	b, err := startBuiltin(&config.Builtin{Listen: "127.0.0.1:0", ServerName: "Test", CertDir: t.TempDir()}, db, nil, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

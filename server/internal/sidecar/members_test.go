@@ -1,6 +1,7 @@
 package sidecar
 
 import (
+	"fmt"
 	"maps"
 	"reflect"
 	"testing"
@@ -145,5 +146,26 @@ func TestBioOfARegisteredUser(t *testing.T) {
 	c.Handle([]byte(`{"type":"bio","user":20}`))
 	if m := next(t, c); m["type"] != "bio" || m["user"] != float64(20) || m["text"] != "<b>hi</b>" {
 		t.Fatalf("bio %v", m)
+	}
+}
+
+// Staff learn which registrations are web accounts (guest accounts too):
+// removing those deletes the account.
+func TestAccountUsersForStaff(t *testing.T) {
+	h := membersHub(t)
+	if _, err := h.store.CreateAccount(store.Account{Name: "Alice", PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, clock, ""); err != nil {
+		t.Fatal(err)
+	}
+	other := readyAs(t, h, 2, "other")
+	other.Handle([]byte(`{"type":"account-users"}`))
+	if m := next(t, other); m["type"] != "error" {
+		t.Fatalf("non-staff: %v", m)
+	}
+	for _, session := range []uint32{1, 3} { // admin; Register only
+		c := readyAs(t, h, session, fmt.Sprint("staff", session))
+		c.Handle([]byte(`{"type":"account-users"}`))
+		if m := next(t, c); m["type"] != "account-users" || !reflect.DeepEqual(m["ids"], []any{float64(10), float64(30)}) {
+			t.Fatalf("%d: %v", session, m)
+		}
 	}
 }

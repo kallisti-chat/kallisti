@@ -196,7 +196,7 @@ func run() error {
 	cleanup := func(time.Time) {}                // guest accounts (built-in server)
 	var avatars http.Handler = mumbled.NoAvatars // Murmur's avatars are not ours to read
 	if cfg.Builtin != nil {
-		mumble, err := startBuiltin(cfg.Builtin, db, hub, publicBase(cfg.AllowedOrigins))
+		mumble, err := startBuiltin(cfg.Builtin, db, hub, publicBase(cfg.AllowedOrigins), accounts.DeleteAccount)
 		if err != nil {
 			return err
 		}

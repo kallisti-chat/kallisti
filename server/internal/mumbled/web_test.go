@@ -1,6 +1,7 @@
 package mumbled
 
 import (
+	"errors"
 	"net"
 	"net/netip"
 	"strings"
@@ -232,6 +233,57 @@ func TestAccountRegistrationsKeepTheirName(t *testing.T) {
 	su.expectDenied(pb.PermissionDenied_Text)
 	if r, _ := db.UserByHash("aaa"); r.Name != "alice" {
 		t.Fatalf("renamed to %q", r.Name)
+	}
+}
+
+// Unregistering an account's registration deletes the account (else it
+// would log in again and register anew). Only admins may.
+func TestUnregisteringAnAccountDeletesIt(t *testing.T) {
+	db := testDB(t)
+	setAdminPassword(db, "admin")
+	reserved := map[string]bool{"alice": true, "dave": true, "erin": true}
+	deleted := make(chan string, 4)
+	s, addr := startServerAndListen(t, "127.0.0.1", Config{DB: db, ReservedName: func(n string) bool { return reserved[n] },
+		WebAccountExists: func(_, hash string) bool { return hash == "aaa" || hash == "eee" },
+		DeleteAccount: func(name string) error {
+			if name == "erin" {
+				return errors.New("disk full")
+			}
+			deleted <- name
+			return nil
+		}}, nil)
+	alice := joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("203.0.113.5"), Account: &WebAccount{Name: "alice", CertHash: "aaa"}}, "alice"))
+	reg, _ := db.UserByHash("aaa")
+	su := superUser(t, addr)
+	bob, bobID := registered(t, addr, "bob")
+	s.SetModerator(su.session, bobID, true)
+	if !s.MayRegister(bob.session) || s.MayRegister(alice.session) {
+		t.Error("the users list is for moderators and admins")
+	}
+	bob.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(reg.ID)}}})
+	bob.expectDenied(pb.PermissionDenied_Text)
+	if r, _ := db.UserByHash("aaa"); r == nil {
+		t.Fatal("a moderator removed an account's registration")
+	}
+	// The account stays when it cannot be deleted, and so does its
+	// registration.
+	erin, _ := db.RegisterUser("erin", "eee")
+	su.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(erin)}}})
+	su.expectDenied(pb.PermissionDenied_Text)
+	if r, _ := db.UserByHash("eee"); r == nil {
+		t.Fatal("registration removed without its account")
+	}
+	// No account to delete: a Mumble-only registration, also one with an
+	// account's name but another certificate.
+	carol, _ := db.RegisterUser("carol", "ccc")
+	dave, _ := db.RegisterUser("dave", "ddd")
+	su.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(carol)}, {UserId: proto.Uint32(dave)}, {UserId: proto.Uint32(reg.ID)}}})
+	eventually(t, func() bool { r, _ := db.UserByHash("aaa"); return r == nil })
+	if r, _ := db.UserByHash("ddd"); r != nil {
+		t.Error("dave stays")
+	}
+	if got := <-deleted; got != "alice" || len(deleted) != 0 {
+		t.Fatalf("deleted %q, %d more", got, len(deleted))
 	}
 }
 

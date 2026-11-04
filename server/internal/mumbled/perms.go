@@ -449,7 +449,8 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 	for _, e := range m.Users {
 		id := e.GetUserId()
 		s.mu.Lock()
-		protected := s.state.isStaff(&User{Registered: true, UserID: id}) && !s.state.Has(u, 0, Write)
+		admin := s.state.Has(u, 0, Write)
+		protected := s.state.isStaff(&User{Registered: true, UserID: id}) && !admin
 		s.mu.Unlock()
 		if protected {
 			c.denyPerm(Write, 0)
@@ -457,13 +458,20 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 		}
 		var refused string // a reason the user may see
 		var err error
+		account := s.accountName(id)
 		if e.Name != nil && s.cfg.ReservedName != nil && s.cfg.ReservedName(names.Key(e.GetName())) {
 			refused = "The name belongs to a Kallisti account."
-		} else if e.Name != nil && s.accountRegistration(id) {
+		} else if e.Name != nil && account != "" {
 			// Its name is the account's: renamed, the account could not join.
 			refused = "This registration belongs to a Kallisti account: its name cannot change."
 		} else if e.Name != nil {
 			err = db.RenameUser(id, e.GetName())
+		} else if account != "" && !admin {
+			refused = "Only admins can delete a Kallisti account."
+		} else if account != "" && s.cfg.DeleteAccount != nil {
+			if err = s.cfg.DeleteAccount(account); err == nil {
+				err = db.UnregisterUser(id)
+			}
 		} else {
 			err = db.UnregisterUser(id)
 		}
@@ -481,13 +489,18 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 	}
 }
 
-// accountRegistration: the registration of a Kallisti web account.
-func (s *Server) accountRegistration(id uint32) bool {
+// accountName: the name of the Kallisti web account whose registration
+// this is ("" if none): its name and certificate.
+func (s *Server) accountName(id uint32) string {
 	if s.cfg.ReservedName == nil {
-		return false
+		return ""
 	}
-	known, err := s.cfg.DB.UserNames([]uint32{id})
-	return err == nil && known[id] != "" && s.cfg.ReservedName(names.Key(known[id]))
+	r, err := s.cfg.DB.UserByID(id)
+	if err != nil || r == nil || !s.cfg.ReservedName(names.Key(r.Name)) ||
+		(s.cfg.WebAccountExists != nil && !s.cfg.WebAccountExists(r.Name, r.CertHash)) {
+		return ""
+	}
+	return r.Name
 }
 
 // registrationChangedLocked updates an online user after a rename (name

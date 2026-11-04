@@ -62,6 +62,15 @@ func validServerName(name string) error {
 	return nil
 }
 
+// MayRegister: the session's user sees and changes registrations (the
+// users list: Register in root).
+func (s *Server) MayRegister(session uint32) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	u := s.state.Users[session]
+	return u != nil && s.state.Has(u, 0, Register)
+}
+
 // IsAdmin: the session's user is an admin.
 func (s *Server) IsAdmin(session uint32) bool {
 	s.mu.Lock()
