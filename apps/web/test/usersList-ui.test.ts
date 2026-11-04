@@ -25,13 +25,15 @@ describe("the users list", () => {
     const onUnregister = vi.fn(async () => {});
     const noop = vi.fn(async () => {});
     mounted.push(mount(ModerationDialog, { target: document.body, props: {
-      bans: null, registered: [{ userId: 0, name: "SuperUser" }, { userId: 5, name: "alice" }],
+      bans: null, registered: [{ userId: 0, name: "SuperUser" }, { userId: 3, name: "admin" }, { userId: 5, name: "alice" }],
+      mayDelete: (id: number) => id === 5,
       rights: { bans: false, editBans: false, users: true, emoji: false },
       onLoad: vi.fn(), onSetBans: noop, onUnregister, emoji: [], onAddEmoji: noop, onDeleteEmoji: noop,
       stickers: [], onAddSticker: noop, onEditSticker: noop, onDeleteSticker: noop, onClose: vi.fn(),
     } }));
     flushSync();
     expect(buttons(row("SuperUser"))).toEqual([]);
+    expect(buttons(row("admin"))).toEqual([]);
     expect(buttons(row("alice"))).toEqual(["Delete user…"]);
     row("alice").querySelector("button")!.click();
     flushSync();

@@ -75,7 +75,7 @@
   import { iconHref, showIcons } from "../lib/serverLogo";
   import { directChatWith, toChatMessage, type DisplayMessage, type Peer, type TextMessage, type UserTarget } from "../lib/textChannels";
   import { hiddenMembers, offlineMembers, pictureNames, readerGroups } from "../lib/members";
-  import { adminAction, badgeOf, moderatorAction, roleOf } from "../lib/roles";
+  import { adminAction, badgeOf, mayDeleteUser, moderatorAction, roleOf } from "../lib/roles";
   import { loginAction, mayChangeGuests, mayWrite, readOnlyNote } from "../lib/guests";
   import { missingVoiceApis, unsupportedVoiceMessage } from "../lib/voice/support";
   import { createTextView } from "../lib/textView.svelte";
@@ -2086,6 +2086,7 @@
       const before = server.bans;
       return connection.sendAwait([setBans(bans), queryBans()], (s) => s.bans !== before && s.bans?.length === bans.length);
     }}
+    mayDelete={(id) => mayDeleteUser(server, text, id)}
     onUnregister={(id) =>
       connection.sendAwait([unregister(id), queryRegistered()], (s) => !!s.registered && !s.registered.some((u) => u.userId === id))}
     emoji={customEmoji.list}

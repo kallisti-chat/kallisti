@@ -42,6 +42,11 @@ export const adminAction = (server: ServerState, text: TextState, user: Who): "m
   return selfOf(server)?.userId === 0 ? "remove" : null;
 };
 
+// Whom an admin may delete in the users list: not SuperUser, and admins
+// only as SuperUser (the server checks).
+export const mayDeleteUser = (server: ServerState, text: TextState, userId: number): boolean =>
+  userId !== 0 && (roleOf(text.roles, userId) !== "admin" || selfOf(server)?.userId === 0);
+
 // Our registered user id (null: a guest, or not connected).
 export const myUserId = (server: ServerState): number | null => selfOf(server)?.userId ?? null;
 

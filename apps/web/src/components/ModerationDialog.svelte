@@ -48,6 +48,7 @@
     onLoad,
     onSetBans,
     onUnregister,
+    mayDelete = (id) => id !== 0,
     emoji,
     onAddEmoji,
     onDeleteEmoji,
@@ -93,6 +94,8 @@
     onLoad: (what: "bans" | "users") => void;
     onSetBans: (bans: Ban[]) => Promise<void>;
     onUnregister: (userId: number) => Promise<void>;
+    // Whom the list offers to delete (default: all but SuperUser).
+    mayDelete?: (userId: number) => boolean;
     emoji: readonly CustomEmoji[];
     onAddEmoji: (name: string, file: File) => Promise<void>;
     onDeleteEmoji: (name: string) => Promise<void>;
@@ -544,7 +547,7 @@
               <strong>{user.name}</strong>
               <span class="detail">#{user.userId}{confirming === user.userId ? " · account and roles go; messages stay" : ""}</span>
             </div>
-            {#if user.userId !== 0}
+            {#if mayDelete(user.userId)}
               {#if confirming === user.userId}
                 <button
                   type="button"

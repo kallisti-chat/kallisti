@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initialState, Perm, type ServerState, type User } from "@kallisti/protocol";
-import { adminAction, moderatorAction, roleOf } from "../src/lib/roles";
+import { adminAction, mayDeleteUser, moderatorAction, roleOf } from "../src/lib/roles";
 import { initialTextState, manageRequest, type TextState } from "../src/lib/textChannels";
 
 const text: TextState = { ...initialTextState, voiceChats: true, roles: { admins: [3], moderators: [5] } };
@@ -54,5 +54,17 @@ describe("roleOf", () => {
     expect(roleOf(roles, 5)).toBe("moderator");
     expect(roleOf(roles, 6)).toBeNull();
     expect(roleOf(roles, null)).toBeNull(); // guests
+  });
+});
+
+describe("mayDeleteUser", () => {
+  const as = (userId: number): ServerState => ({ ...admin, session: 1, users: { 1: user(userId) } });
+
+  it("keeps SuperUser, and admins for SuperUser", () => {
+    expect(mayDeleteUser(as(3), text, 6)).toBe(true);
+    expect(mayDeleteUser(as(3), text, 5)).toBe(true); // a moderator
+    expect(mayDeleteUser(as(3), text, 3)).toBe(false);
+    expect(mayDeleteUser(as(0), text, 3)).toBe(true);
+    expect(mayDeleteUser(as(0), text, 0)).toBe(false);
   });
 });
