@@ -237,7 +237,7 @@ func TestAccountRegistrationsKeepTheirName(t *testing.T) {
 }
 
 // Unregistering an account's registration deletes the account (else it
-// would log in again and register anew). Only admins may.
+// would log in again and register anew). Only admins delete users.
 func TestUnregisteringAnAccountDeletesIt(t *testing.T) {
 	db := testDB(t)
 	setAdminPassword(db, "admin")
@@ -252,18 +252,20 @@ func TestUnregisteringAnAccountDeletesIt(t *testing.T) {
 			deleted <- name
 			return nil
 		}}, nil)
-	alice := joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("203.0.113.5"), Account: &WebAccount{Name: "alice", CertHash: "aaa"}}, "alice"))
+	joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("203.0.113.5"), Account: &WebAccount{Name: "alice", CertHash: "aaa"}}, "alice"))
 	reg, _ := db.UserByHash("aaa")
 	su := superUser(t, addr)
 	bob, bobID := registered(t, addr, "bob")
 	s.SetModerator(su.session, bobID, true)
-	if !s.MayRegister(bob.session) || s.MayRegister(alice.session) {
-		t.Error("the users list is for moderators and admins")
-	}
-	bob.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(reg.ID)}}})
+	carol, _ := db.RegisterUser("carol", "ccc")
+	bob.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(reg.ID)}, {UserId: proto.Uint32(carol)}}})
+	bob.expectDenied(pb.PermissionDenied_Text)
 	bob.expectDenied(pb.PermissionDenied_Text)
 	if r, _ := db.UserByHash("aaa"); r == nil {
-		t.Fatal("a moderator removed an account's registration")
+		t.Fatal("a moderator deleted an account")
+	}
+	if r, _ := db.UserByHash("ccc"); r == nil {
+		t.Fatal("a moderator deleted a Mumble user")
 	}
 	// The account stays when it cannot be deleted, and so does its
 	// registration.
@@ -275,7 +277,6 @@ func TestUnregisteringAnAccountDeletesIt(t *testing.T) {
 	}
 	// No account to delete: a Mumble-only registration, also one with an
 	// account's name but another certificate.
-	carol, _ := db.RegisterUser("carol", "ccc")
 	dave, _ := db.RegisterUser("dave", "ddd")
 	su.send(mumble.TypeUserList, &pb.UserList{Users: []*pb.UserList_User{{UserId: proto.Uint32(carol)}, {UserId: proto.Uint32(dave)}, {UserId: proto.Uint32(reg.ID)}}})
 	eventually(t, func() bool { r, _ := db.UserByHash("aaa"); return r == nil })

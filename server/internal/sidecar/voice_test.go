@@ -271,9 +271,6 @@ func TestVoiceChatsNeedTheBuiltInServer(t *testing.T) {
 
 func (f *fakeVoice) MayManage(session uint32) bool { return session == 1 }
 
-// MayRegister: session 3 has only Register (the users list).
-func (f *fakeVoice) MayRegister(session uint32) bool { return session == 1 || session == 3 }
-
 func (f *fakeVoice) SetModerator(session, user uint32, on bool) error {
 	return f.setRole(&f.mods, session, user, on)
 }

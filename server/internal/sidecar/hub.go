@@ -148,8 +148,6 @@ type Voice interface {
 	SetServerName(session uint32, name string) (string, error)
 	// IsAdmin: the session's user is an admin (the logo, see logo.go).
 	IsAdmin(session uint32) bool
-	// MayRegister: the session's user sees the registered users.
-	MayRegister(session uint32) bool
 	// Connections: every connection over the recent window (admins).
 	Connections(session uint32) ([]Connection, error)
 	// CheckMessage: a session's message to post (with the word
@@ -840,9 +838,6 @@ func (c *Conn) Handle(raw []byte) {
 		return
 	case "invites":
 		c.invites(*id, req)
-		return
-	case "account-users":
-		c.accountUsers(*id)
 		return
 	case "set-invite-only", "registration-invites", "create-registration-invite", "delete-registration-invite":
 		c.registrationRequest(*id, req)

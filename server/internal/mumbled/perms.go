@@ -415,7 +415,8 @@ func (s *Server) sendUserNames(c *client, ids []uint32) {
 }
 
 // userListMsg lists registered users, or renames (name given) and
-// unregisters (no name) them. It needs Register in root.
+// unregisters (no name) them. It needs Register in root; unregistering
+// (deleting the user, with its web account) needs Write too (admins).
 func (s *Server) userListMsg(c *client, m *pb.UserList) {
 	s.mu.Lock()
 	u := s.state.Users[c.session]
@@ -466,8 +467,8 @@ func (s *Server) userListMsg(c *client, m *pb.UserList) {
 			refused = "This registration belongs to a Kallisti account: its name cannot change."
 		} else if e.Name != nil {
 			err = db.RenameUser(id, e.GetName())
-		} else if account != "" && !admin {
-			refused = "Only admins can delete a Kallisti account."
+		} else if !admin {
+			refused = "Only admins can delete users."
 		} else if account != "" && s.cfg.DeleteAccount != nil {
 			if err = s.cfg.DeleteAccount(account); err == nil {
 				err = db.UnregisterUser(id)

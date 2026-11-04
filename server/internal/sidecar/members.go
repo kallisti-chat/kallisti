@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"slices"
 
-	"kallisti.chat/server/internal/mumble"
 	"kallisti.chat/server/internal/names"
 )
 
@@ -41,31 +40,6 @@ func (h *Hub) members() []wireMember {
 	}
 	slices.SortFunc(out, func(a, b wireMember) int { return cmp.Compare(a.ID, b.ID) })
 	return out
-}
-
-// accountUsers tells who sees the registered users which of them are web
-// accounts (removing one deletes the account, see
-// mumbled.Config.DeleteAccount).
-func (c *Conn) accountUsers(id mumble.Identity) {
-	h := c.hub
-	if h.voice == nil || !h.voice.MayRegister(id.Session) {
-		c.manageError("only staff see accounts")
-		return
-	}
-	accounts, err := h.store.AccountNames()
-	if err != nil {
-		slog.Error("account names", "err", err)
-		c.manageError("cannot list accounts")
-		return
-	}
-	ids := []uint32{}
-	for user, name := range h.voice.Users() {
-		if accounts[names.Key(name)] {
-			ids = append(ids, user)
-		}
-	}
-	slices.Sort(ids)
-	c.send(map[string]any{"type": "account-users", "ids": ids})
 }
 
 // syncOnline tells all but one connection (which gets ready) the members

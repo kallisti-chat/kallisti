@@ -1574,16 +1574,7 @@ func (s *Store) TemporaryAccounts() (int, error) {
 
 // TemporaryNames are the temporary accounts' names, as names.Key.
 func (s *Store) TemporaryNames() (map[string]bool, error) {
-	return s.nameKeys(`SELECT name_key FROM accounts WHERE temporary = 1`)
-}
-
-// AccountNames are all accounts' names, as names.Key.
-func (s *Store) AccountNames() (map[string]bool, error) {
-	return s.nameKeys(`SELECT name_key FROM accounts`)
-}
-
-func (s *Store) nameKeys(query string) (map[string]bool, error) {
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(`SELECT name_key FROM accounts WHERE temporary = 1`)
 	if err != nil {
 		return nil, err
 	}
