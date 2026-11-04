@@ -26,6 +26,7 @@
     isKallisti,
     kallistiOrigin,
     kallistiSocket,
+    bridgeFailed,
     linuxApp,
     parseAddress,
     trustServer,
@@ -375,12 +376,25 @@
   untrack(() => desktop && (desktopServer ? void chooseServer(desktopServer) : (checking = false)));
 
   // A Kallisti server in the apps: through the bridge, which sends voice
-  // over UDP, when the server has a Mumble port for it; else straight.
+  // over UDP, when the server has a Mumble port for it (asked until known);
+  // else, or once the bridge could not reach it, straight.
+  const udpPorts = new Map<string, number>();
+  const bridged = new Map<string, Connection>(); // by the bridge URL
   const appSocket = async (origin: string, token: string | null): Promise<Target> => {
-    const udpPort = (await hasBridge()) ? (await apiWithToken(origin, token).serverInfo()).udpPort : undefined;
-    return udpPort ? kallistiSocket(origin, token, { bridge: await getBridge(), udpPort }) : kallistiSocket(origin, token);
+    if (!udpPorts.has(origin) && (await hasBridge())) {
+      const { udpPort } = await apiWithToken(origin, token).serverInfo();
+      if (udpPort) udpPorts.set(origin, udpPort);
+    }
+    const udpPort = udpPorts.get(origin);
+    const target = udpPort ? kallistiSocket(origin, token, { bridge: await getBridge(), udpPort }) : null;
+    return target && !bridgeFailed(bridged.get(target.url)?.closeReason) ? target : kallistiSocket(origin, token);
   };
-  // local: through the desktop app's own bridge (a Mumble server).
+  const connectTo = (target: Target, c: Credentials) => {
+    const conn = connect(target.url, c, audio, target.protocols);
+    bridged.set(target.url, conn);
+    return conn;
+  };
+  // local: through the desktop app's own bridge to a Mumble server.
   const urlFor = async (credentials: Credentials): Promise<Target> => {
     if (!desktop) return { url: PROXY_URL };
     if (kallisti) return appSocket(kallisti, sessionStore(kallisti).get());
@@ -393,7 +407,7 @@
   const session = createServerSession<Connection>({
     site: () => kallisti ?? location.origin,
     urlFor,
-    connect: (target, c) => connect(target.url, c, audio, target.protocols),
+    connect: connectTo,
     tabStorage,
   });
   $effect(() => session.dispose);
@@ -420,7 +434,7 @@
       const s = createServerSession<Connection>({
         site: () => origin,
         urlFor: async () => (desktop ? appSocket(origin, token) : kallistiSocket(origin, token)),
-        connect: (target, c) => connect(target.url, c, audio, target.protocols),
+        connect: connectTo,
         tabStorage,
       });
       void s.start({ username: name, account: true }).catch(() => {});

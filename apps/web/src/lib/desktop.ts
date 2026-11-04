@@ -176,5 +176,9 @@ export const kallistiSocket = (origin: string, token: string | null, voice?: { b
   const protocols = token ? ["kallisti", `kallisti.session.${token}`] : [];
   if (!voice) return { url, protocols };
   const params = new URLSearchParams({ secret: voice.bridge.secret, kallisti: url, udp: String(voice.udpPort) });
-  return { url: `ws://127.0.0.1:${voice.bridge.port}/?${params}`, protocols, local: true };
+  return { url: `ws://127.0.0.1:${voice.bridge.port}/?${params}`, protocols };
 };
+
+// The bridge could not reach the server (it has another trust store and
+// proxy settings than the web view): connect straight from then on.
+export const bridgeFailed = (closeReason = "") => closeReason.startsWith("cannot reach ");

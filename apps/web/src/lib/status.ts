@@ -9,7 +9,7 @@ import { t } from "./i18n.svelte";
 const shown = (reason: string, localBridge: boolean) => refusedForGood(reason) || (localBridge && reason.startsWith("cannot reach "));
 
 // closeReason: the reason for closing the socket, if one was given;
-// localBridge: the desktop app's own bridge closed it (a Mumble server).
+// localBridge: the desktop app's own bridge to a Mumble server closed it.
 export const connectionError = (state: ServerState, closed: boolean, closeReason = "", localBridge = false): string | null => {
   if (state.status === "rejected") return state.error || t("client.serverRejected");
   if (state.status === "kicked") return state.error || t("client.kicked");

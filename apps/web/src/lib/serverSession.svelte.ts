@@ -26,7 +26,7 @@ export type SessionConnection = {
 };
 
 // Where a connection goes; local: through the desktop app's own bridge
-// (a Mumble server).
+// to a Mumble server.
 export type Target = { url: string; protocols?: string[]; local?: boolean };
 
 export type SessionDeps<C> = {
