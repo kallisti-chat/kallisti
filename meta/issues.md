@@ -29,4 +29,5 @@
   - [ ] [QR login: the apps' scanner](issues/qr-login-apps.md)
     - [ ] [QR scan: the Android release app crashes when the camera opens](issues/qr-scan-android-crash.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
+- [ ] [Private-room media (PR #18) without broken apps or slow reads](issues/private-room-media.md)
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
