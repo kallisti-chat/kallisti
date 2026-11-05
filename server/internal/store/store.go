@@ -116,15 +116,15 @@ func nonceAuthor(n NewMessage) string {
 	return "name:" + n.Author
 }
 
-// MessageByNonce is the author's message sent with n.Nonce in the day
+// MessageByNonce is the author's message sent with n.Nonce to n's channel in the day
 // before n.At (ErrNotFound: none, or n has no nonce).
 func (s *Store) MessageByNonce(n NewMessage) (Message, error) {
 	if n.Nonce == "" {
 		return Message{}, ErrNotFound
 	}
 	var id int64
-	err := s.db.QueryRow(`SELECT id FROM messages WHERE nonce_author = ? AND nonce = ? AND created_at >= ?`,
-		nonceAuthor(n), n.Nonce, n.At.Add(-NonceTTL).UnixMilli()).Scan(&id)
+	err := s.db.QueryRow(`SELECT id FROM messages WHERE nonce_author = ? AND nonce = ? AND channel_id = ? AND created_at >= ?`,
+		nonceAuthor(n), n.Nonce, n.ChannelID, n.At.Add(-NonceTTL).UnixMilli()).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Message{}, ErrNotFound
 	}

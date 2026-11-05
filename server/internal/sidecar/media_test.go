@@ -157,3 +157,19 @@ func TestFreshFileLinks(t *testing.T) {
 	do(carol, `{"type":"file-links","messages":[%d]}`, m.ID)
 	empty(t, carol)
 }
+
+// A send retry finds its message only in the same chat: a member removed
+// from a private room gets no fresh file links by retrying in another one.
+func TestRetriesStayInTheirChat(t *testing.T) {
+	h, v, _, bob, _ := threadHub(t)
+	h.FileLinks = &filelink.Signer{Key: []byte("k"), Now: func() time.Time { return clock }}
+	general, secret := h.channels[0].ID, h.channels[1].ID
+	do(bob, `{"type":"send","channel":%d,"text":"mine","nonce":"n1"}`, secret)
+	sent := nextOf(t, bob, "message")["message"].(map[string]any)["id"]
+	drain(h.all()...)
+	v.members[2] = false
+	do(bob, `{"type":"send","channel":%d,"text":"mine","nonce":"n1"}`, general)
+	if m := next(t, bob); m["type"] != "error" {
+		t.Fatalf("got %v (the private message: %v)", m, sent)
+	}
+}
