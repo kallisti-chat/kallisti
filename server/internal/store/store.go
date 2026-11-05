@@ -213,6 +213,11 @@ CREATE TABLE IF NOT EXISTS store_meta (
 	key   TEXT PRIMARY KEY,
 	value INTEGER NOT NULL
 );
+-- Random keys of the server's own (see Secret).
+CREATE TABLE IF NOT EXISTS secrets (
+	name  TEXT PRIMARY KEY,
+	value BLOB NOT NULL
+);
 -- The newest message a registered user (Mumble user id) read in a channel.
 CREATE TABLE IF NOT EXISTS read_marks_by_user (
 	user_id    INTEGER NOT NULL,
