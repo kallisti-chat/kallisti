@@ -952,7 +952,7 @@
   });
   $effect(() => {
     const asks = [chatId, threadId].flatMap((id) => (id === null ? [] : fileLinksToAsk(text.messages[id] ?? [], linksAsked, linksNow)));
-    for (const m of asks) linksAsked.add(linkKey(m));
+    for (const m of asks) linksAsked.add(linkKey(m, linksNow));
     const ids = asks.map((m) => m.id);
     for (let i = 0; i < ids.length; i += 100) connection.fileLinks(ids.slice(i, i + 100));
   });

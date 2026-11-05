@@ -14,10 +14,11 @@ const expiry = (url: string | undefined): number | null => {
 
 const links = (m: TextMessage) => messageFiles(m).flatMap((f) => [f.url, f.preview]);
 
-// A message's links, so each is asked once.
-export const linkKey = (m: TextMessage) => `${m.id} ${links(m).join(" ")}`;
+// A message's links in this hour, so each is asked once an hour (again
+// only when the server did not answer, for example over its rate limit).
+export const linkKey = (m: TextMessage, now: number) => `${Math.floor(now / soon)} ${m.id} ${links(m).join(" ")}`;
 
 export const fileLinksToAsk = (msgs: readonly TextMessage[], asked: ReadonlySet<string>, now: number): TextMessage[] =>
-  msgs.filter((m) => !asked.has(linkKey(m)) && links(m).some((url) => (expiry(url) ?? Infinity) - now < soon));
+  msgs.filter((m) => !asked.has(linkKey(m, now)) && links(m).some((url) => (expiry(url) ?? Infinity) - now < soon));
 
 export const fileLinksRequest = (messages: number[]) => JSON.stringify({ type: "file-links", messages });

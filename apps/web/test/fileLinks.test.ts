@@ -22,10 +22,12 @@ describe("signed file links", () => {
     const previewSoon = msg(4, signed(now + 20 * hour), signed(now + 60_000, true));
     const plain = msg(5, "/files/k/a.png");
     const text: TextMessage = { id: 6, channel: 1, author: "a", text: "hi", at: 1 };
-    const asked = new Set([linkKey(gone)]);
+    const asked = new Set([linkKey(gone, now)]);
     expect(fileLinksToAsk([fresh, soon, gone, previewSoon, plain, text], asked, now).map((m) => m.id)).toEqual([2, 4]);
-    // Its new links are another key.
-    expect(linkKey(msg(3, signed(now + 24 * hour)))).not.toBe(linkKey(gone));
+    // Its new links are another key; an ask without an answer (a refused
+    // request) is asked again the next hour.
+    expect(linkKey(msg(3, signed(now + 24 * hour)), now)).not.toBe(linkKey(gone, now));
+    expect(fileLinksToAsk([gone], asked, now + hour).map((m) => m.id)).toEqual([3]);
   });
 
   it("is a request with the message ids", () => {
