@@ -72,6 +72,7 @@ import type { SearchQuery } from "./search";
 import { reactRequest } from "./reactions";
 import { parseRef } from "./customEmoji";
 import { previewsRequest } from "./linkPreview";
+import { fileLinksRequest } from "./fileLinks";
 import { bioRequest } from "./members";
 import { awayRequest, setStatusRequest, type CustomStatus, type Presence } from "./presence";
 import { createCapture, type MicHandover } from "./voice/capture.svelte";
@@ -457,6 +458,9 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     },
     previews: (messages: number[]) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(previewsRequest(messages));
+    },
+    fileLinks: (messages: number[]) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(fileLinksRequest(messages));
     },
     react: (message: number, emoji: string, on: boolean) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(reactRequest(message, emoji, on));
