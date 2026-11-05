@@ -216,6 +216,35 @@ describe("a server session", () => {
     session.dispose();
   });
 
+  it("tries straight once when the apps' bridge cannot reach the server, then shows the error", async () => {
+    const made: FakeConnection[] = [];
+    let tries = 0;
+    const session = createServerSession<FakeConnection>({
+      site: () => "https://chat.example",
+      urlFor: async () => (tries++ === 0 ? { url: "ws://127.0.0.1:1/?kallisti", site: "https://chat.example" } : { url: "wss://chat.example/ws" }),
+      connect: (target) => {
+        const c = fakeConnection(target.url);
+        made.push(c);
+        return c;
+      },
+      tabStorage: () => undefined,
+    });
+    await session.start(credentials);
+    await settle();
+    made[0]!.drop("cannot reach wss://chat.example/ws: invalid peer certificate");
+    flushSync();
+    await settle();
+    expect(made.map((c) => c.url)).toEqual(["ws://127.0.0.1:1/?kallisti", "wss://chat.example/ws"]);
+    made[1]!.drop();
+    flushSync();
+    await vi.advanceTimersByTimeAsync(60_000);
+    flushSync();
+    expect(made).toHaveLength(2); // no more tries: the session never got in
+    expect(session.lost).toBe(false);
+    expect(session.error).not.toBeNull();
+    session.dispose();
+  });
+
   it("tries once at once when the connection is lost, then each second", async () => {
     const { session, made } = setup();
     await session.start(credentials);

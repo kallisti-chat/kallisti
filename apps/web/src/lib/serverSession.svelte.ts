@@ -209,9 +209,11 @@ export const createServerSession = <C extends SessionConnection>(deps: SessionDe
           // Our old session may still hold the name: try a few more times.
           if (busyName(next.state) && ++busyTries < BUSY_NAME_TRIES) return schedule();
           // Refused now (for example banned meanwhile), logged out, or a
-          // certificate question: show it; else try again.
+          // certificate question: show it; also when it never got in (the
+          // one straight try after the apps' bridge failed); else try again.
           const refused = next.state.status === "rejected" || next.state.status === "kicked";
-          if (refused || loggedOut(next.closeReason) || refusedForGood(next.closeReason) || certificateProblem(next.closeReason)) connection = next;
+          const final = refused || loggedOut(next.closeReason) || refusedForGood(next.closeReason) || certificateProblem(next.closeReason);
+          if (final || !connection?.wasSynced) connection = next;
           else schedule();
         });
       }
