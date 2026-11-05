@@ -27,5 +27,6 @@
 - [ ] [Remove the fallback for plain-named session cookies (after 2026-11-28)](issues/remove-plain-cookie-fallback.md)
 - [ ] [Log in with a QR code](issues/qr-login.md)
   - [ ] [QR login: the apps' scanner](issues/qr-login-apps.md)
+    - [ ] [QR scan: the Android release app crashes when the camera opens](issues/qr-scan-android-crash.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
