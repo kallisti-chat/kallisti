@@ -196,7 +196,10 @@ public, and direct-message media retains its existing behavior.
 
 Enable it in the server environment and restart. For Compose, add
 `EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "1"` to the `kallisti` service's
-`environment` section. With the supplied Helm chart set
+`environment` section, then run `docker compose up -d` with your usual
+Compose files to recreate the service with the new environment.
+`docker compose restart` alone does not apply environment changes.
+With the supplied Helm chart set
 `experimentalPrivateRoomMedia: true`; for a plain Kubernetes Deployment set
 the environment variable on the app container. The default is off and keeps
 existing media behavior. Disable it and restart to restore public file reads;
