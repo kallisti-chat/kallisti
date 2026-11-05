@@ -265,6 +265,9 @@ func (f *Fetcher) image(ctx context.Context, u string) picture {
 		return picture{}
 	}
 	defer res.Body.Close()
+	if !shareable(res.Header.Get("Cache-Control")) {
+		return picture{}
+	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, maxImage+1))
 	if err != nil || len(data) > maxImage {
 		return picture{}
@@ -275,6 +278,17 @@ func (f *Fetcher) image(ctx context.Context, u string) picture {
 		}
 	}
 	return picture{}
+}
+
+// shareable: a response a shared cache may keep (this one is shared by all
+// who see the link), not private or no-store.
+func shareable(cacheControl string) bool {
+	for d := range strings.SplitSeq(strings.ToLower(cacheControl), ",") {
+		if d, _, _ := strings.Cut(strings.TrimSpace(d), "="); d == "private" || d == "no-store" {
+			return false
+		}
+	}
+	return true
 }
 
 // parse reads a page's head: Open Graph tags first, else the title and
