@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeThreads, chatTarget, defaultThreadName, replyBoxText, startedIn, threadList, threadRequest, type Thread } from "../src/lib/threads";
+import { activeThreads, chatTarget, sidebarThreads, defaultThreadName, replyBoxText, startedIn, threadList, threadRequest, type Thread } from "../src/lib/threads";
 import { initialTextState, parseServerEvent, reduceText, unreadTextIds, type TextState } from "../src/lib/textChannels";
 import { mentionCounts } from "../src/lib/mentions";
 
@@ -42,6 +42,13 @@ describe("thread lists", () => {
   it("show a channel's active threads, the newest activity first", () => {
     expect(activeThreads(threads, 1).map((t) => t.id)).toEqual([2, 1]);
     expect(activeThreads(threads, 3)).toEqual([]);
+  });
+  it("show in the sidebar the threads we follow and the open one, as Discord", () => {
+    expect(sidebarThreads(threads, 1, new Set([1]), null).map((t) => t.id)).toEqual([1]);
+    expect(sidebarThreads(threads, 1, new Set([1]), 2).map((t) => t.id)).toEqual([2, 1]);
+    expect(sidebarThreads(threads, 1, new Set(), null)).toEqual([]);
+    // Guests cannot follow threads: they see all active ones.
+    expect(sidebarThreads(threads, 1, null, null).map((t) => t.id)).toEqual([2, 1]);
   });
   it("show archived ones after the active ones, the newest first", () => {
     const archived = [thread(5, { archived: true }), thread(3, { archived: true })];

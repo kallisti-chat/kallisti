@@ -76,7 +76,7 @@
   import { iconHref, showIcons } from "../lib/serverLogo";
   import { directChatWith, toChatMessage, type DisplayMessage, type Peer, type TextMessage, type UserTarget } from "../lib/textChannels";
   import { hiddenMembers, offlineMembers, pictureNames, readerGroups } from "../lib/members";
-  import { adminAction, badgeOf, mayDeleteUser, moderatorAction, roleOf } from "../lib/roles";
+  import { adminAction, badgeOf, mayDeleteUser, moderatorAction, myUserId, roleOf } from "../lib/roles";
   import { loginAction, mayChangeGuests, mayWrite, readOnlyNote } from "../lib/guests";
   import { missingVoiceApis, unsupportedVoiceMessage } from "../lib/voice/support";
   import { createTextView } from "../lib/textView.svelte";
@@ -136,7 +136,7 @@
   import ChatPane from "./ChatPane.svelte";
   import ThreadList from "./ThreadList.svelte";
   import ThreadNameDialog from "./ThreadNameDialog.svelte";
-  import { activeThreads, chatTarget, defaultThreadName, startedIn, threadList, threadRequest, type Thread } from "../lib/threads";
+  import { activeThreads, chatTarget, sidebarThreads, defaultThreadName, startedIn, threadList, threadRequest, type Thread } from "../lib/threads";
   import MemberList from "./MemberList.svelte";
   import SearchPanel from "./SearchPanel.svelte";
   import ModerationDialog from "./ModerationDialog.svelte";
@@ -2238,7 +2238,7 @@
       hiddenCount={hiddenChannels.length}
       onShowHidden={() => (showHidden = true)}
       onDirectMenu={openDirectMenu}
-      threadsOf={(id) => activeThreads(text.threads, id)}
+      threadsOf={(id) => sidebarThreads(text.threads, id, myUserId(server) === null ? null : text.follows, threadId)}
       follows={text.follows}
       currentThread={threadId}
       onOpenThread={openThread}

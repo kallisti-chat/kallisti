@@ -87,6 +87,11 @@ export const activeThreads = (threads: Threads, channel: number): Thread[] =>
     .filter((t) => t.channel === channel && !t.archived)
     .sort((a, b) => b.last - a.last || b.id - a.id);
 
+// The sidebar's threads of a channel, as Discord: the active ones we
+// follow (null: we cannot follow, a guest: all), and the open one.
+export const sidebarThreads = (threads: Threads, channel: number, follows: ReadonlySet<number> | null, open: number | null): Thread[] =>
+  activeThreads(threads, channel).filter((t) => !follows || follows.has(t.id) || t.id === open);
+
 // The channel's thread list: the active ones, then the archived ones as
 // loaded (the newest first), each once.
 export const threadList = (threads: Threads, archived: readonly Thread[], channel: number): Thread[] => {
