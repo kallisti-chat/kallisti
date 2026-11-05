@@ -19,6 +19,12 @@ describe("shouldReconnect", () => {
     expect(shouldReconnect({ ...lost, closeReason: "certificate-changed ab" })).toBe(false);
   });
 
+  it("once straight to the server when the apps' bridge could not reach it", () => {
+    const failed = { ...lost, wasSynced: false, closeReason: "cannot reach wss://chat.example/ws: invalid certificate" };
+    expect(shouldReconnect({ ...failed, straightNext: true })).toBe(true);
+    expect(shouldReconnect(failed)).toBe(false); // a Mumble server through the bridge: the user decides
+  });
+
   it("not after the server ended the session (logout elsewhere)", () => {
     expect(shouldReconnect({ ...lost, closeReason: "logged out" })).toBe(false);
   });

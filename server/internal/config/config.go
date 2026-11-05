@@ -117,7 +117,11 @@ func parsePush(getenv func(string) string) (Push, error) {
 
 // Builtin configures the built-in Mumble server.
 type Builtin struct {
-	Listen     string // TCP and UDP for Mumble clients
+	Listen string // TCP and UDP for Mumble clients
+	// PublicPort: the Mumble port as clients reach it (the apps send voice
+	// to it over UDP); default Listen's port, 0: none (voice stays in the
+	// WebSocket).
+	PublicPort int
 	ServerName string // the root channel's name
 	Welcome    string
 	Password   string // server password for guests
@@ -154,10 +158,16 @@ func parseBuiltin(getenv func(string) string, dbPath string) (*Builtin, error) {
 	if (b.CertFile == "") != (b.KeyFile == "") {
 		return nil, errors.New("set both MUMBLE_CERT_FILE and MUMBLE_KEY_FILE, or neither")
 	}
-	if _, _, err := net.SplitHostPort(b.Listen); err != nil {
+	_, listenPort, err := net.SplitHostPort(b.Listen)
+	if err != nil {
 		return nil, errors.New("MUMBLE_LISTEN must be host:port")
 	}
 	var ok bool
+	if public := getenv("MUMBLE_PUBLIC_PORT"); public != "0" {
+		if b.PublicPort, ok = parsePort(cmp.Or(public, listenPort), 0); !ok {
+			return nil, errors.New("MUMBLE_PUBLIC_PORT must be a port number (0: none)")
+		}
+	}
 	if b.WHIPPort, ok = parsePort(getenv("WHIP_UDP_PORT"), 0); !ok {
 		return nil, errors.New("WHIP_UDP_PORT must be a port number")
 	}

@@ -17,14 +17,17 @@ export const refusedForGood = (closeReason: string) => closeReason === GUEST_ELS
 // Coming back by itself after a lost connection (a background tab, the
 // network, a server restart): only for a connection that was in, and not
 // after a kick, a refusal, a logout or a certificate question (the user
-// decides).
+// decides). straightNext: the apps' bridge could not reach a Kallisti
+// server, and the next try goes straight to it (see lib/desktop
+// bridgeFailed).
 export const shouldReconnect = (c: {
   status: ServerState["status"];
   closed: boolean;
   closeReason: string;
   wasSynced: boolean;
+  straightNext?: boolean;
 }) =>
-  c.closed && c.wasSynced && c.status !== "kicked" && c.status !== "rejected" &&
+  c.closed && (c.wasSynced || c.straightNext === true) && c.status !== "kicked" && c.status !== "rejected" &&
   !loggedOut(c.closeReason) &&
   !refusedForGood(c.closeReason) &&
   certificateProblem(c.closeReason) === null;

@@ -8,7 +8,7 @@ import { t } from "./i18n.svelte";
 export type Connection = {
   session: number;
   name: string;
-  transport: string; // of its voice: "udp", "tcp" or "websocket"
+  transport: string; // of its voice: "udp", "tcp", "websocket" or "websocket+udp" (the apps)
   ping: number | null; // ms, as the client measured it (null: none yet)
   // Late or lost voice in percent: what the server got from the client,
   // and what the client says it got (null: too little voice).

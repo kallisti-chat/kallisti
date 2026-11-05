@@ -207,6 +207,7 @@ func run() error {
 		accounts.NameTaken = mumble.nameTaken
 		accounts.MumbleLogin = mumble.srv.CheckPassword
 		accounts.GuestAccounts = true // the built-in server can remove their registrations
+		accounts.VoicePort = cfg.Builtin.PublicPort
 		accounts.Captcha = mumble.srv.Captcha
 		if accounts.Fedi != nil {
 			accounts.Fedi.AllowsHome = mumble.srv.AllowsHome // the admins' lists

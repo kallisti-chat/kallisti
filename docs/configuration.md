@@ -80,6 +80,10 @@ Used unless `MUMBLE_HOST` is set.
 
 - `MUMBLE_LISTEN` (`:64738`, TCP and UDP): Mumble clients and the desktop
   app.
+- `MUMBLE_PUBLIC_PORT` (the port of `MUMBLE_LISTEN`): the Mumble port as
+  clients reach it, if Docker or a firewall maps it to another one. The
+  desktop and Android apps send voice to it over UDP (better on bad
+  networks); without UDP they keep voice in the WebSocket. `0`: never UDP.
 - `SERVER_NAME` (`Kallisti`), `MUMBLE_WELCOME` (the welcome text).
 - `MUMBLE_PASSWORD`: a server password for guests. With it, saved avatars
   are not served to everyone (the server is private).

@@ -353,3 +353,4 @@
 - [x] [Import a Murmur server](issues/murmur-import.md)
 - [x] [Delete users: also their web account](issues/delete-account-on-unregister.md)
 - [x] [Localization](issues/localization.md)
+- [x] [Apps: voice over UDP on Kallisti servers](issues/app-udp-voice-kallisti.md)

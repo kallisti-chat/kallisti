@@ -419,3 +419,46 @@ func TestEndingAnAccountsPasswordLoginsKicksItsMumbleClients(t *testing.T) {
 		t.Fatalf("online: alice %v, bob %v, web %v, guest %v", online(alice.session), online(bob.session), online(web.session), online(guest.session))
 	}
 }
+
+// The desktop app's bridge sends a web session's voice over UDP: the
+// server takes it from the session's IP and key, and sends voice back over
+// UDP, as to a Mumble client.
+func TestWebSessionsGetVoiceOverUDP(t *testing.T) {
+	s, addr := startServerAndListen(t, "127.0.0.1", Config{}, openACL)
+	transport := func(session uint32) string {
+		for _, st := range s.ConnectionStats() {
+			if st.Session == session {
+				return st.Transport
+			}
+		}
+		return ""
+	}
+	web := joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("127.0.0.1")}, "webby"))
+	native := dial(t, addr, "native")
+	web.openUDP(addr)
+	web.sendUDP(audio(3, []byte{0xfc, 3}))
+	if h := parseAudio(t, native.expect(mumble.TypeUDPTunnel)); h.sender != web.session || h.frame != 3 {
+		t.Fatalf("native heard %+v", h)
+	}
+	if got := transport(web.session); got != "websocket+udp" {
+		t.Fatalf("transport %q", got)
+	}
+	native.conn.Write(mumble.EncodeFrame(mumble.TypeUDPTunnel, audio(4, []byte{0xfc, 4})))
+	if h := parseAudio(t, web.readUDP()); h.sender != native.session || h.frame != 4 {
+		t.Fatalf("web heard %+v", h)
+	}
+	web.expectNone(mumble.TypeUDPTunnel)
+	// A listener's bridge announces UDP with an empty voice packet to the
+	// loopback target once its pings come back: it then hears over UDP
+	// too, and nobody hears the packet.
+	listener := joined(t, webClient(t, s, Origin{Host: netip.MustParseAddr("127.0.0.1")}, "listener"))
+	listener.openUDP(addr)
+	listener.sendUDP([]byte{0x00, 0x08, 31})
+	eventually(t, func() bool { return transport(listener.session) == "websocket+udp" })
+	native.conn.Write(mumble.EncodeFrame(mumble.TypeUDPTunnel, audio(5, []byte{0xfc, 5})))
+	if h := parseAudio(t, listener.readUDP()); h.sender != native.session || h.frame != 5 {
+		t.Fatalf("listener heard %+v", h)
+	}
+	web.expectNone(mumble.TypeUDPTunnel)
+	native.expectNone(mumble.TypeUDPTunnel)
+}

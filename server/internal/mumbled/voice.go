@@ -157,7 +157,8 @@ func (s *Server) udpPacket(conn *net.UDPConn, addr netip.AddrPort, packet []byte
 			s.byAddr[addr] = c
 		}
 		// As Murmur: only voice (not pings) over UDP means the client
-		// gets voice over UDP.
+		// gets voice over UDP. Also a voice packet that s.voice drops: the
+		// apps' bridge sends an empty one once its UDP works both ways.
 		kind := udpKind(plain, c.legacy)
 		isAudio := kind == udpAudio
 		if isAudio {

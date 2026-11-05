@@ -67,6 +67,9 @@ type Service struct {
 	// ServerPassword: guests may need the Mumble server's password (Murmur:
 	// unknown, so true). The login page leaves out its field otherwise.
 	ServerPassword bool
+	// VoicePort: the built-in server's public Mumble port; the apps send
+	// voice to it over UDP (0: none, voice stays in the WebSocket).
+	VoicePort int
 	// ServerName: the server's name for the login page (nil: not known,
 	// with Murmur).
 	ServerName func() string
@@ -276,6 +279,9 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if v, err := a.Store.LogoVersion(); err == nil && v != "" {
 			info["logo"] = v // at /api/logo/<size>.png?v=<version>
+		}
+		if a.VoicePort != 0 {
+			info["udpPort"] = a.VoicePort
 		}
 		writeJSON(w, http.StatusOK, info)
 	case r.URL.Path == "/api/challenge" && r.Method == http.MethodGet:

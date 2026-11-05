@@ -17,10 +17,13 @@ const RESYNC_INTERVAL: Duration = Duration::from_secs(5);
 pub struct UdpVoice {
     crypt: Option<CryptState>,
     legacy: bool,
-    last_good: Option<Instant>,
+    last_good: Option<Instant>, // any packet that decrypted (resyncs)
+    last_pong: Option<Instant>, // the way up works too
     last_resync: Option<Instant>,
     ping_count: u8,
     was_usable: bool,
+    // Voice came over UDP: the server sends it there, no announce needed.
+    heard: bool,
 }
 
 pub enum Incoming {
@@ -54,6 +57,12 @@ fn ping_body(legacy: bool, timestamp: u8) -> Vec<u8> {
     if legacy { vec![0x20, timestamp] } else { vec![0x01, 0x08, timestamp] }
 }
 
+// Voice to the loopback target (31) without sound: Opus with sequence 0
+// and length 0, or the protobuf format with only the target.
+fn empty_voice(legacy: bool) -> Vec<u8> {
+    if legacy { vec![0x9f, 0x00, 0x00] } else { vec![0x00, 0x08, 31] }
+}
+
 impl UdpVoice {
     pub fn set_legacy(&mut self, legacy: bool) {
         self.legacy = legacy;
@@ -65,6 +74,8 @@ impl UdpVoice {
             (Some(key), Some(client), Some(server)) => {
                 self.crypt = Some(CryptState::new(key, client, server));
                 self.last_good = None;
+                self.last_pong = None;
+                self.heard = false;
                 None
             }
             (None, None, Some(server)) => {
@@ -81,7 +92,7 @@ impl UdpVoice {
     }
 
     pub fn usable(&self, now: Instant) -> bool {
-        self.last_good.is_some_and(|t| now.saturating_duration_since(t) < UDP_TIMEOUT)
+        self.last_pong.is_some_and(|t| now.saturating_duration_since(t) < UDP_TIMEOUT)
     }
 
     /// An encrypted ping, once the keys are known.
@@ -99,7 +110,22 @@ impl UdpVoice {
         let usable = self.usable(now);
         let stopped = self.was_usable && !usable;
         self.was_usable = usable;
+        if stopped {
+            self.heard = false;
+        }
         stopped.then(|| make_frame(UDP_TUNNEL, &ping_body(self.legacy, 0)))
+    }
+
+    /// Call after a pong. While UDP works but no voice came over it, a
+    /// packet for the server: it sends voice over UDP only to clients that
+    /// sent voice over UDP, so a listener would hear over TCP. Voice
+    /// without sound to the loopback target: Kallisti's server drops it,
+    /// and nobody hears it (Murmur echoes it: not for Murmur).
+    pub fn announce(&mut self, now: Instant) -> Option<Vec<u8>> {
+        if self.heard || !self.usable(now) {
+            return None;
+        }
+        Some(self.crypt.as_mut()?.encrypt(&empty_voice(self.legacy)))
     }
 
     /// The encrypted packet for a UDPTunnel body, or None to keep it on TCP.
@@ -126,7 +152,15 @@ impl UdpVoice {
             Some(b) if self.legacy => b >> 5 == 1,
             Some(b) => *b == 1,
         };
-        if is_ping { Incoming::Pong } else { Incoming::Audio(plain) }
+        if is_ping {
+            self.last_pong = Some(now);
+            return Incoming::Pong;
+        }
+        // Voice while UDP works (not a late packet from before an outage).
+        if self.usable(now) {
+            self.heard = true;
+        }
+        Incoming::Audio(plain)
     }
 }
 
@@ -173,6 +207,75 @@ mod tests {
     }
 
     #[test]
+    fn announces_udp_once_it_works_so_the_server_answers_over_udp() {
+        let now = Instant::now();
+        let mut v = UdpVoice::default();
+        v.on_crypt_setup(&setup());
+        assert!(v.announce(now).is_none(), "no pong yet");
+        let mut server = murmur();
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(now, &server.encrypt(&ping));
+        // An empty voice packet to the loopback target: the server drops
+        // it, but sends voice over UDP from now on.
+        let announce = v.announce(now).unwrap();
+        assert_eq!(server.decrypt(&announce).unwrap(), vec![0x00, 0x08, 31]);
+        // Again after each pong (one may be lost), until voice comes.
+        assert!(v.announce(now).is_some());
+        assert!(matches!(v.incoming(now, &server.encrypt(&[0, 9, 9])), Incoming::Audio(_)));
+        assert!(v.announce(now).is_none(), "voice came over UDP");
+        // UDP stops and works again: announced again.
+        let later = now + Duration::from_secs(13);
+        assert!(v.check(now).is_none());
+        assert!(v.check(later).is_some());
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(later, &server.encrypt(&ping));
+        assert!(v.announce(later).is_some());
+
+        let mut legacy = UdpVoice::default();
+        legacy.set_legacy(true);
+        legacy.on_crypt_setup(&setup());
+        let mut server = murmur();
+        let ping = server.decrypt(&legacy.ping().unwrap()).unwrap();
+        legacy.incoming(now, &server.encrypt(&ping));
+        assert_eq!(server.decrypt(&legacy.announce(now).unwrap()).unwrap(), vec![0x9f, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn late_voice_from_before_an_outage_does_not_count() {
+        // UDP stops, a late voice packet still comes: after UDP works again
+        // the server needs the announce again (it went back to TCP).
+        let now = Instant::now();
+        let mut v = UdpVoice::default();
+        v.on_crypt_setup(&setup());
+        let mut server = murmur();
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(now, &server.encrypt(&ping));
+        assert!(v.check(now).is_none());
+        let later = now + Duration::from_secs(13);
+        assert!(v.check(later).is_some());
+        v.incoming(later, &server.encrypt(&[0, 9, 9]));
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(later, &server.encrypt(&ping));
+        assert!(v.announce(later).is_some());
+    }
+
+    #[test]
+    fn only_pongs_keep_udp_usable() {
+        // Voice from the server proves only the way down: without pongs,
+        // our voice goes back to TCP (the way up may be blocked).
+        let now = Instant::now();
+        let mut v = UdpVoice::default();
+        v.on_crypt_setup(&setup());
+        let mut server = murmur();
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(now, &server.encrypt(&ping));
+        let later = now + Duration::from_secs(13);
+        assert!(matches!(v.incoming(later, &server.encrypt(&[0, 9, 9])), Incoming::Audio(_)));
+        assert!(!v.usable(later));
+        assert!(v.outgoing(later, &[0, 1, 2]).is_none());
+    }
+
+    #[test]
     fn tells_the_server_once_when_udp_stops_working() {
         let now = Instant::now();
         let mut v = UdpVoice::default();
@@ -199,7 +302,7 @@ mod tests {
             Incoming::Audio(plain) => assert_eq!(plain, vec![0, 9, 9]),
             _ => panic!("expected audio"),
         }
-        assert!(v.usable(now), "any good packet proves UDP works");
+        assert!(!v.usable(now), "only a pong proves the way up");
     }
 
     #[test]
