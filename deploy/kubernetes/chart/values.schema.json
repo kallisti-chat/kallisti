@@ -2,6 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
+    "experimentalPrivateRoomMedia": {
+      "type": "boolean"
+    },
     "imagePullSecrets": {
       "type": "array",
       "items": {

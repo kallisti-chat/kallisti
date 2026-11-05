@@ -58,6 +58,10 @@ type Handler struct {
 	// Bytes one author may upload in 24 hours.
 	QuotaBytes int64
 	Now        func() time.Time
+	// AuthorizeRead is the experimental private-room media gate. Nil keeps
+	// legacy public reads. It runs before opening files or handling ranges
+	// and conditionals, including for previews and downloads.
+	AuthorizeRead func(*http.Request, store.Upload) bool
 	// Redeem checks an upload token and returns the uploader's name.
 	Redeem func(token string) (string, bool)
 	// RedeemEmoji checks a custom emoji upload token: who adds which
@@ -303,12 +307,21 @@ func servedType(u store.Upload, f io.ReaderAt) string {
 }
 
 func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
+	if h.AuthorizeRead != nil {
+		// Public rooms can become private. Do not let a previously public
+		// response bypass the next request's room permission check.
+		w.Header().Set("Cache-Control", "private, no-store")
+	}
 	key, _, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/files/"), "/")
 	u, err := h.Store.UploadByKey(key)
 	// ?preview: its preview (see previews.go), if it has one; ?download:
 	// the file as an attachment.
 	preview := r.URL.Query().Has("preview")
 	if err != nil || !plainKey(u.Key) || preview && !u.HasPreview() {
+		http.NotFound(w, r)
+		return
+	}
+	if h.AuthorizeRead != nil && !h.AuthorizeRead(r, u) {
 		http.NotFound(w, r)
 		return
 	}
@@ -341,7 +354,9 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	hd.Set("X-Content-Type-Options", "nosniff")
 	hd.Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	// The key is random and the content never changes.
-	hd.Set("Cache-Control", "public, max-age=31536000, immutable")
+	if h.AuthorizeRead == nil {
+		hd.Set("Cache-Control", "public, max-age=31536000, immutable")
+	}
 	http.ServeContent(w, r, "", u.CreatedAt, f)
 }
 

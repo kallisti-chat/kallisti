@@ -201,6 +201,10 @@ func run() error {
 			return err
 		}
 		builtinServer = mumble
+		if cfg.ExperimentalPrivateRoomMedia {
+			fileHandler.AuthorizeRead = privateRoomMedia(accounts, hub, mumble.srv)
+			slog.Warn("experimental private-room media enabled; use same-origin browser sessions; native and cross-server media clients are not yet supported")
+		}
 		named.Store(mumble.srv)
 		defer mumble.close()
 		dial, upstream = mumble.dial, "built-in on "+cfg.Builtin.Listen
