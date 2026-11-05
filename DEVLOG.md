@@ -2696,3 +2696,21 @@ A user's log: an Android app at 420 ms ping with 15.4 % of the audio to it late 
 Servers send voice over UDP only to clients that sent voice over UDP (as Murmur), so a listener heard over TCP. The bridge sends an empty voice packet to the loopback target after each pong until voice comes over UDP: the server switches the client to UDP and drops the packet (a tested contract in voice.go); not to Murmur, which echoes the loopback. Checked end to end with the real server and bridge and two bot clients: both directions over UDP (100 of 100 frames), with UDP blocked voice stayed in the WebSocket (100 of 100). Not checked with packet loss (macOS needs root for it).
 
 Reviews: the bridge lost the server's close reason (the client decides on "logged out" and the like: a reconnect loop instead of a new login); a blocking DNS lookup; Murmur and the empty packet; one lost announce kept a listener on TCP; private CAs and system proxies (the bridge has the web PKI only): such a server now goes straight to the WebSocket after "cannot reach"; the UDP port is asked once, at most 5 s. Astra: through the bridge the client took its HTTP address from the bridge URL (uploads, screen sharing, pictures would have gone to 127.0.0.1): the target carries the server's site now; a server's message full of tiny frames became millions of frames at once (now in 32 KiB pieces); voice from the server kept UDP "usable" although only the way down worked (now only pongs). Astra's follow-up: a late voice packet from before a UDP outage counted as "heard" and kept a listener on TCP after it; the server's close could still be cancelled when the client side ended first (now it gets 2 s); a long "cannot reach" reason (TLS errors) made an invalid close frame (at most 123 bytes now, the rest in the log); a first connect that the bridge could not make did not try straight by itself (shouldReconnect allows that one now). Left: Mumble's own UDP rebinding and endpoint quirks (older than this), a UDP host other than the web host (a CDN in front: voice stays in the WebSocket).
+
+## 2026-11-05: Opt-in private-room media
+
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` makes uploaded room media follow current
+room permissions, so forwarding a private room's file URL does not grant access.
+The built-in server checks authenticated account certificate identity and
+inherited room ACLs before serving originals, previews, downloads, ranges or
+conditional responses. Threads use their parent room. Public rooms and DMs
+keep their existing access policy; unattached uploads fail closed. All file
+responses disable caching while enabled. Previously cached copies cannot be
+revoked. The setting defaults off, needs no schema migration, and has a Helm
+value; configuration docs explain deployment and client/session limits.
+
+Tests cover real cookie/bearer sessions, permission revocation and bans,
+private parents, text mirrors, thread lookup, HTTP representations and the
+legacy default. The initial fork spike was deployed to Kubernetes, with
+operator-reported validation on iOS, Android, desktop and web. That validation
+predates the rebase onto the current upstream client/UDP changes.
