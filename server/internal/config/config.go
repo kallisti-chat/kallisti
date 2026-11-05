@@ -51,6 +51,9 @@ type Config struct {
 	// with ffmpeg (FFMPEG_PATH, else on PATH).
 	NoMediaPreviews bool
 	FFmpegPath      string
+	// Fork-only spike: room media requires current room access. Off by
+	// default; currently supports built-in, same-origin browser sessions.
+	ExperimentalPrivateRoomMedia bool
 	// Web Push notifications (built-in server).
 	Push Push
 	// Uploaded files, and the size limit per file.
@@ -222,6 +225,10 @@ func Parse(getenv func(string) string) (Config, error) {
 	c.NoFediLogin = getenv("FEDI_LOGIN") == "0"
 	c.FediInsecureDev = getenv("FEDI_INSECURE_DEV_INSTANCES") == "1"
 	c.NoMediaPreviews = getenv("MEDIA_PREVIEWS") == "0"
+	c.ExperimentalPrivateRoomMedia = getenv("EXPERIMENTAL_PRIVATE_ROOM_MEDIA") == "1"
+	if c.ExperimentalPrivateRoomMedia && c.MumbleHost != "" {
+		return Config{}, errors.New("EXPERIMENTAL_PRIVATE_ROOM_MEDIA requires the built-in Mumble server")
+	}
 	c.FFmpegPath = getenv("FFMPEG_PATH")
 	var err error
 	if c.Push, err = parsePush(getenv); err != nil {

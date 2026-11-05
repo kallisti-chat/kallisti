@@ -10,6 +10,7 @@ storage:
   caddySize: ""
 superuserSecretName: ""  # pre-create a Secret with key 'password'; never commit it
 imagePullSecrets: []  # existing registry Secrets in the release namespace; e.g. [{name: regcred}]
+experimentalPrivateRoomMedia: false # fork spike; same-origin browser media only
 backup:
   confirmed: false  # set true only after off-cluster backups and a restore test
 resources:
