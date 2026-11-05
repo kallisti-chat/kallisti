@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"kallisti.chat/server/internal/filelink"
 	"kallisti.chat/server/internal/store"
 )
 
@@ -87,5 +89,45 @@ func TestMediaAuthorizationCoversEveryRepresentation(t *testing.T) {
 	h.ServeHTTP(legacy, httptest.NewRequest("GET", result["url"].(string), nil))
 	if legacy.Code != 200 || legacy.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
 		t.Fatalf("legacy response: %d %v", legacy.Code, legacy.Header())
+	}
+}
+
+// A signed link (see filelink) needs no session: no room check, and the
+// reader's browser may keep the file.
+func TestSignedLinksSkipTheRoomCheck(t *testing.T) {
+	srv, db, h := setupHandler(t, 1<<20)
+	body := pngBytes(t)
+	_, result := upload(t, srv, "good", "private.png", "image/png", body)
+	key, link := result["key"].(string), result["url"].(string)
+	if err := os.WriteFile(filepath.Join(h.Dir, key+".preview"), body, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.SetUploadPreview(key, "image/png"); err != nil {
+		t.Fatal(err)
+	}
+	now := h.Now()
+	signer := &filelink.Signer{Key: []byte("k"), Now: func() time.Time { return now }}
+	h.FileLinks = signer
+	h.AuthorizeRead = func(*http.Request, store.Upload) bool { return false }
+	get := func(link string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", link, nil))
+		return w
+	}
+	for _, q := range []string{"?", "?preview&", "?download&"} {
+		if w := get(link + q + signer.Query(key)); w.Code != 200 || w.Header().Get("Cache-Control") != "private, max-age=31536000, immutable" {
+			t.Fatalf("%s: %d %v", q, w.Code, w.Header())
+		}
+	}
+	other := (&filelink.Signer{Key: []byte("other"), Now: signer.Now}).Query(key)
+	for name, l := range map[string]string{"no signature": link, "another key's": link + "?" + other, "another file's": link + "?" + signer.Query("abc")} {
+		if w := get(l); w.Code != 404 || w.Header().Get("Cache-Control") != "private, no-store" {
+			t.Fatalf("%s: %d %v", name, w.Code, w.Header())
+		}
+	}
+	signed := link + "?" + signer.Query(key)
+	now = now.Add(filelink.Life + time.Hour)
+	if w := get(signed); w.Code != 404 {
+		t.Fatalf("expired: %d", w.Code)
 	}
 }

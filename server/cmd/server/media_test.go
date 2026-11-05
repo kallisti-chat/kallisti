@@ -13,6 +13,7 @@ import (
 
 	"kallisti.chat/server/internal/auth"
 	"kallisti.chat/server/internal/certs"
+	"kallisti.chat/server/internal/filelink"
 	"kallisti.chat/server/internal/files"
 	"kallisti.chat/server/internal/mumbled"
 	"kallisti.chat/server/internal/sidecar"
@@ -94,7 +95,8 @@ func TestPrivateRoomMediaSessions(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, key), content, 0600); err != nil {
 		t.Fatal(err)
 	}
-	handler := &files.Handler{Store: db, Dir: dir, AuthorizeRead: privateRoomMedia(accounts, hub, voice)}
+	links := &filelink.Signer{Key: []byte("k"), Now: func() time.Time { return now }}
+	handler := &files.Handler{Store: db, Dir: dir, AuthorizeRead: privateRoomMedia(accounts, hub, voice), FileLinks: links}
 	// Who asks is auth's (see its tests): here, which account.
 	for _, c := range []struct {
 		name, token string
@@ -125,6 +127,12 @@ func TestPrivateRoomMediaSessions(t *testing.T) {
 				t.Fatal("wrong media body")
 			}
 		})
+	}
+	// A signed link from a message: no session (the apps, other servers).
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest("GET", sidecar.FileURL(u)+"?"+links.Query(u.Key), nil))
+	if w.Code != 200 || w.Body.String() != string(content) {
+		t.Fatalf("signed link: %d", w.Code)
 	}
 	checkDenied := func() {
 		t.Helper()

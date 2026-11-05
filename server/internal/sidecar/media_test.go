@@ -2,8 +2,12 @@ package sidecar
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
 
+	"kallisti.chat/server/internal/filelink"
 	"kallisti.chat/server/internal/store"
 )
 
@@ -83,4 +87,43 @@ func TestUploadAccessIsTheChatsReaders(t *testing.T) {
 	if h.MayReadUpload(fmt.Sprintf("upload-%d", thread), as(20, true)) {
 		t.Fatal("deleted thread was readable")
 	}
+}
+
+// With private-room media on, a chat's readers get signed links (see
+// filelink): in messages, previews, history and Mumble clients' text.
+func TestFileLinksAreSigned(t *testing.T) {
+	h := newHub(t, "general")
+	signer := &filelink.Signer{Key: []byte("k"), Now: func() time.Time { return clock }}
+	h.FileLinks = signer
+	h.publicBase = "https://chat.example"
+	alice := ready(t, h, "alice")
+	if _, err := h.store.AddUpload(store.Upload{Key: "abc", Name: "cat.png", Type: "image/png", Size: 3, Author: "alice"}, clock); err != nil {
+		t.Fatal(err)
+	}
+	signed := func(link, want string) {
+		t.Helper()
+		u, err := url.Parse(link)
+		if err != nil || u.Path != "/files/abc/cat.png" || !signer.Valid("abc", u.Query()) || u.Query().Has("preview") != (want == "preview") {
+			t.Fatalf("link %q", link)
+		}
+	}
+	alice.Handle([]byte(`{"type":"send","channel":1,"text":"","upload":"abc"}`))
+	up := next(t, alice)["message"].(map[string]any)["upload"].(map[string]any)
+	signed(up["url"].(string), "")
+	h.store.SetUploadPreview("abc", "image/webp")
+	h.UploadPreview("abc")
+	up = next(t, alice)["message"].(map[string]any)["upload"].(map[string]any)
+	signed(up["preview"].(string), "preview")
+	alice.Handle([]byte(`{"type":"history","channel":1}`))
+	up = next(t, alice)["messages"].([]any)[0].(map[string]any)["upload"].(map[string]any)
+	signed(up["url"].(string), "")
+	m, err := h.store.MessageByUpload("abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	link, ok := strings.CutPrefix(h.mumbleText(m), "https://chat.example")
+	if !ok {
+		t.Fatalf("mumble text %q", h.mumbleText(m))
+	}
+	signed(link, "")
 }
