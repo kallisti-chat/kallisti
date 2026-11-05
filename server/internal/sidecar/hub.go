@@ -87,9 +87,12 @@ type Voice interface {
 	// channels). Only admins and moderators change them.
 	Sees(session, channel uint32) bool
 	// UserSees and UserMayRead are Sees and MayRead for a registered user
-	// by id, also when it is not connected (push notifications).
+	// by id, also when it is not connected (push notifications);
+	// GuestSees and GuestMayRead the same for a guest.
 	UserSees(user, channel uint32) bool
 	UserMayRead(user, channel uint32) bool
+	GuestSees(channel uint32) bool
+	GuestMayRead(channel uint32) bool
 	// UserBanned: a registered user is banned (it gets no pushes).
 	UserBanned(user uint32) bool
 	Private() []PrivateChannel

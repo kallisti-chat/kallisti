@@ -48,18 +48,27 @@ func pushBody(m store.Message, direct bool, where string) string {
 }
 
 // userMay: a registered user may read the chat, connected or not.
-func (h *Hub) userMay(user uint32, c chat) bool {
+func (h *Hub) userMay(user uint32, c chat) bool { return h.offlineMay(&user, c) }
+
+// offlineMay is userMay, with user nil for a guest.
+func (h *Hub) offlineMay(user *uint32, c chat) bool {
 	c, ok := h.parentOf(c)
-	switch {
-	case !ok:
+	if !ok {
 		return false
-	case c.direct:
-		return user == c.peers[0] || user == c.peers[1]
-	case c.isVoice:
-		return h.voice.UserMayRead(user, c.voice)
+	}
+	if c.direct {
+		return user != nil && (*user == c.peers[0] || *user == c.peers[1])
+	}
+	sees, mayRead := h.voice.GuestSees, h.voice.GuestMayRead
+	if user != nil {
+		sees = func(ch uint32) bool { return h.voice.UserSees(*user, ch) }
+		mayRead = func(ch uint32) bool { return h.voice.UserMayRead(*user, ch) }
+	}
+	if c.isVoice {
+		return mayRead(c.voice)
 	}
 	mirror, ok := h.textMirror(c.id)
-	return ok && (mirror == 0 || h.voice.UserSees(user, mirror))
+	return ok && (mirror == 0 || sees(mirror))
 }
 
 // where a chat is, for the push text.

@@ -95,29 +95,21 @@ func TestPrivateRoomMediaSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	handler := &files.Handler{Store: db, Dir: dir, AuthorizeRead: privateRoomMedia(accounts, hub, voice)}
+	// Who asks is auth's (see its tests): here, which account.
 	for _, c := range []struct {
-		name, token, origin string
-		bearer, query       bool
-		want                int
+		name, token string
+		bearer      bool
+		want        int
 	}{
 		{name: "anonymous", want: 404},
 		{name: "member cookie", token: "alice-session", want: 200},
-		{name: "member same-origin", token: "alice-session", origin: "https://chat.example", want: 200},
 		{name: "member bearer", token: "alice-session", bearer: true, want: 200},
 		{name: "outsider with member display name", token: "bob-session", want: 404},
-		{name: "invalid session", token: "invalid", want: 404},
-		{name: "cross-origin cookie", token: "alice-session", origin: "https://other.example", want: 404},
-		{name: "token in URL grants nothing", token: "alice-session", query: true, want: 404},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			url := sidecar.FileURL(u)
-			if c.query {
-				url += "?token=" + c.token
-			}
-			r := httptest.NewRequest("GET", url, nil)
+			r := httptest.NewRequest("GET", sidecar.FileURL(u), nil)
 			r.Header.Set("X-Forwarded-Proto", "https")
-			r.Header.Set("Origin", c.origin)
-			if !c.query && c.token != "" {
+			if c.token != "" {
 				if c.bearer {
 					r.Header.Set("Authorization", "Bearer "+c.token)
 				} else {
@@ -143,16 +135,6 @@ func TestPrivateRoomMediaSessions(t *testing.T) {
 		if w.Code != 404 {
 			t.Fatalf("session still readable: %d", w.Code)
 		}
-	}
-	now = now.Add(2 * time.Hour)
-	checkDenied() // expired
-	now = now.Add(-2 * time.Hour)
-	if err := db.DeleteSession(hashToken("alice-session")); err != nil {
-		t.Fatal(err)
-	}
-	checkDenied() // logged out
-	if err := db.CreateSession(hashToken("alice-session"), alice.ID, now.Add(time.Hour)); err != nil {
-		t.Fatal(err)
 	}
 	if err := mdb.UnregisterUser(user); err != nil {
 		t.Fatal(err)

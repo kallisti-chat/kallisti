@@ -35,6 +35,14 @@ func (f *fakeVoice) UserSees(user, channel uint32) bool {
 	return !f.hidden[channel] || user == 20
 }
 func (f *fakeVoice) UserMayRead(user, channel uint32) bool { return channel != 9 }
+
+// A guest: what nobody hides, and no voice channel 9.
+func (f *fakeVoice) GuestSees(channel uint32) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return !f.hidden[channel]
+}
+func (f *fakeVoice) GuestMayRead(channel uint32) bool { return channel != 9 }
 func (f *fakeVoice) UserBanned(user uint32) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()

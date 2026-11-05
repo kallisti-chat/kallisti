@@ -985,6 +985,16 @@ func (s *Store) MessageByUpload(key string) (Message, error) {
 	return s.MessageByID(id)
 }
 
+// UploadChannel is the channel of the message an upload is attached to.
+func (s *Store) UploadChannel(key string) (int64, error) {
+	var channel int64
+	err := s.db.QueryRow(`SELECT m.channel_id FROM uploads u JOIN messages m ON m.id = u.message_id WHERE u.key = ?`, key).Scan(&channel)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	}
+	return channel, err
+}
+
 const uploadColumns = `id, key, name, type, size, author, created_at, used, width, height, duration, preview, description`
 
 func scanUpload(row interface{ Scan(...any) error }, more ...any) (Upload, error) {

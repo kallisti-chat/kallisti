@@ -2,7 +2,10 @@ package mumbled
 
 import "testing"
 
-func TestRoomMediaUsesCurrentPermissions(t *testing.T) {
+// Offline access (push, file links without a signature) follows the
+// current ACL: private parents, staff, revocation, bans, and the
+// certificate's own ACL entries; a guest only public channels.
+func TestOfflineAccessUsesCurrentPermissions(t *testing.T) {
 	s, addr := rolesServer(t)
 	su := superUser(t, addr)
 	club := su.createChannel(0, "food pictures", false)
@@ -13,65 +16,56 @@ func TestRoomMediaUsesCurrentPermissions(t *testing.T) {
 	}
 	_, _, aliceID := webUser(t, s, "alice")
 	_, _, bobID := webUser(t, s, "bob")
-	check := func(hash string, channel uint32, want bool) {
+	check := func(user *uint32, channel uint32, want bool) {
 		t.Helper()
-		for _, text := range []bool{true, false} {
-			if got := s.MayReadMedia(hash, channel, text); got != want {
-				t.Fatalf("hash=%q channel=%d text=%v: got %v want %v", hash, channel, text, got, want)
-			}
+		sees, mayRead := s.GuestSees(channel), s.GuestMayRead(channel)
+		if user != nil {
+			sees, mayRead = s.UserSees(*user, channel), s.UserMayRead(*user, channel)
+		}
+		if sees != want || mayRead != want {
+			t.Fatalf("user=%v channel=%d: sees %v, may read %v, want %v", user, channel, sees, mayRead, want)
 		}
 	}
-	check("", club, true)
+	check(nil, club, true)
 	if err := s.SetPrivate(mod.session, club, true, []uint32{aliceID}); err != nil {
 		t.Fatal(err)
 	}
 	for _, channel := range []uint32{club, child} {
-		check("", channel, false)
-		check("bob-hash", channel, false)
-		check("unknown-hash", channel, false)
-		check("alice-hash", channel, true)
-		check("mod-hash", channel, true)
+		check(nil, channel, false)
+		check(&bobID, channel, false)
+		check(&aliceID, channel, true)
+		check(&modID, channel, true)
 	}
-	// Revoke membership: no cached grant survives the change.
 	if err := s.SetPrivate(mod.session, club, true, []uint32{bobID}); err != nil {
 		t.Fatal(err)
 	}
-	check("alice-hash", club, false)
-	check("bob-hash", club, true)
-	check("bob-hash", child, true)
-	check("mod-hash", child, true)
+	check(&aliceID, club, false)
+	check(&bobID, child, true)
+	// A deny for bob's certificate counts, as for a connected bob.
+	changeACL(s, club, func(c *Channel) {
+		c.ACLs = append(c.ACLs, ACL{ApplyHere: true, ApplySubs: true, Group: "$bob-hash", Deny: Enter | Traverse})
+	})
+	check(&bobID, club, false)
+	check(&bobID, child, false)
+	changeACL(s, club, func(c *Channel) { c.ACLs = c.ACLs[:len(c.ACLs)-1] })
 	s.bans.Store(&[]BanEntry{{Hash: "bob-hash"}})
-	check("bob-hash", club, false)
-	check("bob-hash", child, false)
-	check("mod-hash", 99999, false)
+	check(&bobID, club, false)
+	check(&modID, 99999, false)
 	if err := s.SetPrivate(mod.session, club, false, nil); err != nil {
 		t.Fatal(err)
 	}
-	check("", club, true)
-	check("", child, true)
+	check(nil, child, true)
 }
 
-func TestRoomMediaPrivateTextMirrors(t *testing.T) {
-	s, addr := rolesServer(t)
-	su := superUser(t, addr)
+func TestUserByCertHash(t *testing.T) {
+	s, _ := rolesServer(t)
 	_, _, aliceID := webUser(t, s, "alice")
-	_, _, _ = webUser(t, s, "bob")
-	ids, err := s.SyncTextChannels([]TextMirror{{Name: "general"}, {Name: "food-pictures", Private: true}})
-	if err != nil {
-		t.Fatal(err)
+	if id, ok := s.UserByCertHash("alice-hash"); !ok || id != aliceID {
+		t.Fatalf("got %d %v", id, ok)
 	}
-	if err := s.SetPrivate(su.session, ids[1], true, []uint32{aliceID}); err != nil {
-		t.Fatal(err)
-	}
-	for _, c := range []struct {
-		hash    string
-		channel uint32
-		want    bool
-	}{
-		{"", ids[0], true}, {"", ids[1], false}, {"bob-hash", ids[1], false}, {"alice-hash", ids[1], true},
-	} {
-		if got := s.MayReadMedia(c.hash, c.channel, true); got != c.want {
-			t.Fatalf("%+v got %v", c, got)
+	for _, hash := range []string{"", "unknown-hash"} {
+		if _, ok := s.UserByCertHash(hash); ok {
+			t.Fatalf("%q found", hash)
 		}
 	}
 }
