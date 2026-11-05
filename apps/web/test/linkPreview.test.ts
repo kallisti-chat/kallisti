@@ -36,6 +36,13 @@ describe("link previews", () => {
     expect(5 in state.previews).toBe(false);
   });
 
+  it("keeps the preview when the message comes again with the same text (fresh file links)", () => {
+    let state = reduceText(initialTextState, { type: "history", channel: 1, messages: [msg(5, "https://a.org")], more: false });
+    state = reduceText(state, { type: "preview", message: 5, preview: { url: "https://a.org", title: "A" } });
+    state = reduceText(state, { type: "message-edited", message: msg(5, "https://a.org") });
+    expect(state.previews[5]?.title).toBe("A");
+  });
+
   it("keeps the server's answers", () => {
     const ev = parseServerEvent(
       JSON.stringify({ type: "preview", channel: 1, message: 5, preview: { url: "https://a.org", title: "A", image: "/api/link-image/k" } }),

@@ -1069,15 +1069,18 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       const pins = event.type === "message-edited" ? patchPins(state.pins, ch, replace) : state.pins;
       // An edit of a message not loaded here stays unloaded.
       if (event.type === "message-edited" && !state.messages[ch]?.some((m) => m.id === event.message.id)) return { ...state, search, pins };
-      // An edit may change the link: its preview is asked again.
-      const { [event.message.id]: _, ...previews } = state.previews;
+      // An edit may change the link: its preview is asked again (not when
+      // only its file links are new).
+      const before = state.messages[ch]?.find((m) => m.id === event.message.id);
+      const { [event.message.id]: _, ...dropped } = state.previews;
+      const previews = before?.text === event.message.text ? state.previews : dropped;
       return {
         ...state,
         search,
         pins,
         previews,
         threads: withThreads(state.threads, threadsIn([event.message])),
-        messages: { ...state.messages, [ch]: merge(state.messages[ch], [keepMine(state.messages[ch]?.find((m) => m.id === event.message.id), event.message)]) },
+        messages: { ...state.messages, [ch]: merge(state.messages[ch], [keepMine(before, event.message)]) },
       };
     }
     case "message-pinned": {
