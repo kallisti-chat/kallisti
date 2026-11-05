@@ -490,10 +490,15 @@ async fn relay(
             }
         }
     };
-    // Whichever side ends first ends the connection.
+    // Whichever side ends first ends the connection; when the client's side
+    // ends first, the server's close (its reason) still goes out, briefly.
+    tokio::pin!(to_client);
     tokio::select! {
-        r = to_server => r,
-        r = to_client => r,
+        r = to_server => {
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(2), &mut to_client).await;
+            r
+        }
+        r = &mut to_client => r,
         r = udp_loop => r,
     }
 }
@@ -534,12 +539,23 @@ async fn send_ping(udp: &Option<UdpSocket>, voice: &Mutex<UdpVoice>) {
 
 const HANDSHAKE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
+/// A close frame's reason has at most 123 bytes: longer ones are cut (at
+/// a character), the full text goes to the log.
+fn close_reason(reason: String) -> String {
+    if reason.len() <= 123 {
+        return reason;
+    }
+    eprintln!("bridge: {reason}");
+    let end = (0..=123).rev().find(|&i| reason.is_char_boundary(i)).unwrap_or(0);
+    reason[..end].to_string()
+}
+
 /// Closes with a reason and waits (briefly) for the client's close reply.
 /// The client may already have sent data (the Mumble handshake): dropping
 /// the socket with unread data makes the OS send a TCP reset, and browsers
 /// then lose the close frame (code 1006 instead of our reason).
 async fn close_with(ws: &mut tokio_tungstenite::WebSocketStream<TcpStream>, code: CloseCode, reason: String) {
-    if ws.close(Some(CloseFrame { code, reason: reason.into() })).await.is_err() {
+    if ws.close(Some(CloseFrame { code, reason: close_reason(reason).into() })).await.is_err() {
         return;
     }
     let _ = tokio::time::timeout(std::time::Duration::from_secs(2), async {
@@ -779,6 +795,14 @@ mod tests {
         let reason = CloseFrame { code: CloseCode::Policy, reason: "logged out".into() };
         server.close(Some(reason.clone())).await.unwrap();
         assert_eq!(client.next().await.unwrap().unwrap(), Message::Close(Some(reason)));
+    }
+
+    #[test]
+    fn close_reasons_fit_a_close_frame() {
+        let long = format!("cannot reach wss://chat.example/ws: {}", "certificate expired ü ".repeat(10));
+        let short = close_reason(long);
+        assert!(short.len() <= 123 && short.starts_with("cannot reach wss://chat.example/ws: "));
+        assert_eq!(close_reason("logged out".into()), "logged out");
     }
 
     #[test]

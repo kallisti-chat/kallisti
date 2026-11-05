@@ -156,7 +156,10 @@ impl UdpVoice {
             self.last_pong = Some(now);
             return Incoming::Pong;
         }
-        self.heard = true;
+        // Voice while UDP works (not a late packet from before an outage).
+        if self.usable(now) {
+            self.heard = true;
+        }
         Incoming::Audio(plain)
     }
 }
@@ -235,6 +238,25 @@ mod tests {
         let ping = server.decrypt(&legacy.ping().unwrap()).unwrap();
         legacy.incoming(now, &server.encrypt(&ping));
         assert_eq!(server.decrypt(&legacy.announce(now).unwrap()).unwrap(), vec![0x9f, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn late_voice_from_before_an_outage_does_not_count() {
+        // UDP stops, a late voice packet still comes: after UDP works again
+        // the server needs the announce again (it went back to TCP).
+        let now = Instant::now();
+        let mut v = UdpVoice::default();
+        v.on_crypt_setup(&setup());
+        let mut server = murmur();
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(now, &server.encrypt(&ping));
+        assert!(v.check(now).is_none());
+        let later = now + Duration::from_secs(13);
+        assert!(v.check(later).is_some());
+        v.incoming(later, &server.encrypt(&[0, 9, 9]));
+        let ping = server.decrypt(&v.ping().unwrap()).unwrap();
+        v.incoming(later, &server.encrypt(&ping));
+        assert!(v.announce(later).is_some());
     }
 
     #[test]
