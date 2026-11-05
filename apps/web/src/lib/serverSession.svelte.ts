@@ -5,6 +5,7 @@ import type { Drafts } from "./composer";
 import { certificateProblem, type CertificateProblem } from "./desktop";
 import { createPendingFiles, indexedDbStore } from "./pendingFiles";
 import { loadPlace, placeKey, savePlace, type Place } from "./place";
+import { bridgeFailed } from "./desktop";
 import { busyName, loggedOut, lossNotice, nextDelay, QUIET_MS, readyToShow, refusedForGood, shouldReconnect } from "./reconnect";
 import { connectionError } from "./status";
 import { leaving, loadLost, saveLost, type StreamMemory } from "./stream/rewatch";
@@ -65,9 +66,12 @@ export const createServerSession = <C extends SessionConnection>(deps: SessionDe
   // Connections through the desktop app's own bridge: only its reasons
   // are shown as they are (see connectionError).
   const viaBridge = new WeakSet<C>();
+  // Kallisti servers through the apps' bridge (their site is not the URL).
+  const viaAppBridge = new WeakSet<C>();
   const connectTo = (target: Target, c: Credentials) => {
     const next = deps.connect(target, c);
     if (target.local) viaBridge.add(next);
+    if (target.site) viaAppBridge.add(next);
     return next;
   };
 
@@ -90,6 +94,7 @@ export const createServerSession = <C extends SessionConnection>(deps: SessionDe
         closed: connection.closed,
         closeReason: connection.closeReason,
         wasSynced: connection.wasSynced,
+        straightNext: viaAppBridge.has(connection) && bridgeFailed(connection.closeReason),
       }),
   );
   // Why it failed, for the login screen (null: fine, or it comes back).
