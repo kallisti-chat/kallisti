@@ -45,10 +45,9 @@ brackets.
   in front of a Murmur it is read at each start.
 - `UPLOAD_DIR` (`uploads`), `UPLOAD_MAX_MB` (10 per file),
   `UPLOAD_QUOTA_MB` (100 per user per day).
-- `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): require a valid
-  account session and current room access to read uploads in private rooms.
-  Requires the built-in Mumble server; startup rejects external Murmur.
-  See [private-room media](#private-room-media-experiment) for scope and limits.
+- `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): files of private
+  rooms only for who may read the room (built-in server only). See
+  [private-room media](#private-room-media-experiment).
 - `BACKUP_DIR` (none: no backups) and `BACKUP_KEEP` (7): see
   [backups](backups.md).
 - `LINK_PREVIEWS=0`: the server fetches no pages for link previews. By
@@ -186,41 +185,35 @@ shows the server address
 
 ## Private-room media experiment
 
-A private room such as “food pictures” should not expose its uploads just
-because someone forwards a file URL. With `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1`,
-originals, previews and downloads use the room's current effective permissions.
-A logged-in member or authorized staff member can read them; anonymous users
-and accounts without room access receive 404. Threads inherit their parent
-room's permissions, including private categories. Public-room media remains
-public, and direct-message media retains its existing behavior.
+Without it, anyone with a file's link can load the file. With
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1`, a room's files (originals, previews,
+downloads) follow the room's current access, as its chat does. Threads follow
+their channel. Files of public rooms stay readable by everyone; files in
+direct messages keep their old rule (anyone with the link).
 
-Enable it in the server environment and restart. For Compose, add
-`EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "1"` to the `kallisti` service's
-`environment` section. With the supplied Helm chart set
-`experimentalPrivateRoomMedia: true`; for a plain Kubernetes Deployment set
-the environment variable on the app container. The default is off and keeps
-existing media behavior. Disable it and restart to restore public file reads;
-this is a privacy-policy change, not just a performance toggle.
+Enable it in the server environment and restart: in Compose,
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "1"` in the `kallisti` service's
+`environment`; in the Helm chart, `experimentalPrivateRoomMedia: true`. It
+needs the built-in Mumble server: with `MUMBLE_HOST` the server does not start.
+Turn it off and restart, and file links are public again.
 
-The supported client path is a browser logged into the same server. HTTP
-clients may also send a valid account bearer token. A native Mumble connection
-alone does not authenticate an HTTP file request, and cross-server/app media
-elements must actually send a valid session; this change does not add token
-transport to clients. URLs never carry access tokens. Unattached uploads are
-unreadable until posted; the composer uses local previews. Deleted messages
-or missing room mappings fail closed. There is no database migration.
+How it works:
 
-While enabled, all `/files/` responses use `Cache-Control: private, no-store`,
-including public-room files, so making a room private cannot be bypassed by
-new shared-cache entries. This increases repeat-download traffic. Previously
-cached responses may have a one-year public cache lifetime: enabling the flag
-cannot revoke those copies. Plan cache invalidation or URL cache-busting when
-adopting it, and use fresh uploads to validate the policy. Authorized readers
-can still save or share downloaded content.
+- The server gives file links only to a chat's readers, in its messages.
+  These links are signed and work for a day (24 to 25 hours), with no session,
+  as Discord's. So the web client, the desktop and Android apps, other servers'
+  tabs and Mumble clients (links in their chat) all load the files. A client
+  that stays open asks for fresh links before they expire.
+- A link copied out of the chat works for anyone until it expires. A member
+  removed from the room also keeps the links they have until then.
+- A link without a signature (an old one, or a copied link without its query)
+  works for a browser logged in to this server whose account may read the
+  room. Otherwise the answer is 404, the same as for a file that does not
+  exist.
+- Files not yet sent have no room: 404 (the composer shows its own previews).
 
-To validate, post a fresh image and video in a private room and test the
-original, preview and download as a member, an unrelated logged-in account
-and a logged-out browser. Only the member (or authorized staff) should succeed.
-Remove membership and repeat; then check a public room and a thread under a
-private room. Server tests additionally cover expired/revoked sessions, range
-and conditional requests, inherited ACLs and default-off compatibility.
+Caches: a signed link's file may stay in the reader's browser cache
+(`private`); other answers are `private, no-store`. The server's link previews
+show no picture from such answers. Files that were served before the setting
+was on may still be in shared caches (one year, `public`): enabling it cannot
+take those back.
