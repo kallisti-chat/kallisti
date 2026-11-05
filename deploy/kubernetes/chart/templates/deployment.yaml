@@ -42,6 +42,10 @@ spec:
             capabilities:
               drop: [ALL]
           env:
+            {{- if .Values.experimentalPrivateRoomMedia }}
+            - name: EXPERIMENTAL_PRIVATE_ROOM_MEDIA
+              value: "1"
+            {{- end }}
             - name: ALLOWED_ORIGINS
               value: {{ printf "https://%s" .Values.host | quote }}
             - name: TRUST_FORWARDED_FOR

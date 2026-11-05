@@ -2700,3 +2700,21 @@ Reviews: the bridge lost the server's close reason (the client decides on "logge
 ## Android: the QR scanner crashed the release app
 
 A user (Galaxy A34): "Scan a QR code" opened the camera, then the app closed. Reproduced with the v0.13.0 APK in the emulator: a NullPointerException in ML Kit's logger, from `InputImage.fromMediaImage` on the first camera frame. Release builds run R8, and R8 broke ML Kit's internals; debug builds (where the scanner was tried) do not. Keep rules for ML Kit in proguard-rules.pro: a local release build opens the camera without a crash. Not checked in the emulator: reading a code (its virtual camera does not turn to the poster, and the barcode model comes from Play services first).
+
+## 2026-11-05: Opt-in private-room media
+
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` makes uploaded room media follow current
+room permissions, so forwarding a private room's file URL does not grant access.
+The built-in server checks authenticated account certificate identity and
+inherited room ACLs before serving originals, previews, downloads, ranges or
+conditional responses. Threads use their parent room. Public rooms and DMs
+keep their existing access policy; unattached uploads fail closed. All file
+responses disable caching while enabled. Previously cached copies cannot be
+revoked. The setting defaults off, needs no schema migration, and has a Helm
+value; configuration docs explain deployment and client/session limits.
+
+Tests cover real cookie/bearer sessions, permission revocation and bans,
+private parents, text mirrors, thread lookup, HTTP representations and the
+legacy default. The initial fork spike was deployed to Kubernetes, with
+operator-reported validation on iOS, Android, desktop and web. That validation
+predates the rebase onto the current upstream client/UDP changes.
