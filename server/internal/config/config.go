@@ -51,7 +51,7 @@ type Config struct {
 	// with ffmpeg (FFMPEG_PATH, else on PATH).
 	NoMediaPreviews bool
 	FFmpegPath      string
-	// Fork-only spike: room media requires current room access. Off by
+	// Opt-in experiment: room media requires current room access. Off by
 	// default; currently supports built-in, same-origin browser sessions.
 	ExperimentalPrivateRoomMedia bool
 	// Web Push notifications (built-in server).

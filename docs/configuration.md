@@ -45,6 +45,10 @@ brackets.
   in front of a Murmur it is read at each start.
 - `UPLOAD_DIR` (`uploads`), `UPLOAD_MAX_MB` (10 per file),
   `UPLOAD_QUOTA_MB` (100 per user per day).
+- `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): require a valid
+  account session and current room access to read uploads in private rooms.
+  Requires the built-in Mumble server; startup rejects external Murmur.
+  See [private-room media](#private-room-media-experiment) for scope and limits.
 - `BACKUP_DIR` (none: no backups) and `BACKUP_KEEP` (7): see
   [backups](backups.md).
 - `LINK_PREVIEWS=0`: the server fetches no pages for link previews. By
@@ -179,3 +183,44 @@ shows the server address
 
 - `VITE_PROXY_URL` (web client, build time): the WebSocket address of another
   server (`wss://host/ws`); the API address comes from it.
+
+## Private-room media experiment
+
+A private room such as “food pictures” should not expose its uploads just
+because someone forwards a file URL. With `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1`,
+originals, previews and downloads use the room's current effective permissions.
+A logged-in member or authorized staff member can read them; anonymous users
+and accounts without room access receive 404. Threads inherit their parent
+room's permissions, including private categories. Public-room media remains
+public, and direct-message media retains its existing behavior.
+
+Enable it in the server environment and restart. For Compose, add
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "1"` to the `kallisti` service's
+`environment` section. With the supplied Helm chart set
+`experimentalPrivateRoomMedia: true`; for a plain Kubernetes Deployment set
+the environment variable on the app container. The default is off and keeps
+existing media behavior. Disable it and restart to restore public file reads;
+this is a privacy-policy change, not just a performance toggle.
+
+The supported client path is a browser logged into the same server. HTTP
+clients may also send a valid account bearer token. A native Mumble connection
+alone does not authenticate an HTTP file request, and cross-server/app media
+elements must actually send a valid session; this change does not add token
+transport to clients. URLs never carry access tokens. Unattached uploads are
+unreadable until posted; the composer uses local previews. Deleted messages
+or missing room mappings fail closed. There is no database migration.
+
+While enabled, all `/files/` responses use `Cache-Control: private, no-store`,
+including public-room files, so making a room private cannot be bypassed by
+new shared-cache entries. This increases repeat-download traffic. Previously
+cached responses may have a one-year public cache lifetime: enabling the flag
+cannot revoke those copies. Plan cache invalidation or URL cache-busting when
+adopting it, and use fresh uploads to validate the policy. Authorized readers
+can still save or share downloaded content.
+
+To validate, post a fresh image and video in a private room and test the
+original, preview and download as a member, an unrelated logged-in account
+and a logged-out browser. Only the member (or authorized staff) should succeed.
+Remove membership and repeat; then check a public room and a thread under a
+private room. Server tests additionally cover expired/revoked sessions, range
+and conditional requests, inherited ACLs and default-off compatibility.
