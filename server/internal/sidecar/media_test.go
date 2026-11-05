@@ -127,3 +127,33 @@ func TestFileLinksAreSigned(t *testing.T) {
 	}
 	signed(link, "")
 }
+
+// A client asks for fresh links before they expire: the messages come
+// again, to it only, as edits; not the ones it may not read or without
+// files.
+func TestFreshFileLinks(t *testing.T) {
+	h, _, staff, bob, carol := threadHub(t)
+	now := clock
+	h.FileLinks = &filelink.Signer{Key: []byte("k"), Now: func() time.Time { return now }}
+	secret := h.channels[1].ID
+	u, err := h.store.AddUpload(store.Upload{Key: "abc", Name: "cat.png", Author: "mod"}, clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := h.store.AddMessage(store.NewMessage{ChannelID: secret, Author: "mod", Text: "file", At: clock, Uploads: []store.Attachment{{ID: u.ID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := postTo(t, h, staff, secret, "no file")
+	now = now.Add(filelink.Life)
+	do(bob, `{"type":"file-links","messages":[%d,%d,%d]}`, m.ID, plain, m.ID)
+	got := next(t, bob)
+	link := got["message"].(map[string]any)["upload"].(map[string]any)["url"].(string)
+	if got["type"] != "message-edited" || got["message"].(map[string]any)["edited"] != nil || !strings.Contains(link, h.FileLinks.Query("abc")) {
+		t.Fatalf("bob: %v", got)
+	}
+	empty(t, bob)
+	empty(t, staff)
+	do(carol, `{"type":"file-links","messages":[%d]}`, m.ID)
+	empty(t, carol)
+}

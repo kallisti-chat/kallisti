@@ -648,7 +648,7 @@ type request struct {
 	Moderator   bool             `json:"moderator"`   // set-moderator
 	Admin       bool             `json:"admin"`       // set-admin
 	Users       []uint32         `json:"users"`       // set-listen-only: who may speak
-	Messages    []int64          `json:"messages"`    // previews
+	Messages    []int64          `json:"messages"`    // previews, file-links
 	Emoji       string           `json:"emoji"`       // react; add-user-emoji, remove-emoji-image; sticker-token, rename-sticker: the related emoji
 	Sticker     int64            `json:"sticker"`     // send: a sticker message; rename-sticker, delete-sticker
 	Description string           `json:"description"` // sticker-token, rename-sticker
@@ -785,6 +785,9 @@ func (c *Conn) Handle(raw []byte) {
 		return
 	case "previews":
 		c.previews(*id, req)
+		return
+	case "file-links":
+		c.fileLinks(*id, req)
 		return
 	case "set-moderator", "set-admin":
 		// The voice server reports the change (RolesChanged).
