@@ -29,6 +29,8 @@ describe("translation languages", () => {
       ["en", "translation test posts end here"],
     ] as const)
       expect([line, detect(line)]).toEqual([line, want]);
+    // Too short to tell: no language (no Translate on "hello").
+    for (const line of ["hello", "np", "Hi", "Kallisti"]) expect([line, detect(line)]).toEqual([line, null]);
     // Still by script: Chinese, Simplified or Traditional; Japanese.
     expect(detect("這個功能什麼時候上線？我等好久了")).toBe("zh-Hant");
     expect(detect("それめっちゃいいね、助かる！")).toBe("ja");

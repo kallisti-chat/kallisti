@@ -13,7 +13,8 @@ describe("the prompt for the translation model", () => {
     expect(glossary("On dort à l'hôtel ce soir", "fr", "en", [])).toEqual([]);
   });
 
-  it("keeps names as they are", () => {
+  it("keeps names as they are (with their case, from three letters)", () => {
+    expect(glossary("I will mark it as read", "en", "de", ["Will", "Mark", "it"])).toEqual([]);
     expect(glossary("@merrenlendell kommst du in #general?", "de", "en", ["merrenlendell", "lain", "general"])).toEqual([
       "merrenlendell translates to merrenlendell",
       "general translates to general",

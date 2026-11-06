@@ -60,9 +60,12 @@ const WORDS: Words[] = [
 ];
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-// A word or name in a text: whole words in Latin scripts (CJK has no spaces).
-const has = (text: string, word: string) =>
-  /^[\p{Script=Latin}\d\s'-]+$/u.test(word) ? new RegExp(`(?<![\\p{L}\\d])${escape(word)}(?![\\p{L}\\d])`, "iu").test(text) : text.includes(word);
+// A word or name in a text: whole words in Latin scripts (CJK has no
+// spaces); names with their case ("Will" is not "will").
+const has = (text: string, word: string, exact = false) =>
+  /^[\p{Script=Latin}\d\s'-]+$/u.test(word)
+    ? new RegExp(`(?<![\\p{L}\\d])${escape(word)}(?![\\p{L}\\d])`, exact ? "u" : "iu").test(text)
+    : text.includes(word);
 
 // The reference translations for a message: the app's words in it, and the
 // names in it (users, channels), kept as they are.
@@ -72,7 +75,7 @@ export const glossary = (text: string, from: string, to: string, names: readonly
     const into = w[to]?.[0];
     return found && into ? [`${found} translates to ${into}`] : [];
   }),
-  ...names.filter((n) => n.length > 1 && has(text, n)).map((n) => `${n} translates to ${n}`),
+  ...names.filter((n) => n.length > 2 && has(text, n, true)).map((n) => `${n} translates to ${n}`),
 ];
 
 const NAMES: Record<string, string> = { zh: "Simplified Chinese", "zh-Hant": "Traditional Chinese" };

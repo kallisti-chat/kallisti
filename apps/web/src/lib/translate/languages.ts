@@ -32,7 +32,11 @@ let loadingDetector: Promise<void> | null = null;
 export const loadDetector = () =>
   (loadingDetector ??= import("eld/extrasmall").then(({ eld }) => {
     eld.setLanguageSubset(LATIN);
-    latin = (text) => eld.detect(text).language || null;
+    // Only a reliable answer ("hello" looks Italian to it).
+    latin = (text) => {
+      const r = eld.detect(text);
+      return r.isReliable() ? r.language || null : null;
+    };
   }));
 
 // The language of a chat message, or null when it cannot tell (too little
@@ -63,8 +67,9 @@ export const detect = (raw: string): string | null => {
   }
   const [other, n] = scripts.reduce((a, b) => (b[1] > a[1] ? b : a));
   if (most(n)) return other === "ru" && /[іїєґ]/i.test(text) ? "uk" : other === "ar" && /[پچژگ]/.test(text) ? "fa" : other;
-  if (latin) return latin(text);
   const words = text.toLowerCase().match(/[\p{L}']+/gu) ?? [];
+  if (words.length < 2) return null; // one word: a name, "ok", "hello"
+  if (latin) return latin(text);
   const scores = Object.entries(WORDS).map(([lang, list]): [string, number] => [lang, words.filter((w) => list.includes(w)).length]);
   scores.sort((a, b) => b[1] - a[1]);
   const [best, second] = scores;

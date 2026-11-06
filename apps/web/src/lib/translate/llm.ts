@@ -43,6 +43,7 @@ const progress = (p: Progress) => {
 let loading: Promise<Generator> | null = null;
 const load = (base: string) =>
   (loading ??= (async () => {
+    files.clear(); // a new try counts from 0
     const { env, pipeline } = await import("@huggingface/transformers");
     const own = (path: string) => new URL(path, location.href).href;
     env.allowLocalModels = false;
