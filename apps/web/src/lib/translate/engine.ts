@@ -1,5 +1,5 @@
 import { BatchTranslator, TranslatorBacking } from "@mkljczk/bergamot-translator/translator.js";
-import { detect, registryOf, route, type Models } from "./languages";
+import { reachable, registryOf, type Models } from "./languages";
 
 // Translating a message on this device: the browser's own translator
 // (Translator API: desktop Chrome and Edge), else Bergamot (Firefox's
@@ -7,13 +7,9 @@ import { detect, registryOf, route, type Models } from "./languages";
 // server's translation package; fetched there once, checked, kept).
 // Loaded only on the first translation.
 
-export class TranslateError extends Error {
-  constructor(
-    readonly reason: "unknown" | "same" | "unsupported",
-    readonly from?: string,
-  ) {
-    super(reason);
-  }
+// No models for the language on the server.
+export class Unsupported extends Error {
+  readonly unsupported = true;
 }
 
 type BuiltIn = {
@@ -27,13 +23,20 @@ const within = <T>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<nu
 // Only with the pair already on this device: a download would come from the
 // browser's maker (who would see which languages), and Bergamot's come from
 // our server.
+// A translator per pair (null: not on this device), made once.
+const builtIns = new Map<string, Promise<{ translate(text: string): Promise<string> } | null>>();
+
 const builtIn = async (text: string, from: string, to: string): Promise<string | null> => {
   const api = (globalThis as { Translator?: BuiltIn }).Translator;
   if (!api) return null;
-  try {
+  const pair = `${from}-${to}`;
+  if (!builtIns.has(pair)) {
     const options = { sourceLanguage: from, targetLanguage: to };
-    if ((await within(api.availability(options), 3000)) !== "available") return null;
-    const translator = await within(api.create(options), 10_000);
+    const made = (async () => ((await within(api.availability(options), 3000)) === "available" ? within(api.create(options), 10_000) : null))();
+    builtIns.set(pair, made.catch(() => null));
+  }
+  try {
+    const translator = await builtIns.get(pair)!;
     return translator && (await within(translator.translate(text), 30_000));
   } catch {
     return null; // Bergamot then
@@ -66,15 +69,15 @@ const bergamot = (base: string) => {
   return b;
 };
 
-// The translation of a message's text into `to`, and the language it was in.
-export const translate = async (text: string, to: string, base: string): Promise<{ from: string; text: string }> => {
-  const from = detect(text);
-  if (!from) throw new TranslateError("unknown");
-  if (from === to) throw new TranslateError("same", from);
+// The translation of a message's text from its language into `to`. At most
+// a few minutes (the first time with the models' download): the worker
+// leaves a request waiting when it cannot load.
+export const translate = async (text: string, from: string, to: string, base: string): Promise<string> => {
   const own = await builtIn(text, from, to);
-  if (own !== null) return { from, text: own };
+  if (own !== null) return own;
   const { translator, pairs } = await bergamot(base);
-  if (!route(from, to, pairs)) throw new TranslateError("unsupported", from);
-  const res = await translator.translate({ from, to, text, html: false });
-  return { from, text: res.target.text };
+  if (!reachable(from, to, pairs)) throw new Unsupported();
+  const res = await within(translator.translate({ from, to, text, html: false }), 300_000);
+  if (!res) throw new Error("translation timed out");
+  return res.target.text;
 };
