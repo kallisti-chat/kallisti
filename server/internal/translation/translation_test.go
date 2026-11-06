@@ -116,3 +116,54 @@ func TestFilesAreFetchedOnceCheckedAndKept(t *testing.T) {
 		t.Fatalf("kept: %v", entries)
 	}
 }
+
+// The larger model's files by their paths (as transformers.js asks), fetched
+// and checked as the others; the list says how large it is.
+func TestLLMFilesByPath(t *testing.T) {
+	model, config := []byte("onnx bytes"), []byte(`{"model_type":"x"}`)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/llm/rev/onnx/model_q4f16.onnx":
+			w.Write(model)
+		case "/llm/rev/config.json":
+			w.Write(config)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer upstream.Close()
+	h := &Handler{Dir: t.TempDir(), Manifest: Manifest{LLMSource: upstream.URL + "/llm/rev/", LLM: map[string]File{
+		"onnx/model_q4f16.onnx": {Name: "onnx/model_q4f16.onnx", Size: int64(len(model)), SHA256: hash(model)},
+		"config.json":           {Name: "config.json", Size: int64(len(config)), SHA256: hash(config)},
+	}}}
+	get := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		return w
+	}
+	if w := get("/api/translation/llm/onnx/model_q4f16.onnx"); w.Code != 200 || w.Body.String() != string(model) {
+		t.Fatalf("model: %d %q", w.Code, w.Body)
+	}
+	if w := get("/api/translation/llm/config.json"); w.Code != 200 || w.Header().Get("Content-Type") != "application/json" {
+		t.Fatalf("config: %d %v", w.Code, w.Header())
+	}
+	for _, p := range []string{"/api/translation/llm/../models", "/api/translation/llm/tokenizer.json", "/api/translation/files/" + hash(model)} {
+		if w := get(p); w.Code != 404 {
+			t.Fatalf("%s: %d", p, w.Code)
+		}
+	}
+	var list struct {
+		LLM struct {
+			Size int64 `json:"size"`
+		} `json:"llm"`
+	}
+	if err := json.Unmarshal(get("/api/translation/models").Body.Bytes(), &list); err != nil || list.LLM.Size != int64(len(model)+len(config)) {
+		t.Fatalf("list: %v %v", list, err)
+	}
+	if got := h.Manifest.For([]string{"zh"}); len(got.LLM) != 2 {
+		t.Fatal("For dropped the larger model")
+	}
+	if got := h.Manifest.WithoutLLM(); got.LLM != nil {
+		t.Fatal("WithoutLLM kept it")
+	}
+}

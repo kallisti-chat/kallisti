@@ -52,3 +52,13 @@ func TestTranslationLanguages(t *testing.T) {
 		}
 	}
 }
+
+// The larger translation model: offered unless TRANSLATION_LLM=0.
+func TestTranslationLLM(t *testing.T) {
+	for v, want := range map[string]bool{"": false, "1": false, "0": true} {
+		got, err := Parse(env(map[string]string{"ALLOWED_ORIGINS": "https://chat.example", "TRANSLATION_LLM": v}))
+		if err != nil || got.NoTranslationLLM != want {
+			t.Fatalf("%q: %v %v", v, got.NoTranslationLLM, err)
+		}
+	}
+}
