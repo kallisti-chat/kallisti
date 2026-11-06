@@ -4,5 +4,3 @@ packages:
 allowBuilds:
   onnxruntime-node: false # transformers.js in Node (message translation runs in the browser: onnxruntime-web)
   protobufjs: false # not needed (it comes with the noise package's voice detection)
-minimumReleaseAgeExclude:
-  - eld@2.1.1
