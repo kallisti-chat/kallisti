@@ -11,7 +11,7 @@ type QualityLimits struct {
 	MaxBitrateMusic int `json:"maxBitrateMusic"` // in bps for music mode (e.g. 64000..558000)
 	BytesPerSecond  int `json:"bytesPerSecond"`  // upload bytes/s per stream (e.g. 1048576)
 	MaxSide         int `json:"maxSide"`         // max stream resolution dimension (e.g. 720..4096)
-	MaxFps          int `json:"maxFps"`          // max stream framerate (e.g. 15..60)
+	MaxFps          int `json:"maxFps"`          // max stream framerate (e.g. 15..120)
 }
 
 const (

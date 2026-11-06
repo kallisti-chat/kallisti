@@ -177,6 +177,7 @@ export default {
     "OBS 30 or newer can stream into your voice channel: it shows like a screen share. Be connected here and in a voice channel where you may speak. In OBS, Settings → Stream: Service \"WHIP\", Server {url}, Bearer Token: your stream key.",
   "settings.obsOutput":
     "Settings → Output (Advanced): H.264 video, keyframe interval 1 or 2 s, profile baseline or main.",
+  "settings.obsLimits": "Server limits: up to {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "No B-frames (we forward the video as it is; with them the picture breaks up or turns pink): with x264, type {option} in \"x264 Options\"; with NVENC, QuickSync or AMF, set B-Frames to 0.",
   "settings.obsNewKey": "Your stream key (shown only now): {key}",

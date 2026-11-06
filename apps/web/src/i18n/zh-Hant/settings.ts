@@ -170,6 +170,7 @@ export default {
     "OBS 30 或更新版本可以直播到你的語音頻道：它會像螢幕分享一樣顯示。請保持在這裡連線，並待在你可以說話的語音頻道中。在 OBS 中，設定 → 串流：服務「WHIP」，伺服器 {url}，Bearer Token：你的直播金鑰。",
   "settings.obsOutput":
     "設定 → 輸出（進階）：H.264 視訊，關鍵影格間隔 1 或 2 秒，設定檔 baseline 或 main。",
+  "settings.obsLimits": "伺服器限制：最高 {side}p、{fps} fps、{bitrate} Mbit/s。",
   "settings.obsBFrames":
     "不要使用 B 影格（我們會直接轉送視訊；有 B 影格時畫面會破碎或變成粉紅色）：使用 x264 時，請在「x264 選項」中輸入 {option}；使用 NVENC、QuickSync 或 AMF 時，請將 B 影格設為 0。",
   "settings.obsNewKey": "你的直播金鑰（只會在此時顯示）：{key}",

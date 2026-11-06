@@ -170,6 +170,7 @@ export default {
     "OBS 30 o posterior puede transmitir a tu canal de voz: se muestra como una pantalla compartida. Conéctate aquí y a un canal de voz donde puedas hablar. En OBS, Ajustes → Emisión: Servicio \"WHIP\", Servidor {url}, Bearer Token: tu clave de transmisión.",
   "settings.obsOutput":
     "Ajustes → Salida (Avanzado): vídeo H.264, intervalo de fotogramas clave de 1 o 2 s, perfil baseline o main.",
+  "settings.obsLimits": "Límites del servidor: hasta {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "Sin B-frames (reenviamos el vídeo tal cual; con ellos la imagen se rompe o se vuelve rosa): con x264, escribe {option} en \"Opciones de x264\"; con NVENC, QuickSync o AMF, pon B-Frames a 0.",
   "settings.obsNewKey": "Tu clave de transmisión (solo se muestra ahora): {key}",
