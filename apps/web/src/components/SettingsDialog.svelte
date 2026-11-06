@@ -610,7 +610,7 @@
                 },
               })}
           >
-            {#each [15, 30, 60].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
+            {#each [15, 30, 60, 120].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
               <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
             {/each}
           </select>
@@ -647,7 +647,7 @@
                 },
               })}
           >
-            {#each [15, 30, 60].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
+            {#each [15, 30, 60, 120].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
               <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
             {/each}
           </select>

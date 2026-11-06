@@ -756,8 +756,10 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
     }
     case "guests-read-only":
       return typeof v.on === "boolean" ? { type: "guests-read-only", on: v.on } : null;
-    case "quality-limits":
-      return isQualityLimits(v.qualityLimits) ? { type: "quality-limits", qualityLimits: v.qualityLimits } : null;
+    case "quality-limits": {
+      const q = v.qualityLimits ?? v.limits;
+      return isQualityLimits(q) ? { type: "quality-limits", qualityLimits: q } : null;
+    }
     case "captcha":
       return isCaptchaLevel(v.level) ? { type: "captcha", level: v.level } : null;
     case "server-name":

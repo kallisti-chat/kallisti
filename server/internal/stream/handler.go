@@ -96,17 +96,35 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// With the limits, for the streamer's encoders.
 	c.SendText(map[string]any{"type": "ready", "limits": map[string]any{"bytesPerSecond": bps, "maxSide": side, "maxFps": fps}})
-	bytes := rate.NewLimiter(rate.Limit(bps), 2*bps)
+	bytes := rate.NewLimiter(rate.Limit(bps), max(256*1024, bps))
 	texts := rate.NewLimiter(textsPerSec, 2*textsPerSec)
 	sounds := rate.NewLimiter(soundsPerSec, soundsPerSec/2)
+	fpsLimiter := rate.NewLimiter(rate.Limit(fps), max(2, fps/10))
 	for {
 		typ, data, err := ws.Read(ctx)
 		if err != nil {
 			return
 		}
 		if typ == websocket.MessageBinary {
+			if h.Limits != nil {
+				curBps, curSide, curFps := h.Limits()
+				if curBps != bps || curSide != side || curFps != fps {
+					bps, side, fps = curBps, curSide, curFps
+					bytes.SetLimit(rate.Limit(bps))
+					bytes.SetBurst(max(256*1024, bps))
+					fpsLimiter.SetLimit(rate.Limit(fps))
+					fpsLimiter.SetBurst(max(2, fps/10))
+					c.SendText(map[string]any{"type": "limits", "limits": map[string]any{"bytesPerSecond": bps, "maxSide": side, "maxFps": fps}})
+				}
+			}
 			if len(data) > 0 && data[0]&audioFlag != 0 && !sounds.Allow() {
 				continue // many tiny sound frames would multiply at every listener
+			}
+			isAudio := len(data) > 0 && data[0]&audioFlag != 0
+			isKey := len(data) > 0 && data[0]&keyFlag != 0
+			if !isAudio && !isKey && !fpsLimiter.Allow() {
+				h.Hub.Dropped(FrameID(session, data))
+				continue
 			}
 			if bytes.AllowN(time.Now(), len(data)) {
 				h.Hub.Frame(session, data)
