@@ -2740,8 +2740,9 @@
     display: grid;
     grid-template-columns: repeat(10, auto);
   }
+  /* Keyboard focus keeps it; a click's focus does not (it would stay). */
   .line:hover .actions,
-  .line:focus-within .actions,
+  .line:has(:focus-visible) .actions,
   .line.menu-open .actions,
   .actions.confirming {
     opacity: 1;
