@@ -35,7 +35,7 @@
     "@twemoji/parser": "17.0.1",
     "@workadventure/noise-suppression": "0.2.0",
     "dompurify": "^3.4.17",
-    "eld": "2.1.1",
+    "eld": "2.1.0",
     "libopus-wasm": "0.4.1",
     "uqr": "^0.1.3"
   }

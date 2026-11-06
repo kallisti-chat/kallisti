@@ -53,8 +53,8 @@ importers:
         specifier: ^3.4.17
         version: 3.4.17
       eld:
-        specifier: 2.1.1
-        version: 2.1.1
+        specifier: 2.1.0
+        version: 2.1.0
       libopus-wasm:
         specifier: 0.4.1
         version: 0.4.1
@@ -893,8 +893,8 @@ packages:
   dompurify@3.4.17:
     resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
-  eld@2.1.1:
-    resolution: {integrity: sha512-+WPgDcsV5rAuZR3BTW3rnnv03YvlP2JoHnFGDMLAp13XrDt7n58TBIL9hTmFs4VBVcozGxG/GC5WQILqRqd1pw==}
+  eld@2.1.0:
+    resolution: {integrity: sha512-hDQ9FX17th7NDNMO8/St6m3ADQVqjF0sQoOHI6NUAxC7yDaPmZ9wC9d8zau/9FIqOV7KtNwrPKRt6fkkrzZj0g==}
     engines: {node: '>=14.17.0'}
 
   emojibase-data@17.0.0:
@@ -1987,7 +1987,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  eld@2.1.1: {}
+  eld@2.1.0: {}
 
   emojibase-data@17.0.0(emojibase@17.0.0):
     dependencies:
