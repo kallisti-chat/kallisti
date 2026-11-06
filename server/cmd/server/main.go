@@ -39,6 +39,7 @@ import (
 	"kallisti.chat/server/internal/store"
 	"kallisti.chat/server/internal/stream"
 	"kallisti.chat/server/internal/thumbs"
+	"kallisti.chat/server/internal/translation"
 	"kallisti.chat/server/internal/whip"
 )
 
@@ -305,6 +306,11 @@ func run() error {
 	mux.Handle("/api/webhook-picture/", fileHandler)
 	mux.Handle("/api/avatars/", avatars)
 	mux.Handle("/api/link-image/", linkImages)
+	var models http.Handler = http.NotFoundHandler()
+	if len(cfg.TranslationLanguages) > 0 {
+		models = &translation.Handler{Manifest: translation.Bundled().For(cfg.TranslationLanguages), Dir: cfg.TranslationDir}
+	}
+	mux.Handle("/api/translation/", models)
 	mux.Handle("/api/push", pushes)
 	mux.Handle("/api/push/", pushes)
 	if builtinServer != nil {
