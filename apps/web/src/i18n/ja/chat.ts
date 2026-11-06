@@ -75,6 +75,8 @@ export default {
   "chat.editHint": "Escape でキャンセル、Enter で保存、Shift+Enter で改行",
 
   "chat.messageActions": "メッセージの操作",
+
+  "chat.more": "その他",
   "chat.reactWith": "{emoji} でリアクション",
   "chat.moreEmoji": "その他の絵文字",
   "chat.addReaction": "リアクションを追加",

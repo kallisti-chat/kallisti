@@ -75,6 +75,8 @@ export default {
   "chat.editHint": "Esc 取消，Enter 保存，Shift+Enter 换行",
 
   "chat.messageActions": "消息操作",
+
+  "chat.more": "更多",
   "chat.reactWith": "用 {emoji} 回应",
   "chat.moreEmoji": "更多表情",
   "chat.addReaction": "添加回应",

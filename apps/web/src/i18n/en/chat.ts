@@ -87,6 +87,7 @@ export default {
 
   // A message's actions (hover bar and phone sheet).
   "chat.messageActions": "Message actions",
+  "chat.more": "More",
   "chat.reactWith": "React with {emoji}",
   "chat.moreEmoji": "More emoji",
   "chat.addReaction": "Add a reaction",

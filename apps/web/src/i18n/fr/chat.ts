@@ -91,6 +91,8 @@ export default {
   "chat.editHint": "Échap pour annuler, Entrée pour enregistrer, Shift+Entrée pour une nouvelle ligne",
 
   "chat.messageActions": "Actions du message",
+
+  "chat.more": "Plus",
   "chat.reactWith": "Réagir avec {emoji}",
   "chat.moreEmoji": "Plus d'émojis",
   "chat.addReaction": "Ajouter une réaction",

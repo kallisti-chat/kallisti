@@ -66,6 +66,7 @@
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
   import { detect, loadDetector, targetOf } from "../lib/translate/languages";
+  import { tip } from "../lib/tooltip";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { barDone, unreadBar } from "../lib/unread";
@@ -984,7 +985,7 @@
     ];
   };
   // Desktop: the menu of a message's actions (More, a right-click).
-  let menuFor = $state<{ m: ChatMessage | DisplayMessage; x: number; y: number; anchor?: HTMLElement } | null>(null);
+  let menuFor = $state.raw<{ m: ChatMessage | DisplayMessage; x: number; y: number; anchor?: HTMLElement } | null>(null);
   // A right-click on a message opens it; not on a link or selected text
   // (the browser's own menu), nor where another menu opened.
   const messageMenu = (e: MouseEvent, m: ChatMessage | DisplayMessage) => {
@@ -1967,13 +1968,13 @@
         {:else}
           <!-- The common actions; the others in the menu (More, a right-click). -->
           {#if canReact}
-            <button type="button" class="react-button" aria-label={t("chat.addReaction")} title={t("chat.react")} onclick={() => openPicker(id)}><Icon name="smile" size={18} /></button>
+            <button type="button" class="react-button" aria-label={t("chat.addReaction")} {@attach tip(t("chat.addReaction"))} onclick={() => openPicker(id)}><Icon name="smile" size={18} /></button>
           {/if}
           {#if canReply}
-            <button type="button" aria-label={t("chat.reply")} title={t("chat.reply")} onclick={() => startReply(m)}><Icon name="reply" size={18} /></button>
+            <button type="button" aria-label={t("chat.reply")} {@attach tip(t("chat.reply"))} onclick={() => startReply(m)}><Icon name="reply" size={18} /></button>
           {/if}
           {#if canEdit}
-            <button type="button" aria-label={t("chat.editMessage")} title={t("common.edit")} onclick={() => startEdit(m)}><Icon name="edit" size={18} /></button>
+            <button type="button" aria-label={t("chat.editMessage")} {@attach tip(t("common.edit"))} onclick={() => startEdit(m)}><Icon name="edit" size={18} /></button>
           {/if}
           {@render translateButton(m)}
           {@render moreButton(m)}
@@ -1990,7 +1991,7 @@
   {#if translationOf(m) || foreignText(m)}
     {@const shown = !!translationOf(m)}
     {@const label = shown ? t("chat.hideTranslation") : t("chat.translate")}
-    <button type="button" aria-pressed={shown} aria-label={label} title={label} onclick={() => toggleTranslation(m)}><Icon name="translate" size={18} /></button>
+    <button type="button" aria-pressed={shown} aria-label={label} {@attach tip(label)} onclick={() => toggleTranslation(m)}><Icon name="translate" size={18} /></button>
   {/if}
 {/snippet}
 
@@ -1999,7 +2000,7 @@
     <button
       type="button"
       aria-label={t("chat.messageActions")}
-      title={t("chat.messageActions")}
+      {@attach tip(t("chat.more"))}
       aria-haspopup="dialog"
       aria-expanded={menuFor?.m === m}
       onclick={(e) => {
@@ -2761,6 +2762,10 @@
   }
   .actions span {
     padding: 0 6px;
+  }
+  .actions button[aria-expanded="true"],
+  .actions button[aria-pressed="true"] {
+    background: var(--bg-active);
   }
   .actions button {
     padding: 4px 8px;
