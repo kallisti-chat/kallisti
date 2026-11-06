@@ -78,6 +78,11 @@ export const translate = async (text: string, from: string, to: string, base: st
   const { translator, pairs } = await bergamot(base);
   if (!reachable(from, to, pairs)) throw new Unsupported();
   const res = await within(translator.translate({ from, to, text, html: false }), 300_000);
-  if (!res) throw new Error("translation timed out");
+  if (!res) {
+    // A worker that did not load stays so: a new one next time.
+    bergamots.delete(base);
+    void translator.delete();
+    throw new Error("translation timed out");
+  }
   return res.target.text;
 };

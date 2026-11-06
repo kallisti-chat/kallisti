@@ -15,7 +15,7 @@
   import { createHoldTalk } from "../lib/holdTalk";
   import { htmlToLines, htmlToText } from "../lib/htmlText";
   import { collapses, MAX_HEIGHT_PX } from "../lib/collapse";
-  import { previewText, toggleSpoiler } from "../lib/markdown";
+  import { previewText, toggleSpoiler, withoutSpoilers } from "../lib/markdown";
   import { loadEmojiData, normalEmoji, quickRows, searchEmoji, withTone, type EmojiData } from "../lib/emojiPicker";
   import { emojiUses, recentEmoji, skinTone, usedEmoji } from "../lib/emojiPrefs.svelte";
   import { customEmojiFor, customEntries, jumboEmoji, knownEmoji, refsAsNames } from "../lib/customEmoji";
@@ -885,8 +885,9 @@
     );
   // Translations of messages on this device (see lib/translate), by
   // message key, into the app's language.
-  // source: the text translated (an edit makes a new one).
-  type Translation = { source: string } & ({ state: "loading" } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
+  // source, to: the text translated (an edit makes a new one) and into
+  // which language (the app's may change).
+  type Translation = { source: string; to: string } & ({ state: "loading" } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
   let translations = $state<Record<string, Translation>>({});
   const translateTo = $derived(targetOf(i18n.ui));
   const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
@@ -896,7 +897,8 @@
   const languageOf = (m: ChatMessage | DisplayMessage) => {
     let found = languages.get(m);
     if (!found) {
-      const text = refsAsNames("source" in m && m.source ? m.source.text : htmlToText(m.text));
+      // Not hidden spoilers: a translation would show them.
+      const text = refsAsNames("source" in m && m.source ? withoutSpoilers(m.source.text).trim() : htmlToText(m.text));
       languages.set(m, (found = { text, lang: text ? detect(text) : null }));
     }
     return found;
@@ -910,20 +912,22 @@
   // Its translation, if it is of the text it has now.
   const translationOf = (m: ChatMessage | DisplayMessage) => {
     const tr = translations[messageKey(m)];
-    return tr?.source === languageOf(m).text ? tr : undefined;
+    return tr?.source === languageOf(m).text && tr.to === translateTo ? tr : undefined;
   };
   const startTranslation = async (key: string, source: string, from: string) => {
-    translations = { ...translations, [key]: { source, state: "loading" } };
+    const to = translateTo;
+    translations = { ...translations, [key]: { source, to, state: "loading" } };
     let done: Translation;
     try {
       const { translate } = await import("../lib/translate/engine");
-      done = { source, state: "done", from, text: await translate(source, from, translateTo, httpBase) };
+      done = { source, to, state: "done", from, text: await translate(source, from, to, httpBase) };
     } catch (e) {
       const unsupported = (e as { unsupported?: boolean }).unsupported === true;
       if (!unsupported) console.error("translation", e);
-      done = { source, state: "error", text: unsupported ? t("chat.translateUnsupported", { lang: languageName(from) }) : t("chat.translateFailed") };
+      done = { source, to, state: "error", text: unsupported ? t("chat.translateUnsupported", { lang: languageName(from) }) : t("chat.translateFailed") };
     }
-    if (translations[key]?.source === source) translations = { ...translations, [key]: done }; // not hidden meanwhile
+    const now = translations[key];
+    if (now?.state === "loading" && now.source === source && now.to === to) translations = { ...translations, [key]: done }; // not hidden meanwhile
   };
   const hideTranslation = (key: string) => {
     const { [key]: _, ...rest } = translations;
