@@ -1,5 +1,6 @@
 import { BatchTranslator, TranslatorBacking } from "@mkljczk/bergamot-translator/translator.js";
 import { reachable, registryOf, type Models } from "./languages";
+import type { Context } from "./prompt";
 
 // Translating a message on this device: the browser's own translator
 // (Translator API: desktop Chrome and Edge), else Bergamot (Firefox's
@@ -69,10 +70,23 @@ const bergamot = (base: string) => {
   return b;
 };
 
-// The translation of a message's text from its language into `to`. At most
-// a few minutes (the first time with the models' download): the worker
-// leaves a request waiting when it cannot load.
-export const translate = async (text: string, from: string, to: string, base: string): Promise<string> => {
+// The translation of a message's text from its language into `to`: with
+// the larger model when asked (better, see llm.ts; the messages before as
+// context), else or when it fails as below. At most a few minutes (the
+// first time with the models' download): the worker leaves a request
+// waiting when it cannot load.
+export type Options = { better?: boolean; context?: Context; onProgress?: (percent: number) => void };
+
+export const translate = async (text: string, from: string, to: string, base: string, options: Options = {}): Promise<string> => {
+  if (options.better) {
+    const { translateLLM, webGPU } = await import("./llm");
+    if (await webGPU())
+      try {
+        return await translateLLM(text, from, to, base, options.context ?? { before: [], names: [] }, options.onProgress);
+      } catch (e) {
+        console.error("better translation", e);
+      }
+  }
   const own = await builtIn(text, from, to);
   if (own !== null) return own;
   const { translator, pairs } = await bergamot(base);

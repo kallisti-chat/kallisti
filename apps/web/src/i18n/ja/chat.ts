@@ -98,6 +98,7 @@ export default {
   "chat.hideTranslation": "翻訳を隠す",
   "chat.originalAction": "原文",
   "chat.translating": "翻訳中…初回はこの端末に言語モデルをダウンロードします。",
+  "chat.translationDownload": "翻訳モデルをダウンロード中：{percent} %",
   "chat.translatedFrom": "{lang}から翻訳",
   "chat.translateUnsupported": "このサーバーには{lang}からの翻訳がありません。",
   "chat.translateFailed": "翻訳に失敗しました。",

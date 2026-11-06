@@ -4,6 +4,9 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "語言",
   "settings.languageAuto": "與瀏覽器相同",
+  "settings.betterTranslation": "更好的翻譯",
+  "settings.betterTranslationHint": "在此裝置上用更大的模型（Hy-MT2）翻譯訊息。首次需要下載約 1.4 GB，並需要顯示卡（WebGPU）。",
+  "settings.betterTranslationNoGpu": "此處無法使用：此瀏覽器或顯示卡不支援帶 16 位元數字的 WebGPU。",
 
   "settings.groupUser": "使用者設定",
   "settings.groupApp": "應用程式設定",

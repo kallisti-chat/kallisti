@@ -110,6 +110,7 @@ export default {
   "chat.hideTranslation": "Ocultar traducción",
   "chat.originalAction": "Original",
   "chat.translating": "Traduciendo… La primera vez, este dispositivo descarga el modelo de idioma.",
+  "chat.translationDownload": "Descargando el modelo de traducción: {percent} %",
   "chat.translatedFrom": "Traducido de: {lang}",
   "chat.translateUnsupported": "Este servidor no tiene traducción desde: {lang}.",
   "chat.translateFailed": "La traducción falló.",

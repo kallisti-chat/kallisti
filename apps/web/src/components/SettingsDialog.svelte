@@ -23,6 +23,7 @@
   import FediAccount from "./FediAccount.svelte";
   import AllowedSites from "./AllowedSites.svelte";
   import QrShowDialog from "./QrShowDialog.svelte";
+  import { webGPU } from "../lib/translate/llm";
 
   let {
     settings,
@@ -79,6 +80,9 @@
   const groupTitles = $derived({ user: t(GROUP_TITLES.user), app: t(GROUP_TITLES.app) });
   const footer = $derived(around(t("settings.footer"), "link"));
   let section = $state<SectionId | null>(null);
+  // Better translation needs WebGPU with 16-bit floats (asked once).
+  let gpu = $state(false);
+  void webGPU().then((ok) => (gpu = ok));
 
   // Saved when the field loses focus or the settings close. The draft
   // follows changes of the text only (not of the rest of our state), and
@@ -547,6 +551,17 @@
             <option value={locale} lang={locale}>{LOCALE_NAMES[locale]}</option>
           {/each}
         </select>
+      </label>
+
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={settings.betterTranslation && gpu}
+          disabled={!gpu}
+          onchange={(e) => onChange({ betterTranslation: e.currentTarget.checked })}
+        />
+        <span>{t("settings.betterTranslation")}</span>
+        <span class="hint">{gpu ? t("settings.betterTranslationHint") : t("settings.betterTranslationNoGpu")}</span>
       </label>
 
       <label>

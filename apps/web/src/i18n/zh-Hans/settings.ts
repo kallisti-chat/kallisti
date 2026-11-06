@@ -4,6 +4,9 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "语言",
   "settings.languageAuto": "跟随浏览器",
+  "settings.betterTranslation": "更好的翻译",
+  "settings.betterTranslationHint": "在此设备上用更大的模型（Hy-MT2）翻译消息。首次需要下载约 1.4 GB，并需要显卡（WebGPU）。",
+  "settings.betterTranslationNoGpu": "此处不可用：此浏览器或显卡不支持带 16 位数字的 WebGPU。",
 
   "settings.groupUser": "用户设置",
   "settings.groupApp": "应用设置",

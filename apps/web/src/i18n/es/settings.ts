@@ -4,6 +4,9 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "Idioma",
   "settings.languageAuto": "Como el navegador",
+  "settings.betterTranslation": "Mejor traducción",
+  "settings.betterTranslationHint": "Traduce los mensajes con un modelo más grande en este dispositivo (Hy-MT2). Descarga una vez unos 1,4 GB y necesita una tarjeta gráfica (WebGPU).",
+  "settings.betterTranslationNoGpu": "No disponible aquí: este navegador o esta tarjeta gráfica no tiene WebGPU con números de 16 bits.",
 
   "settings.groupUser": "Ajustes de usuario",
   "settings.groupApp": "Ajustes de la app",

@@ -114,6 +114,7 @@ export default {
   "chat.hideTranslation": "Masquer la traduction",
   "chat.originalAction": "Original",
   "chat.translating": "Traduction… La première fois, cet appareil télécharge le modèle de langue.",
+  "chat.translationDownload": "Téléchargement du modèle de traduction : {percent} %",
   "chat.translatedFrom": "Traduit de : {lang}",
   "chat.translateUnsupported": "Ce serveur n'a pas de traduction depuis : {lang}.",
   "chat.translateFailed": "La traduction a échoué.",

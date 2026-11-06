@@ -1,8 +1,8 @@
-// Copies the translation engines' workers and WebAssembly (see
-// lib/translate) to public/: Bergamot's to public/bergamot/ (the worker
-// loads them by their names, next to itself), and the ONNX runtime that
-// transformers.js uses to public/ort/ (else it loads it from a CDN). Runs
-// before builds; the page loads them only on the first translation.
+// Copies Bergamot's worker and WebAssembly (message translation, see
+// lib/translate) to public/bergamot/: the worker loads them by their names,
+// next to itself. Runs before builds; the page loads them only on the
+// first translation. (The ONNX runtime of the larger model is bundled,
+// see llm.ts.)
 import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -25,7 +25,3 @@ copy(join(packageDir(require, "@mkljczk/bergamot-translator"), "worker"), "berga
   "bergamot-translator-worker.js",
   "bergamot-translator-worker.wasm",
 ]);
-// The version transformers.js depends on (see lib/translate/llm.ts).
-const transformers = packageDir(require, "@huggingface/transformers");
-const ort = packageDir(createRequire(join(transformers, "package.json")), "onnxruntime-web");
-copy(join(ort, "dist"), "ort", ["ort-wasm-simd-threaded.asyncify.mjs", "ort-wasm-simd-threaded.asyncify.wasm"]);

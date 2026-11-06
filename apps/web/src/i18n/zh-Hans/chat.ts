@@ -98,6 +98,7 @@ export default {
   "chat.hideTranslation": "隐藏翻译",
   "chat.originalAction": "原文",
   "chat.translating": "正在翻译…首次使用时，此设备会下载语言模型。",
+  "chat.translationDownload": "正在下载翻译模型：{percent}%",
   "chat.translatedFrom": "译自{lang}",
   "chat.translateUnsupported": "此服务器没有从{lang}翻译的模型。",
   "chat.translateFailed": "翻译失败。",

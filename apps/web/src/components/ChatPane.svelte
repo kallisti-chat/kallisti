@@ -887,7 +887,7 @@
   // message key, into the app's language.
   // source, to: the text translated (an edit makes a new one) and into
   // which language (the app's may change).
-  type Translation = { source: string; to: string } & ({ state: "loading" } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
+  type Translation = { source: string; to: string } & ({ state: "loading"; percent?: number } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
   let translations = $state<Record<string, Translation>>({});
   const translateTo = $derived(targetOf(i18n.ui));
   const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
@@ -914,13 +914,26 @@
     const tr = translations[messageKey(m)];
     return tr?.source === languageOf(m).text && tr.to === translateTo ? tr : undefined;
   };
-  const startTranslation = async (key: string, source: string, from: string) => {
+  // The model's context (better translation): the messages before it,
+  // and the names it keeps.
+  const contextOf = (m: ChatMessage | DisplayMessage) => {
+    const at = messages.indexOf(m);
+    const before = messages
+      .slice(Math.max(0, at - 3), Math.max(0, at))
+      .map((b) => ({ author: b.actorName ?? "", text: languageOf(b).text }))
+      .filter((b) => b.text);
+    return { before, names: [...knownNames, ...channelNames] };
+  };
+  const startTranslation = async (key: string, source: string, from: string, m: ChatMessage | DisplayMessage) => {
     const to = translateTo;
     translations = { ...translations, [key]: { source, to, state: "loading" } };
+    const loading = () => translations[key]?.state === "loading" && translations[key].source === source;
+    const onProgress = (percent: number) => loading() && (translations = { ...translations, [key]: { source, to, state: "loading", percent } });
     let done: Translation;
     try {
       const { translate } = await import("../lib/translate/engine");
-      done = { source, to, state: "done", from, text: await translate(source, from, to, httpBase) };
+      const better = settings.value.betterTranslation;
+      done = { source, to, state: "done", from, text: await translate(source, from, to, httpBase, { better, context: contextOf(m), onProgress }) };
     } catch (e) {
       const unsupported = (e as { unsupported?: boolean }).unsupported === true;
       if (!unsupported) console.error("translation", e);
@@ -937,7 +950,7 @@
     const key = messageKey(m);
     const { text, lang } = languageOf(m);
     if (translationOf(m)) hideTranslation(key);
-    else if (lang && lang !== translateTo) void startTranslation(key, text, lang);
+    else if (lang && lang !== translateTo) void startTranslation(key, text, lang, m);
   };
   const sheetItems = (m: ChatMessage | DisplayMessage): SheetItem[] => {
     const may = allowed(m);
@@ -1822,7 +1835,9 @@
           <p lang={translateTo}>{tr.text}</p>
           <span class="note">{t("chat.translatedFrom", { lang: languageName(tr.from) })}</span>
         {:else}
-          <span class="note">{tr.state === "loading" ? t("chat.translating") : tr.text}</span>
+          <span class="note"
+            >{tr.state === "error" ? tr.text : tr.percent === undefined ? t("chat.translating") : t("chat.translationDownload", { percent: tr.percent })}</span
+          >
         {/if}
       </div>
     {/if}
