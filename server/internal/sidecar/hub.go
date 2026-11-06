@@ -202,7 +202,7 @@ func (h *Hub) StreamPreview(s LiveStream) {
 
 // QualityLimitsChanged broadcasts new voice and stream quality limits to everyone.
 func (h *Hub) QualityLimitsChanged(q QualityLimits) {
-	h.broadcast(map[string]any{"type": "quality-limits", "limits": q})
+	h.broadcast(map[string]any{"type": "quality-limits", "qualityLimits": q, "limits": q})
 }
 
 // Notice tells one voice session's connection something (a problem of its
@@ -921,8 +921,10 @@ func (c *Conn) Handle(raw []byte) {
 			c.manageError("this setting needs the built-in Mumble server")
 		} else if req.QualityLimits == nil {
 			c.manageError("missing quality limits")
-		} else if _, err := c.hub.voice.SetQualityLimits(id.Session, *req.QualityLimits); err != nil {
+		} else if updated, err := c.hub.voice.SetQualityLimits(id.Session, *req.QualityLimits); err != nil {
 			c.manageError(err.Error())
+		} else {
+			c.hub.QualityLimitsChanged(updated)
 		}
 		return
 	case "logo-token":
