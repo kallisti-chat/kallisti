@@ -213,3 +213,33 @@ html[data-window-hidden] *::before,
 html[data-window-hidden] *::after {
   animation-play-state: paused !important;
 }
+
+/* A button's label on hover or keyboard focus (lib/tooltip.ts). */
+.tooltip {
+  position: fixed;
+  z-index: 200;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--bg-menu);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+}
+.tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: var(--arrow, 50%);
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.tooltip.below::after {
+  top: -4px;
+  bottom: auto;
+}
