@@ -54,6 +54,14 @@ brackets.
 - `LINK_PREVIEWS=0`: the server fetches no pages for link previews. By
   default it fetches the first link of a message, only from public
   addresses, so linked sites see the server's address.
+- `TRANSLATION_LANGUAGES` (`de,es,fr,ja,zh,zh-Hant`): the languages whose
+  translation models (to and from English) the server offers for
+  translating messages on the reader's device; `*`: all 58, `TRANSLATION=0`:
+  none. The server downloads a model the first time a client needs it
+  (17–55 MB per direction, from a pinned mirror of Firefox's models on
+  Hugging Face, checked by SHA-256) and keeps it in `TRANSLATION_DIR`
+  (`translation-models` next to the database). Clients get models only
+  from the server.
 - `FEDI_LOGIN=0`: no "Log in with the fediverse". By default users can
   log in, create accounts and link accounts with a fediverse account
   (Mastodon API: Mastodon, Pleroma/Akkoma, GoToSocial, ...). It needs the
