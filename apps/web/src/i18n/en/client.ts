@@ -145,6 +145,7 @@ export default {
   // Voice in this browser (lib/voice).
   "client.voiceUnsupported": "Voice does not work in this browser (it has no {apis}). Use a current Chrome, Firefox or Safari.",
   "client.encoderFailed": "Voice encoder failed: {error}",
+  "client.noiseOff": "off",
   "client.noiseBrowserFilter": "the browser's filter",
   "client.noiseFailed": "{filter} could not run ({reason}). Now on: {now}.",
   "client.noiseTooSlow": "this computer is too slow for it",

@@ -3,6 +3,7 @@ import { DEFAULT_QUALITY, parseQuality, type Kind, type Quality } from "./stream
 import type { TimeFormat } from "./chat";
 import type { PlaybackBuffer } from "./voice/buffer";
 import type { NoiseMode } from "./voice/noise";
+import type { AudioChannels } from "./voice/opus";
 import type { TransmitMode } from "./voice/vad";
 
 export type Settings = {
@@ -28,6 +29,13 @@ export type Settings = {
   // desktop app, Safari) on macOS it puts Bluetooth headsets into their
   // call mode, also with another microphone chosen.
   echoCancellation: boolean;
+  // Automatic gain control in normal mode.
+  autoGainControl: boolean;
+  // Audio channels: "auto" (mono for voice, stereo for music if available), "mono", "stereo".
+  audioChannels: AudioChannels;
+  // Bitrate in bps for voice and music modes.
+  voiceBitrate: number;
+  musicBitrate: number;
   // For music: none of the filters above, no automatic gain, more bits
   // and stereo (see voice/opus.ts).
   musicMode: boolean;
@@ -50,14 +58,26 @@ export type Settings = {
 // when ours are off). Music: no filters, both channels if it has two.
 export const micConstraints = (
   deviceId: string | null,
-  o: { browserNoise: boolean; cancelEcho: boolean; music: boolean },
-): MediaTrackConstraints => ({
-  deviceId: deviceId ? { exact: deviceId } : undefined,
-  echoCancellation: o.cancelEcho && !o.music,
-  noiseSuppression: o.browserNoise && !o.music,
-  autoGainControl: !o.music,
-  ...(o.music && { channelCount: { ideal: 2 } }),
-});
+  o: {
+    browserNoise: boolean;
+    cancelEcho: boolean;
+    autoGainControl?: boolean;
+    music: boolean;
+    channels?: AudioChannels;
+    audioChannels?: AudioChannels;
+  },
+): MediaTrackConstraints => {
+  const ch = o.audioChannels ?? o.channels;
+  const wantStereo = ch === "stereo" || (ch !== "mono" && o.music);
+  return {
+    deviceId: deviceId ? { exact: deviceId } : undefined,
+    echoCancellation: o.cancelEcho && !o.music,
+    noiseSuppression: o.browserNoise && !o.music,
+    autoGainControl: (o.autoGainControl ?? true) && !o.music,
+    ...(wantStereo && { channelCount: { ideal: 2 } }),
+    ...(ch === "mono" && { channelCount: { ideal: 1 } }),
+  };
+};
 
 export type ThemeSetting = "dark" | "light" | "system";
 export const themeOf = (setting: ThemeSetting, systemDark: boolean): "dark" | "light" =>
@@ -78,6 +98,10 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   timeFormat: "auto",
   echoCancellation: true,
+  autoGainControl: true,
+  audioChannels: "auto",
+  voiceBitrate: 40_000,
+  musicBitrate: 128_000,
   musicMode: false,
   playbackBuffer: "low",
   cameraDeviceId: null,
@@ -114,12 +138,30 @@ export const parseSettings = (raw: string | null): Settings => {
     notifications: d.notifications === true,
     closeMicWhenMuted: d.closeMicWhenMuted === true,
     streamPreviews: d.streamPreviews !== false,
-    noiseSuppression: d.noiseSuppression === "strong" || d.noiseSuppression === "strongest" ? d.noiseSuppression : "browser",
+    noiseSuppression:
+      d.noiseSuppression === "off" || d.noiseSuppression === "strong" || d.noiseSuppression === "strongest"
+        ? d.noiseSuppression
+        : "browser",
     theme: d.theme === "light" || d.theme === "system" ? d.theme : "dark",
     timeFormat: d.timeFormat === "12" || d.timeFormat === "24" ? d.timeFormat : "auto",
     echoCancellation: d.echoCancellation !== false,
+    autoGainControl: d.autoGainControl !== false,
+    audioChannels: d.audioChannels === "mono" || d.audioChannels === "stereo" ? d.audioChannels : "auto",
+    voiceBitrate:
+      typeof d.voiceBitrate === "number" && d.voiceBitrate >= 16_000
+        ? clamp(d.voiceBitrate, 16_000, 558_000)
+        : DEFAULT_SETTINGS.voiceBitrate,
+    musicBitrate:
+      typeof d.musicBitrate === "number" && d.musicBitrate >= 32_000
+        ? clamp(d.musicBitrate, 32_000, 558_000)
+        : DEFAULT_SETTINGS.musicBitrate,
     musicMode: d.musicMode === true,
-    playbackBuffer: d.playbackBuffer === "medium" || d.playbackBuffer === "high" ? d.playbackBuffer : "low",
+    playbackBuffer:
+      typeof d.playbackBuffer === "number" && !isNaN(d.playbackBuffer)
+        ? clamp(Math.round(d.playbackBuffer), 30, 500)
+        : d.playbackBuffer === "medium" || d.playbackBuffer === "high"
+          ? d.playbackBuffer
+          : "low",
     cameraDeviceId: str(d.cameraDeviceId),
     streamQuality: { screen: parseQuality(quality.screen, "screen"), camera: parseQuality(quality.camera, "camera") },
     sounds: d.sounds !== false,

@@ -28,6 +28,22 @@ import { followedThreads, isThread, isThreads, withThreads, type Thread, type Th
 // Text channels come from the Kallisti server (JSON over WebSocket text
 // frames). Against a plain Mumble server, the state stays unavailable.
 
+export type QualityLimits = {
+  maxBitrateVoice: number;
+  maxBitrateMusic: number;
+  bytesPerSecond: number;
+  maxSide: number;
+  maxFps: number;
+};
+
+export const DEFAULT_QUALITY_LIMITS: QualityLimits = {
+  maxBitrateVoice: 128_000,
+  maxBitrateMusic: 320_000,
+  bytesPerSecond: 1048576,
+  maxSide: 4096,
+  maxFps: 60,
+};
+
 // mumble: the Mumble channel that mirrors it for Mumble clients;
 // slowMode: seconds between a user's posts (see lib/slowMode); category:
 // see lib/categories (none: at the top).
@@ -137,6 +153,8 @@ export type ServerEvent =
       channelTimeouts?: ChannelTimeout[];
       // Guests may only read (see lib/guests).
       guestsReadOnly?: boolean;
+      // Voice and streaming quality limits.
+      qualityLimits?: QualityLimits;
       // The browser check for new accounts (see lib/captcha).
       captcha?: CaptchaLevel;
       inviteOnly?: boolean;
@@ -223,6 +241,8 @@ export type ServerEvent =
   | { type: "timeouts"; timeouts: Timeout[]; channelTimeouts: ChannelTimeout[] }
   // Admins changed whether guests may only read.
   | { type: "guests-read-only"; on: boolean }
+  // Quality limits changed.
+  | { type: "quality-limits"; qualityLimits: QualityLimits }
   | { type: "captcha"; level: CaptchaLevel }
   | { type: "invite-only"; on: boolean }
   | { type: "registration-invites"; invites: Invite[] }
@@ -335,6 +355,7 @@ export type TextState = {
   timeouts: readonly Timeout[];
   channelTimeouts: readonly ChannelTimeout[];
   guestsReadOnly: boolean;
+  qualityLimits: QualityLimits;
   // Slow mode: when the server said our wait ends, by channel.
   slowUntil: Readonly<Record<number, number>>;
   // The text of the last refused send (n counts them, see ChatPane).
@@ -427,6 +448,7 @@ export const initialTextState: TextState = {
   timeouts: [],
   channelTimeouts: [],
   guestsReadOnly: false,
+  qualityLimits: DEFAULT_QUALITY_LIMITS,
   slowUntil: {},
   captcha: "off",
   inviteOnly: null,
@@ -907,6 +929,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
         timeouts: event.timeouts ?? [],
         channelTimeouts: event.channelTimeouts ?? [],
         guestsReadOnly: event.guestsReadOnly === true,
+        qualityLimits: event.qualityLimits ?? DEFAULT_QUALITY_LIMITS,
         captcha: event.captcha ?? "off",
         inviteOnly: event.inviteOnly ?? null,
         registrationInvites: null,
@@ -981,6 +1004,8 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       return { ...state, timeouts: event.timeouts, channelTimeouts: event.channelTimeouts };
     case "guests-read-only":
       return { ...state, guestsReadOnly: event.on };
+    case "quality-limits":
+      return { ...state, qualityLimits: event.qualityLimits };
     case "captcha":
       return { ...state, captcha: event.level };
     case "invite-only":
@@ -1284,6 +1309,7 @@ export type ManageAction =
   // A user's messages of the last seconds (staff): see UserTarget.
   | { deleteMessages: UserTarget; seconds: number }
   | { guestsReadOnly: boolean }
+  | { qualityLimits: QualityLimits }
   | { captcha: CaptchaLevel }
   | { inviteOnly: boolean }
   | { registrationInvites: true }
@@ -1338,6 +1364,7 @@ const manageBody = (a: ManageAction) => {
   if ("channelTimeout" in a) return { type: "channel-time-out", session: a.channelTimeout, voice: a.channel, seconds: a.seconds };
   if ("deleteMessages" in a) return { type: "delete-messages", ...a.deleteMessages, seconds: a.seconds };
   if ("guestsReadOnly" in a) return { type: "set-guests-read-only", on: a.guestsReadOnly };
+  if ("qualityLimits" in a) return { type: "set-quality-limits", qualityLimits: a.qualityLimits };
   if ("inviteOnly" in a) return { type: "set-invite-only", on: a.inviteOnly };
   if ("registrationInvites" in a) return { type: "registration-invites" };
   if ("createRegistrationInvite" in a) return { type: "create-registration-invite", seconds: a.seconds, uses: a.uses };

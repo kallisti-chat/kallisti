@@ -29,6 +29,8 @@ type Handler struct {
 	// A streamer's upload (screen and camera together), at most (frames
 	// above it are dropped).
 	BytesPerSecond int
+	// Dynamic stream limits (bytesPerSecond, maxSide, maxFps), if set.
+	Limits func() (bytesPerSecond int, maxSide int, maxFps int)
 }
 
 const (
@@ -86,9 +88,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Hub.Connect(session, c)
 	defer h.Hub.Disconnect(session, c)
 	go c.write(ctx, ws)
+	bps := h.BytesPerSecond
+	side := maxSide
+	fps := 60
+	if h.Limits != nil {
+		bps, side, fps = h.Limits()
+	}
 	// With the limits, for the streamer's encoders.
-	c.SendText(map[string]any{"type": "ready", "limits": map[string]any{"bytesPerSecond": h.BytesPerSecond, "maxSide": maxSide}})
-	bytes := rate.NewLimiter(rate.Limit(h.BytesPerSecond), 2*h.BytesPerSecond)
+	c.SendText(map[string]any{"type": "ready", "limits": map[string]any{"bytesPerSecond": bps, "maxSide": side, "maxFps": fps}})
+	bytes := rate.NewLimiter(rate.Limit(bps), 2*bps)
 	texts := rate.NewLimiter(textsPerSec, 2*textsPerSec)
 	sounds := rate.NewLimiter(soundsPerSec, soundsPerSec/2)
 	for {

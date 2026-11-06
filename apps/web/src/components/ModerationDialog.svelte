@@ -38,6 +38,7 @@
   import { createSave } from "../lib/saveFeedback.svelte";
   import RegistrationSettings from "./RegistrationSettings.svelte";
   import type { Invite } from "../lib/invites";
+  import type { QualityLimits } from "../lib/textChannels";
   import SaveStatus from "./SaveStatus.svelte";
 
   // Server settings for moderators and admins: the ban list, the custom
@@ -88,6 +89,8 @@
     recording = [],
     onLoadRecordings,
     onDownloadRecording,
+    qualityLimits = null,
+    onSaveQualityLimits,
     onClose,
     phone = false,
   }: {
@@ -151,6 +154,8 @@
     recording?: readonly number[] | null;
     onLoadRecordings?: () => void;
     onDownloadRecording?: (id: string) => Promise<void>;
+    qualityLimits?: QualityLimits | null;
+    onSaveQualityLimits?: (q: QualityLimits) => Promise<void>;
     onClose: () => void;
     // Phones: a list of categories, each its own page (see CategoryDialog).
     phone?: boolean;
@@ -185,6 +190,38 @@
     archive: createSave(),
     rules: createSave(),
     homes: createSave(),
+    quality: createSave(),
+  };
+
+  let voiceBitrateDraft = $state(128);
+  let musicBitrateDraft = $state(320);
+  let streamBandwidthDraft = $state(1048576);
+  let streamSideDraft = $state(4096);
+  let streamFpsDraft = $state(60);
+
+  $effect(() => {
+    if (qualityLimits) {
+      voiceBitrateDraft = Math.round(qualityLimits.maxBitrateVoice / 1000);
+      musicBitrateDraft = Math.round(qualityLimits.maxBitrateMusic / 1000);
+      streamBandwidthDraft = qualityLimits.bytesPerSecond;
+      streamSideDraft = qualityLimits.maxSide;
+      streamFpsDraft = qualityLimits.maxFps;
+    }
+  });
+
+  const saveQuality = (e: SubmitEvent) => {
+    e.preventDefault();
+    if (onSaveQualityLimits) {
+      saves.quality.run(() =>
+        onSaveQualityLimits({
+          maxBitrateVoice: voiceBitrateDraft * 1000,
+          maxBitrateMusic: musicBitrateDraft * 1000,
+          bytesPerSecond: streamBandwidthDraft,
+          maxSide: streamSideDraft,
+          maxFps: streamFpsDraft,
+        })
+      );
+    }
   };
   const setGuests = (el: HTMLInputElement) =>
     onGuestsReadOnly && saves.guests.run(() => onGuestsReadOnly(el.checked), () => (el.checked = guestsReadOnly === true));
@@ -367,6 +404,52 @@
           <p class="note">{t("admin.homesNote")}</p>
         {/if}
       {/if}
+    {:else if id === "quality"}
+      <form class="rules" onsubmit={saveQuality}>
+        <label>
+          {t("admin.qualityMaxVoiceBitrate")} ({voiceBitrateDraft} kbps)
+          <input type="range" min="16" max="558" step="1" bind:value={voiceBitrateDraft} />
+        </label>
+        <p class="note">{t("admin.qualityMaxVoiceBitrateNote")}</p>
+
+        <label>
+          {t("admin.qualityMaxMusicBitrate")} ({musicBitrateDraft} kbps)
+          <input type="range" min="32" max="558" step="8" bind:value={musicBitrateDraft} />
+        </label>
+        <p class="note">{t("admin.qualityMaxMusicBitrateNote")}</p>
+
+        <label>
+          {t("admin.qualityMaxStreamResolution")}
+          <select bind:value={streamSideDraft}>
+            <option value={720}>720p (1280×720)</option>
+            <option value={1080}>1080p (1920×1080)</option>
+            <option value={1440}>1440p (2560×1440)</option>
+            <option value={4096}>4K (4096)</option>
+          </select>
+        </label>
+        <p class="note">{t("admin.qualityMaxStreamResolutionNote")}</p>
+
+        <label>
+          {t("admin.qualityMaxStreamFramerate")}
+          <select bind:value={streamFpsDraft}>
+            <option value={15}>15 fps</option>
+            <option value={30}>30 fps</option>
+            <option value={60}>60 fps</option>
+          </select>
+        </label>
+        <p class="note">{t("admin.qualityMaxStreamFramerateNote")}</p>
+
+        <label>
+          {t("admin.qualityMaxStreamBandwidth")} ({((streamBandwidthDraft / 1024 / 1024) * 8).toFixed(1)} Mbit/s)
+          <input type="range" min={100_000} max={10_000_000} step={100_000} bind:value={streamBandwidthDraft} />
+        </label>
+        <p class="note">{t("admin.qualityMaxStreamBandwidthNote")}</p>
+
+        <div class="row">
+          <button type="submit" disabled={saves.quality.busy}>{busyLabel(saves.quality.state, t("common.save"), t("common.saving"))}</button>
+          <SaveStatus save={saves.quality.state} />
+        </div>
+      </form>
     {:else if id === "registration" && inviteOnly !== null && onInviteOnly && onLoadRegistrationInvites && onCreateRegistrationInvite && onDeleteRegistrationInvite}
       <RegistrationSettings on={inviteOnly} invites={registrationInvites} onSet={onInviteOnly} onLoad={onLoadRegistrationInvites} onCreate={onCreateRegistrationInvite} onDelete={onDeleteRegistrationInvite} />
     {:else if id === "guests"}

@@ -137,7 +137,8 @@ export default {
 
   "client.voiceUnsupported": "语音在此浏览器中无法使用（缺少 {apis}）。请使用最新版 Chrome、Firefox 或 Safari。",
   "client.encoderFailed": "语音编码器出错：{error}",
-  "client.noiseBrowserFilter": "浏览器的降噪",
+    "client.noiseOff": "关闭",
+"client.noiseBrowserFilter": "浏览器的降噪",
   "client.noiseFailed": "{filter} 无法运行（{reason}）。当前使用：{now}。",
   "client.noiseTooSlow": "这台电脑性能不足",
   "client.noiseStopped": "它已停止",
