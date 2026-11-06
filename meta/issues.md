@@ -32,3 +32,4 @@
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
   - [ ] [Better translation: Hy-MT2 on the device (WebGPU)](issues/better-translation.md)
+- [ ] [Message actions: a short bar and a menu (as Discord)](issues/message-actions-menu.md)
