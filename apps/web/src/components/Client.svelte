@@ -368,6 +368,11 @@
   $effect(() => {
     if (qualityLimits) {
       capture?.setLimits(qualityLimits.maxBitrateVoice, qualityLimits.maxBitrateMusic);
+      connection.streams?.setLimits({
+        bytesPerSecond: qualityLimits.bytesPerSecond,
+        maxSide: qualityLimits.maxSide,
+        maxFps: qualityLimits.maxFps,
+      });
     }
   });
   $effect(() => connection.playback?.setOutputDevice(prefs.outputDeviceId));
@@ -2187,7 +2192,7 @@
 {/if}
 
 {#if showObs && account}
-  <ObsDialog {account} live={goLive.obsLive} onClose={() => (showObs = false)} />
+  <ObsDialog {account} live={goLive.obsLive} qualityLimits={text.qualityLimits} onClose={() => (showObs = false)} />
 {/if}
 
 {#if showSettings}
