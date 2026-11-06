@@ -1,6 +1,7 @@
 package translation
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -29,6 +30,7 @@ type Handler struct {
 
 	mu      sync.Mutex
 	loading map[string]*load
+	clean   sync.Once // temporary files of a stopped server
 }
 
 type load struct {
@@ -54,7 +56,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	path := filepath.Join(h.Dir, f.SHA256)
 	if _, err := os.Stat(path); err != nil {
-		if err := h.fetchOnce(pair, f); err != nil {
+		if err := h.fetchOnce(r.Context(), pair, f); err != nil {
 			slog.Error("translation model", "pair", pair, "file", f.Name, "err", err)
 			http.Error(w, "cannot get the model", http.StatusBadGateway)
 			return
@@ -93,9 +95,20 @@ func (h *Handler) find(sum string) (string, File, bool) {
 	return "", File{}, false
 }
 
-// fetchOnce fetches a file, or waits for the fetch already running.
-func (h *Handler) fetchOnce(pair string, f File) error {
+// fetchOnce fetches a file, or waits for the fetch already running (until
+// the client goes).
+func (h *Handler) fetchOnce(ctx context.Context, pair string, f File) error {
+	h.clean.Do(func() {
+		old, _ := filepath.Glob(filepath.Join(h.Dir, ".fetch-*"))
+		for _, p := range old {
+			os.Remove(p)
+		}
+	})
 	h.mu.Lock()
+	if _, err := os.Stat(filepath.Join(h.Dir, f.SHA256)); err == nil { // kept meanwhile
+		h.mu.Unlock()
+		return nil
+	}
 	l := h.loading[f.SHA256]
 	if l == nil {
 		l = &load{done: make(chan struct{})}
@@ -112,8 +125,12 @@ func (h *Handler) fetchOnce(pair string, f File) error {
 		}()
 	}
 	h.mu.Unlock()
-	<-l.done
-	return l.err
+	select {
+	case <-l.done:
+		return l.err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (h *Handler) fetch(pair string, f File) error {
