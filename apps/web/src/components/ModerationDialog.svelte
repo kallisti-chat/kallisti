@@ -441,7 +441,7 @@
         <p class="note">{t("admin.qualityMaxStreamFramerateNote")}</p>
 
         <label>
-          {t("admin.qualityMaxStreamBandwidth")} ({((streamBandwidthDraft / 1024 / 1024) * 8).toFixed(1)} Mbit/s)
+          {t("admin.qualityMaxStreamBandwidth")} ({((streamBandwidthDraft * 8) / 1_000_000).toFixed(1)} Mbit/s)
           <input type="range" min={100_000} max={10_000_000} step={100_000} bind:value={streamBandwidthDraft} />
         </label>
         <p class="note">{t("admin.qualityMaxStreamBandwidthNote")}</p>

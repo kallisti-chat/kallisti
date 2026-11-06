@@ -170,6 +170,7 @@ export default {
     "OBS 30 oder neuer kann in deinen Sprachkanal streamen: Es erscheint wie eine Bildschirmübertragung. Sei hier verbunden und in einem Sprachkanal, in dem du sprechen darfst. In OBS unter Einstellungen → Stream: Dienst „WHIP“, Server {url}, Bearer-Token: dein Stream-Schlüssel.",
   "settings.obsOutput":
     "Einstellungen → Ausgabe (Erweitert): H.264-Video, Keyframe-Intervall 1 oder 2 s, Profil baseline oder main.",
+  "settings.obsLimits": "Server-Limits: bis zu {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "Keine B-Frames (wir leiten das Video unverändert weiter; mit ihnen zerfällt das Bild oder wird rosa): Bei x264 trage {option} in „x264-Optionen“ ein; bei NVENC, QuickSync oder AMF setze B-Frames auf 0.",
   "settings.obsNewKey": "Dein Stream-Schlüssel (nur jetzt sichtbar): {key}",
