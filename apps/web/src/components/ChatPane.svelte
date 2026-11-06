@@ -66,6 +66,7 @@
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
   import { detect, loadDetector, targetOf } from "../lib/translate/languages";
+  import type { Loading } from "../lib/translate/llm";
   import { tip } from "../lib/tooltip";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
@@ -889,7 +890,7 @@
   // message key, into the app's language.
   // source, to: the text translated (an edit makes a new one) and into
   // which language (the app's may change).
-  type Translation = { source: string; to: string } & ({ state: "loading"; percent?: number } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
+  type Translation = { source: string; to: string } & ({ state: "loading"; model?: Loading } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
   let translations = $state<Record<string, Translation>>({});
   const translateTo = $derived(targetOf(i18n.ui));
   const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
@@ -937,7 +938,7 @@
     const to = translateTo;
     translations = { ...translations, [key]: { source, to, state: "loading" } };
     const loading = () => translations[key]?.state === "loading" && translations[key].source === source;
-    const onProgress = (percent: number) => loading() && (translations = { ...translations, [key]: { source, to, state: "loading", percent } });
+    const onProgress = (model: Loading) => loading() && (translations = { ...translations, [key]: { source, to, state: "loading", model } });
     let done: Translation;
     try {
       const { translate } = await import("../lib/translate/engine");
@@ -1860,9 +1861,17 @@
           <p lang={translateTo}>{tr.text}</p>
           <span class="note">{t("chat.translatedFrom", { lang: languageName(tr.from) })}</span>
         {:else}
-          <span class="note"
-            >{tr.state === "error" ? tr.text : tr.percent === undefined ? t("chat.translating") : t("chat.translationDownload", { percent: tr.percent })}</span
-          >
+          {#if tr.state === "error"}
+            <span class="note">{tr.text}</span>
+          {:else}
+            <span class="note working"
+              >{!tr.model
+                ? t("chat.translating")
+                : "cached" in tr.model
+                  ? t("chat.translationLoad")
+                  : t("chat.translationDownload", { percent: tr.model.download })}</span
+            >
+          {/if}
         {/if}
       </div>
     {/if}
@@ -2896,6 +2905,20 @@
   .translation .note {
     font-size: 12px;
     color: var(--text-muted);
+  }
+  /* Work going on: a slow pulse (none with reduced motion). */
+  .translation .working {
+    animation: working 1.4s ease-in-out infinite;
+  }
+  @keyframes working {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .translation .working {
+      animation: none;
+    }
   }
   .edited {
     margin-left: 4px;

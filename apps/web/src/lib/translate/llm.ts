@@ -29,14 +29,17 @@ export const webGPU = () =>
     }
   })());
 
-// The download in percent, to whoever waits for the model.
-const waiting = new Set<(percent: number) => void>();
+// The model's loading, to whoever waits for it: its download in percent,
+// or loading from the browser's cache (no download).
+export type Loading = { download: number } | { cached: true };
+const waiting = new Set<(l: Loading) => void>();
 const files = new Map<string, { loaded: number; total: number }>();
+let cached = false;
 const progress = (p: Progress) => {
-  if (p.status !== "progress" || !p.file || !p.total) return;
+  if (cached || p.status !== "progress" || !p.file || !p.total) return;
   files.set(p.file, { loaded: p.loaded ?? 0, total: p.total });
   const [loaded, total] = [...files.values()].reduce(([l, t], f) => [l + f.loaded, t + f.total], [0, 0]);
-  for (const f of waiting) f(Math.floor((100 * loaded) / total));
+  for (const f of waiting) f({ download: Math.floor((100 * loaded) / total) });
 };
 
 // One model for the page, from the first server it is asked from.
@@ -46,6 +49,10 @@ const load = (base: string) =>
     files.clear(); // a new try counts from 0
     const { env, pipeline } = await import("@huggingface/transformers");
     const own = (path: string) => new URL(path, location.href).href;
+    // Kept by the browser already (transformers.js's cache, by URL)?
+    const model = own(`${base}/api/translation/llm/onnx/model_q4f16.onnx`);
+    cached = typeof caches !== "undefined" && !!(await caches.open(env.cacheKey).then((c) => c.match(model), () => undefined));
+    for (const f of waiting) f(cached ? { cached: true } : { download: 0 });
     env.allowLocalModels = false;
     env.remoteHost = own(`${base}/api/translation/`);
     env.remotePathTemplate = "{model}/";
@@ -61,7 +68,7 @@ const load = (base: string) =>
     throw e;
   }));
 
-export const translateLLM = async (text: string, from: string, to: string, base: string, context: Context, onProgress?: (percent: number) => void) => {
+export const translateLLM = async (text: string, from: string, to: string, base: string, context: Context, onProgress?: (l: Loading) => void) => {
   if (onProgress) waiting.add(onProgress);
   let generate: Generator;
   try {
