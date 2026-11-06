@@ -331,3 +331,22 @@ func TestBFramesWarnOnce(t *testing.T) {
 		t.Fatalf("told %v", told)
 	}
 }
+
+// Normal network jitter or socket queuing causes bursts of frames.
+// Ensure a burst of 30 frames does not trigger the fps rate limiter when within burst capacity.
+func TestFramerateBurstTolerance(t *testing.T) {
+	h, _, _ := hubWithViewer()
+	f := newFeed(h, 1, false, 1<<20, stream.IngestHooks{Keyframe: func() {}, Ended: func() {}})
+	f.limits = func() (int, int, int) { return 1 << 20, 4096, 120 }
+	var warned bool
+	f.warn = func(session uint32, text string) {
+		warned = true
+	}
+	f.picture(timed{picture: picture{data: []byte{1}, key: true, width: 1280, height: 720, codec: "avc1.42001f"}})
+	for range 30 {
+		f.picture(timed{picture: picture{data: []byte{1}}})
+	}
+	if warned {
+		t.Fatal("unexpected framerate warning on 30-frame jitter burst at 120fps limit")
+	}
+}
