@@ -321,6 +321,10 @@ func run() error {
 		mux.Handle("/api/stream", &stream.Handler{
 			Hub: builtinServer.streams, Redeem: builtinServer.streamTokens.Redeem,
 			AllowedOrigins: cfg.AllowedOrigins, BytesPerSecond: streamBytesPerSecond,
+			Limits: func() (int, int, int) {
+				q := builtinServer.srv.QualityLimits()
+				return q.BytesPerSecond, q.MaxSide, q.MaxFps
+			},
 		})
 		if cfg.Builtin.WHIPPort != 0 {
 			// Chat and voice go on without it (a name that did not resolve).

@@ -16,7 +16,9 @@
   import { isDesktop } from "../lib/desktop";
   import { outputDeviceSupported } from "../lib/voice/support";
   import { noiseLabel, type NoiseMode } from "../lib/voice/noise";
-  import { BUFFERS, bufferLabel, type PlaybackBuffer } from "../lib/voice/buffer";
+  import { BUFFER_MS, BUFFERS, bufferLabel, MAX_BUFFER_MS, MIN_BUFFER_MS, toBufferMs, type PlaybackBuffer } from "../lib/voice/buffer";
+  import type { AudioChannels } from "../lib/voice/opus";
+  import type { QualityLimits } from "../lib/textChannels";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import SaveStatus from "./SaveStatus.svelte";
@@ -43,6 +45,7 @@
     emoji,
     phone = false,
     start,
+    qualityLimits,
   }: {
     settings: Settings;
     level: number;
@@ -73,6 +76,8 @@
     phone?: boolean;
     // The category to open at (for example the account's, to set a password).
     start?: SectionId;
+    // Quality limits from the server.
+    qualityLimits?: QualityLimits;
   } = $props();
 
   // The categories (see CategoryDialog), and the one open.
@@ -347,6 +352,7 @@
           disabled={settings.musicMode}
           onchange={(e) => onChange({ noiseSuppression: e.currentTarget.value as NoiseMode })}
         >
+          <option value="off">{t("settings.noiseOff")}</option>
           <option value="browser">{t("settings.noiseStandard")}</option>
           <option value="strong">{t("settings.noiseStrong")}</option>
           <option value="strongest">{t("settings.noiseStrongest")}</option>
@@ -391,17 +397,87 @@
           </select>
         </label>
       {/if}
-      <label>
-        {t("settings.playbackBuffer")}
-        <select
-          value={settings.playbackBuffer}
-          onchange={(e) => onChange({ playbackBuffer: e.currentTarget.value as PlaybackBuffer })}
-        >
+
+      <div class="row">
+        <div class="header-with-value">
+          <span class="label">{t("settings.playbackBuffer")}</span>
+          <span class="value-readout">{toBufferMs(settings.playbackBuffer)} ms</span>
+        </div>
+        <input
+          type="range"
+          min={MIN_BUFFER_MS}
+          max={MAX_BUFFER_MS}
+          step="10"
+          list="buffer-ticks"
+          value={toBufferMs(settings.playbackBuffer)}
+          oninput={(e) => onChange({ playbackBuffer: Number(e.currentTarget.value) })}
+          aria-label={t("settings.playbackBuffer")}
+        />
+        <datalist id="buffer-ticks">
+          <option value="60" label="60 ms"></option>
+          <option value="120" label="120 ms"></option>
+          <option value="250" label="250 ms"></option>
+        </datalist>
+        <div class="presets">
           {#each BUFFERS as b (b)}
-            <option value={b}>{bufferLabel(b)}</option>
+            <button
+              type="button"
+              class="preset-btn"
+              class:selected={toBufferMs(settings.playbackBuffer) === BUFFER_MS[b]}
+              onclick={() => onChange({ playbackBuffer: b })}
+            >
+              {bufferLabel(b)}
+            </button>
           {/each}
+        </div>
+        <p class="hint">{t("settings.playbackBufferHint")}</p>
+      </div>
+
+      <div class="row">
+        <div class="header-with-value">
+          <span class="label">{t("settings.voiceBitrate")}</span>
+          <span class="value-readout">{Math.round((settings.voiceBitrate ?? 40_000) / 1000)} kbps</span>
+        </div>
+        <input
+          type="range"
+          min="16"
+          max={Math.round((qualityLimits?.maxBitrateVoice ?? 128_000) / 1000)}
+          step="1"
+          value={Math.round((settings.voiceBitrate ?? 40_000) / 1000)}
+          oninput={(e) => onChange({ voiceBitrate: Number(e.currentTarget.value) * 1000 })}
+          aria-label={t("settings.voiceBitrate")}
+        />
+        <p class="hint">{t("settings.voiceBitrateHint")}</p>
+      </div>
+
+      <div class="row">
+        <div class="header-with-value">
+          <span class="label">{t("settings.musicBitrate")}</span>
+          <span class="value-readout">{Math.round((settings.musicBitrate ?? 128_000) / 1000)} kbps</span>
+        </div>
+        <input
+          type="range"
+          min="32"
+          max={Math.round((qualityLimits?.maxBitrateMusic ?? 320_000) / 1000)}
+          step="8"
+          value={Math.round((settings.musicBitrate ?? 128_000) / 1000)}
+          oninput={(e) => onChange({ musicBitrate: Number(e.currentTarget.value) * 1000 })}
+          aria-label={t("settings.musicBitrate")}
+        />
+        <p class="hint">{t("settings.musicBitrateHint")}</p>
+      </div>
+
+      <label>
+        {t("settings.audioChannels")}
+        <select
+          value={settings.audioChannels ?? "auto"}
+          onchange={(e) => onChange({ audioChannels: e.currentTarget.value as AudioChannels })}
+        >
+          <option value="auto">{t("settings.audioChannelsAuto")}</option>
+          <option value="mono">{t("settings.audioChannelsMono")}</option>
+          <option value="stereo">{t("settings.audioChannelsStereo")}</option>
         </select>
-        <span class="hint">{t("settings.playbackBufferHint")}</span>
+        <span class="hint">{t("settings.audioChannelsHint")}</span>
       </label>
       <fieldset>
         <legend>{t("settings.inputMode")}</legend>
@@ -476,6 +552,16 @@
         <span class="hint">{t("settings.echoCancellationHint")}</span>
       </label>
       <label class="check">
+        <input
+          type="checkbox"
+          checked={settings.autoGainControl && !settings.musicMode}
+          disabled={settings.musicMode}
+          onchange={(e) => onChange({ autoGainControl: e.currentTarget.checked })}
+        />
+        <span>{t("settings.autoGainControl")}</span>
+        <span class="hint">{t("settings.autoGainControlHint")}</span>
+      </label>
+      <label class="check">
         <input type="checkbox" checked={settings.musicMode} onchange={(e) => onChange({ musicMode: e.currentTarget.checked })} />
         <span>{t("settings.musicMode")}</span>
         <span class="hint">{t("settings.musicModeHint")}</span>
@@ -494,6 +580,80 @@
         <span>{t("settings.streamPreviews")}</span>
         <span class="hint">{t("settings.streamPreviewsHint")}</span>
       </label>
+
+      <div class="row">
+        <span class="label">{t("settings.streamQualityScreen")}</span>
+        <div class="quality-selects">
+          <select
+            aria-label={t("media.screenResolution")}
+            value={settings.streamQuality.screen.height}
+            onchange={(e) =>
+              onChange({
+                streamQuality: {
+                  ...settings.streamQuality,
+                  screen: { ...settings.streamQuality.screen, height: Number(e.currentTarget.value) },
+                },
+              })}
+          >
+            {#each [480, 720, 1080].filter((h) => !qualityLimits?.maxSide || h <= qualityLimits.maxSide) as h (h)}
+              <option value={h}>{h}p</option>
+            {/each}
+          </select>
+          <select
+            aria-label={t("media.screenFrameRate")}
+            value={settings.streamQuality.screen.fps}
+            onchange={(e) =>
+              onChange({
+                streamQuality: {
+                  ...settings.streamQuality,
+                  screen: { ...settings.streamQuality.screen, fps: Number(e.currentTarget.value) },
+                },
+              })}
+          >
+            {#each [15, 30, 60].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
+              <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
+            {/each}
+          </select>
+        </div>
+        <p class="hint">{t("settings.streamQualityScreenHint")}</p>
+      </div>
+
+      <div class="row">
+        <span class="label">{t("settings.streamQualityCamera")}</span>
+        <div class="quality-selects">
+          <select
+            aria-label={t("media.cameraResolution")}
+            value={settings.streamQuality.camera.height}
+            onchange={(e) =>
+              onChange({
+                streamQuality: {
+                  ...settings.streamQuality,
+                  camera: { ...settings.streamQuality.camera, height: Number(e.currentTarget.value) },
+                },
+              })}
+          >
+            {#each [480, 720, 1080].filter((h) => !qualityLimits?.maxSide || h <= qualityLimits.maxSide) as h (h)}
+              <option value={h}>{h}p</option>
+            {/each}
+          </select>
+          <select
+            aria-label={t("media.cameraFrameRate")}
+            value={settings.streamQuality.camera.fps}
+            onchange={(e) =>
+              onChange({
+                streamQuality: {
+                  ...settings.streamQuality,
+                  camera: { ...settings.streamQuality.camera, fps: Number(e.currentTarget.value) },
+                },
+              })}
+          >
+            {#each [15, 30, 60].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
+              <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
+            {/each}
+          </select>
+        </div>
+        <p class="hint">{t("settings.streamQualityCameraHint")}</p>
+      </div>
     {:else if id === "notifications"}
       <label class="check">
         <input
@@ -787,5 +947,47 @@
   .my-emoji h4 {
     margin: 0;
     font-size: 14px;
+  }
+  .header-with-value {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .value-readout {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .presets {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .preset-btn {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    background: var(--bg-rail);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: center;
+  }
+  .preset-btn:hover {
+    background: var(--bg-hover);
+  }
+  .preset-btn.selected {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+  .quality-selects {
+    display: flex;
+    gap: 8px;
+  }
+  .quality-selects select {
+    flex: 1;
   }
 </style>

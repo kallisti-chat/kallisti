@@ -335,6 +335,19 @@
   $effect(() => capture?.setEchoCancellation(echoCancellation));
   const musicMode = $derived(prefs.musicMode);
   $effect(() => capture?.setMusicMode(musicMode));
+  const autoGainControl = $derived(prefs.autoGainControl);
+  $effect(() => capture?.setAutoGainControl(autoGainControl));
+  const audioChannels = $derived(prefs.audioChannels);
+  $effect(() => capture?.setAudioChannels(audioChannels));
+  const voiceBitrate = $derived(prefs.voiceBitrate);
+  const musicBitrate = $derived(prefs.musicBitrate);
+  $effect(() => capture?.setBitrates(voiceBitrate, musicBitrate));
+  const qualityLimits = $derived(connection.text.qualityLimits);
+  $effect(() => {
+    if (qualityLimits) {
+      capture?.setLimits(qualityLimits.maxBitrateVoice, qualityLimits.maxBitrateMusic);
+    }
+  });
   $effect(() => connection.playback?.setOutputDevice(prefs.outputDeviceId));
   $effect(() => connection.playback?.setBuffer(prefs.playbackBuffer));
   // Opens the microphone while it is used (see micWanted), and reopens it
@@ -2143,6 +2156,8 @@
     recording={text.recording}
     onLoadRecordings={staffRecords ? () => connection.manage({ recordings: true }) : undefined}
     onDownloadRecording={connection.downloadRecording}
+    qualityLimits={text.qualityLimits}
+    onSaveQualityLimits={mayChangeGuests(server, text) ? (q) => connection.request({ qualityLimits: q }) : undefined}
     onClose={() => (showModeration = false)}
     {phone}
   />
@@ -2163,6 +2178,7 @@
     noiseRunning={capture?.running ?? null}
     onChange={settings.update}
     onEcho={capture ? (on) => capture?.setEcho(on) : undefined}
+    qualityLimits={text.qualityLimits}
     {account}
     push={pushName ? { base: connection.httpBase, name: pushName, prefs: pushPrefs } : undefined}
     profile={me && {

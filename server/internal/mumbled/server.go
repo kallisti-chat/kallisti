@@ -68,6 +68,8 @@ type Config struct {
 	GuestAccount func(name string) bool
 	// OnGuestsReadOnlyChanged runs after an admin changed the setting.
 	OnGuestsReadOnlyChanged func()
+	// OnQualityLimitsChanged runs after an admin changed voice or stream quality limits.
+	OnQualityLimitsChanged func(QualityLimits)
 	// OnRolesChanged runs after admins or moderators changed (see Roles).
 	OnRolesChanged func()
 	// OnUserChanged hears registrations made or renamed (name), or removed
@@ -288,7 +290,11 @@ func New(cfg Config) (*Server, error) {
 			return nil, err
 		}
 		state.Captcha = min(state.Captcha, uint32(len(CaptchaLevels)-1))
+		if state.QualityLimits, err = cfg.DB.QualityLimits(); err != nil {
+			return nil, err
+		}
 	} else {
+		state.QualityLimits = DefaultQualityLimits()
 		state.Channels[0].ACLs, state.Channels[0].Groups = DefaultRootACL()
 	}
 	srv := &Server{
