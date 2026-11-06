@@ -116,15 +116,15 @@ func nonceAuthor(n NewMessage) string {
 	return "name:" + n.Author
 }
 
-// MessageByNonce is the author's message sent with n.Nonce in the day
+// MessageByNonce is the author's message sent with n.Nonce to n's channel in the day
 // before n.At (ErrNotFound: none, or n has no nonce).
 func (s *Store) MessageByNonce(n NewMessage) (Message, error) {
 	if n.Nonce == "" {
 		return Message{}, ErrNotFound
 	}
 	var id int64
-	err := s.db.QueryRow(`SELECT id FROM messages WHERE nonce_author = ? AND nonce = ? AND created_at >= ?`,
-		nonceAuthor(n), n.Nonce, n.At.Add(-NonceTTL).UnixMilli()).Scan(&id)
+	err := s.db.QueryRow(`SELECT id FROM messages WHERE nonce_author = ? AND nonce = ? AND channel_id = ? AND created_at >= ?`,
+		nonceAuthor(n), n.Nonce, n.ChannelID, n.At.Add(-NonceTTL).UnixMilli()).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Message{}, ErrNotFound
 	}
@@ -212,6 +212,11 @@ CREATE INDEX IF NOT EXISTS messages_by_channel ON messages(channel_id, id);
 CREATE TABLE IF NOT EXISTS store_meta (
 	key   TEXT PRIMARY KEY,
 	value INTEGER NOT NULL
+);
+-- Random keys of the server's own (see Secret).
+CREATE TABLE IF NOT EXISTS secrets (
+	name  TEXT PRIMARY KEY,
+	value BLOB NOT NULL
 );
 -- The newest message a registered user (Mumble user id) read in a channel.
 CREATE TABLE IF NOT EXISTS read_marks_by_user (
@@ -983,6 +988,16 @@ func (s *Store) MessageByUpload(key string) (Message, error) {
 		return Message{}, err
 	}
 	return s.MessageByID(id)
+}
+
+// UploadChannel is the channel of the message an upload is attached to.
+func (s *Store) UploadChannel(key string) (int64, error) {
+	var channel int64
+	err := s.db.QueryRow(`SELECT m.channel_id FROM uploads u JOIN messages m ON m.id = u.message_id WHERE u.key = ?`, key).Scan(&channel)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrNotFound
+	}
+	return channel, err
 }
 
 const uploadColumns = `id, key, name, type, size, author, created_at, used, width, height, duration, preview, description`

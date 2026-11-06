@@ -354,3 +354,5 @@
 - [x] [Delete users: also their web account](issues/delete-account-on-unregister.md)
 - [x] [Localization](issues/localization.md)
 - [x] [Apps: voice over UDP on Kallisti servers](issues/app-udp-voice-kallisti.md)
+- [x] [Private-room media (PR #18) without broken apps or slow reads](issues/private-room-media.md)
+  - [x] [Private-room media: a mode without signed links](issues/private-room-media-no-signed-links.md)

@@ -94,5 +94,52 @@ class ImagePullSecretsTest(unittest.TestCase):
         self.assertIn("Set host", rendered.stderr)
 
 
+class PrivateRoomMediaTest(unittest.TestCase):
+    def test_opt_in_only(self):
+        for value, enabled in (("false", False), ("true", True)):
+            with self.subTest(value=value):
+                rendered = subprocess.run(
+                    ["helm", "template", "kallisti", str(CHART), "-f", str(FIXTURE),
+                     "--set", "experimentalPrivateRoomMedia=" + value],
+                    text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(rendered.returncode, 0, rendered.stderr)
+                deployment = next(item for item in yaml.safe_load_all(rendered.stdout)
+                                  if item["kind"] == "Deployment")
+                containers = deployment["spec"]["template"]["spec"]["containers"]
+                for container in containers:
+                    flags = [entry for entry in container.get("env", [])
+                             if entry["name"] == "EXPERIMENTAL_PRIVATE_ROOM_MEDIA"]
+                    expected = ([{"name": "EXPERIMENTAL_PRIVATE_ROOM_MEDIA", "value": "1"}]
+                                if enabled and container["name"] == "kallisti" else [])
+                    self.assertEqual(flags, expected)
+
+    def test_no_signed_links(self):
+        for media, unsigned, expected in (("true", "true", ["1"]), ("true", "false", []), ("false", "true", [])):
+            with self.subTest(media=media, unsigned=unsigned):
+                rendered = subprocess.run(
+                    ["helm", "template", "kallisti", str(CHART), "-f", str(FIXTURE),
+                     "--set", "experimentalPrivateRoomMedia=" + media,
+                     "--set", "privateRoomMediaNoSignedLinks=" + unsigned],
+                    text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(rendered.returncode, 0, rendered.stderr)
+                deployment = next(item for item in yaml.safe_load_all(rendered.stdout)
+                                  if item["kind"] == "Deployment")
+                kallisti = next(c for c in deployment["spec"]["template"]["spec"]["containers"]
+                                if c["name"] == "kallisti")
+                self.assertEqual([e["value"] for e in kallisti.get("env", [])
+                                  if e["name"] == "PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS"], expected)
+
+    def test_rejects_string_boolean(self):
+        rendered = subprocess.run(
+            ["helm", "template", "kallisti", str(CHART), "-f", str(FIXTURE),
+             "--set-string", "experimentalPrivateRoomMedia=false"],
+            text=True, capture_output=True, check=False,
+        )
+        self.assertNotEqual(rendered.returncode, 0)
+        self.assertIn("experimentalPrivateRoomMedia", rendered.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

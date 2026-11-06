@@ -45,6 +45,10 @@ brackets.
   in front of a Murmur it is read at each start.
 - `UPLOAD_DIR` (`uploads`), `UPLOAD_MAX_MB` (10 per file),
   `UPLOAD_QUOTA_MB` (100 per user per day).
+- `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): files of private
+  rooms only for who may read the room (built-in server only). See
+  [private-room media](#private-room-media-experiment).
+  `PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS=1` with it: no signed links (see there).
 - `BACKUP_DIR` (none: no backups) and `BACKUP_KEEP` (7): see
   [backups](backups.md).
 - `LINK_PREVIEWS=0`: the server fetches no pages for link previews. By
@@ -179,3 +183,46 @@ shows the server address
 
 - `VITE_PROXY_URL` (web client, build time): the WebSocket address of another
   server (`wss://host/ws`); the API address comes from it.
+
+## Private-room media experiment
+
+Without it, anyone with a file's link can load the file. With
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1`, a room's files (originals, previews,
+downloads) follow the room's current access, as its chat does. Threads follow
+their channel. Files of public rooms stay readable by everyone; files in
+direct messages keep their old rule (anyone with the link).
+
+Enable it in the server environment and restart: in Compose,
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "1"` in the `kallisti` service's
+`environment`; in the Helm chart, `experimentalPrivateRoomMedia: true`. It
+needs the built-in Mumble server: with `MUMBLE_HOST` the server does not start.
+Turn it off and restart, and file links are public again.
+
+How it works:
+
+- The server gives file links only to a chat's readers, in its messages.
+  These links are signed and work for a day (24 to 25 hours), with no session,
+  as Discord's. So the web client, the desktop and Android apps, other servers'
+  tabs and Mumble clients (links in their chat) all load the files. A client
+  that stays open asks for fresh links before they expire.
+- A link copied out of the chat works for anyone until it expires. A member
+  removed from the room also keeps the links they have until then.
+- A link without a signature (an old one, or a copied link without its query)
+  works for a browser logged in to this server whose account may read the
+  room. Otherwise the answer is 404, the same as for a file that does not
+  exist.
+- Files not yet sent have no room: 404 (the composer shows its own previews).
+
+Without signed links (`PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS=1`, Helm
+`privateRoomMediaNoSignedLinks: true`): messages carry plain links, and every
+file request needs a browser logged in to this server whose account may read
+the room. No link works outside the chat, not even for a day. The price: the
+desktop and Android apps, other servers' tabs and Mumble clients show the files
+of private rooms as broken (their pictures and videos send no session), and
+each request checks the session and the room again (no browser cache).
+
+Caches: a signed link's file may stay in the reader's browser cache
+(`private`); other answers are `private, no-store`. The server's link previews
+show no picture from such answers. Files that were served before the setting
+was on may still be in shared caches (one year, `public`): enabling it cannot
+take those back.

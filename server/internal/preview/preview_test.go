@@ -140,6 +140,29 @@ func TestAVIFImage(t *testing.T) {
 	}
 }
 
+// Images their server keeps out of shared caches (a private room's file,
+// see files.Handler): a card without, as this cache would share them.
+func TestPrivateImagesAreLeftOut(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/pic.png" {
+			w.Header().Set("Cache-Control", r.URL.Query().Get("cc"))
+			w.Write(pngOf(10, 10))
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `<head><title>Hello</title><meta property="og:image" content="/pic.png?cc=%s"></head>`, url.QueryEscape(r.URL.Query().Get("cc")))
+	}))
+	defer srv.Close()
+	f := New()
+	f.allow = local
+	for cc, shown := range map[string]bool{"private, no-store": false, "Private, max-age=60": false, "no-store": false, "public, max-age=60": true, "": true} {
+		p := f.Get(context.Background(), srv.URL+"/page?cc="+url.QueryEscape(cc))
+		if p == nil || (p.Image != "") != shown {
+			t.Errorf("%q: %+v", cc, p)
+		}
+	}
+}
+
 // Images too large to show (by their header) or broken: a card without.
 func TestOversizedImagesAreLeftOut(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

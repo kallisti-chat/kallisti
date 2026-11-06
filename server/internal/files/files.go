@@ -24,6 +24,7 @@ import (
 	"unicode"
 
 	"kallisti.chat/server/internal/config"
+	"kallisti.chat/server/internal/filelink"
 	"kallisti.chat/server/internal/mediasize"
 	"kallisti.chat/server/internal/sidecar"
 	"kallisti.chat/server/internal/store"
@@ -58,6 +59,12 @@ type Handler struct {
 	// Bytes one author may upload in 24 hours.
 	QuotaBytes int64
 	Now        func() time.Time
+	// AuthorizeRead is the experimental private-room media gate for a link
+	// without a valid signature from FileLinks (nil: files are public). It
+	// runs before files are opened, also for previews, downloads, ranges
+	// and conditional requests.
+	AuthorizeRead func(*http.Request, store.Upload) bool
+	FileLinks     *filelink.Signer
 	// Redeem checks an upload token and returns the uploader's name.
 	Redeem func(token string) (string, bool)
 	// RedeemEmoji checks a custom emoji upload token: who adds which
@@ -303,12 +310,22 @@ func servedType(u store.Upload, f io.ReaderAt) string {
 }
 
 func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
+	if h.AuthorizeRead != nil {
+		// Public rooms can become private. Do not let a previously public
+		// response bypass the next request's room permission check.
+		w.Header().Set("Cache-Control", "private, no-store")
+	}
 	key, _, _ := strings.Cut(strings.TrimPrefix(r.URL.Path, "/files/"), "/")
 	u, err := h.Store.UploadByKey(key)
 	// ?preview: its preview (see previews.go), if it has one; ?download:
 	// the file as an attachment.
 	preview := r.URL.Query().Has("preview")
 	if err != nil || !plainKey(u.Key) || preview && !u.HasPreview() {
+		http.NotFound(w, r)
+		return
+	}
+	signed := h.FileLinks != nil && h.FileLinks.Valid(u.Key, r.URL.Query())
+	if h.AuthorizeRead != nil && !signed && !h.AuthorizeRead(r, u) {
 		http.NotFound(w, r)
 		return
 	}
@@ -340,8 +357,15 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	hd.Set("X-Content-Type-Options", "nosniff")
 	hd.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	// The key is random and the content never changes.
-	hd.Set("Cache-Control", "public, max-age=31536000, immutable")
+	// The key is random and the content never changes. A private room's
+	// file: only the reader's own cache, and only by a signed link (a
+	// session's answer may change).
+	switch {
+	case h.AuthorizeRead == nil:
+		hd.Set("Cache-Control", "public, max-age=31536000, immutable")
+	case signed:
+		hd.Set("Cache-Control", "private, max-age=31536000, immutable")
+	}
 	http.ServeContent(w, r, "", u.CreatedAt, f)
 }
 

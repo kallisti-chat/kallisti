@@ -117,6 +117,7 @@
   import { closeDirect, quietDirects, reopenDirect, togglePin, visibleDirects } from "../lib/directList";
   import { browserPushSupport, syncPush, type PushPrefs } from "../lib/push";
   import { previewKey, previewsToAsk } from "../lib/linkPreview";
+  import { fileLinksToAsk, linkKey } from "../lib/fileLinks";
   import { shouldSendTyping, stoppedTyping, typed, typingNames, typingText, type Typers } from "../lib/typing";
   import { gainOf, userAudioFor } from "../lib/userAudio";
   import { loadSelfState, micWanted, saveSelfState, soundHint } from "../lib/voice";
@@ -940,6 +941,20 @@
     for (const m of asks) previewsAsked.add(previewKey(m));
     const ids = asks.map((m) => m.id);
     for (let i = 0; i < ids.length; i += 30) connection.previews(ids.slice(i, i + 30));
+  });
+  // Fresh file links for the open chat's messages before theirs expire
+  // (private-room media, see lib/fileLinks); checked every few minutes.
+  const linksAsked = new Set<string>();
+  let linksNow = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (linksNow = Date.now()), 300_000);
+    return () => clearInterval(timer);
+  });
+  $effect(() => {
+    const asks = [chatId, threadId].flatMap((id) => (id === null ? [] : fileLinksToAsk(text.messages[id] ?? [], linksAsked, linksNow)));
+    for (const m of asks) linksAsked.add(linkKey(m, linksNow));
+    const ids = asks.map((m) => m.id);
+    for (let i = 0; i < ids.length; i += 100) connection.fileLinks(ids.slice(i, i + 100));
   });
   // Who types where (see lib/typing). typingNow ticks while someone types,
   // so names go away in time.

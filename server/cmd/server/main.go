@@ -28,6 +28,7 @@ import (
 	"kallisti.chat/server/internal/config"
 	"kallisti.chat/server/internal/emoji"
 	"kallisti.chat/server/internal/fedi"
+	"kallisti.chat/server/internal/filelink"
 	"kallisti.chat/server/internal/files"
 	"kallisti.chat/server/internal/mumbled"
 	"kallisti.chat/server/internal/preview"
@@ -193,14 +194,26 @@ func run() error {
 		pushes = svc
 	}
 	dial, upstream := murmurDialer(cfg)
-	cleanup := func(time.Time) {}                // guest accounts (built-in server)
-	var avatars http.Handler = mumbled.NoAvatars // Murmur's avatars are not ours to read
+	cleanup := func(time.Time) {}                                               // guest accounts (built-in server)
+	var avatars http.Handler = mumbled.NoAvatars                                // Murmur's avatars are not ours to read
+	if cfg.ExperimentalPrivateRoomMedia && !cfg.PrivateRoomMediaNoSignedLinks { // the built-in server's (see config)
+		key, err := db.Secret("file_links")
+		if err != nil {
+			return fmt.Errorf("file link key: %w", err)
+		}
+		links := &filelink.Signer{Key: key, Now: time.Now}
+		hub.FileLinks, fileHandler.FileLinks = links, links
+	}
 	if cfg.Builtin != nil {
 		mumble, err := startBuiltin(cfg.Builtin, db, hub, publicBase(cfg.AllowedOrigins), deleteWebAccount(db, accounts.DeleteAccount))
 		if err != nil {
 			return err
 		}
 		builtinServer = mumble
+		if cfg.ExperimentalPrivateRoomMedia {
+			fileHandler.AuthorizeRead = privateRoomMedia(accounts, hub, mumble.srv)
+			slog.Warn("experimental private-room media enabled", "signedLinks", !cfg.PrivateRoomMediaNoSignedLinks)
+		}
 		named.Store(mumble.srv)
 		defer mumble.close()
 		dial, upstream = mumble.dial, "built-in on "+cfg.Builtin.Listen

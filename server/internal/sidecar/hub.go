@@ -23,6 +23,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"kallisti.chat/server/internal/emoji"
+	"kallisti.chat/server/internal/filelink"
 	"kallisti.chat/server/internal/homes"
 	"kallisti.chat/server/internal/msgrules"
 	"kallisti.chat/server/internal/mumble"
@@ -87,9 +88,12 @@ type Voice interface {
 	// channels). Only admins and moderators change them.
 	Sees(session, channel uint32) bool
 	// UserSees and UserMayRead are Sees and MayRead for a registered user
-	// by id, also when it is not connected (push notifications).
+	// by id, also when it is not connected (push notifications);
+	// GuestSees and GuestMayRead the same for a guest.
 	UserSees(user, channel uint32) bool
 	UserMayRead(user, channel uint32) bool
+	GuestSees(channel uint32) bool
+	GuestMayRead(channel uint32) bool
 	// UserBanned: a registered user is banned (it gets no pushes).
 	UserBanned(user uint32) bool
 	Private() []PrivateChannel
@@ -265,6 +269,9 @@ type Hub struct {
 	UploadMax int64
 	// OnUploadDeleted removes the file of a deleted message's attachment.
 	OnUploadDeleted func(key string)
+	// FileLinks signs the file links in messages (private-room media; nil:
+	// off). Set before the hub serves.
+	FileLinks *filelink.Signer
 	// Avatars: online users' pictures are at /api/avatars/<name> too, so
 	// clients need not fetch them on the voice connection.
 	Avatars bool
@@ -533,12 +540,24 @@ func FileURL(u store.Upload) string {
 	return "/files/" + u.Key + "/" + url.PathEscape(u.Name)
 }
 
+// fileURL is FileURL for a chat's readers (query: "preview" or none),
+// signed with private-room media on.
+func (h *Hub) fileURL(u store.Upload, query string) string {
+	if h.FileLinks != nil {
+		query = strings.TrimPrefix(query+"&"+h.FileLinks.Query(u.Key), "&")
+	}
+	if query == "" {
+		return FileURL(u)
+	}
+	return FileURL(u) + "?" + query
+}
+
 // previewURL is where its preview is ("": none).
-func previewURL(u store.Upload) string {
+func (h *Hub) previewURL(u store.Upload) string {
 	if !u.HasPreview() {
 		return ""
 	}
-	return FileURL(u) + "?preview"
+	return h.fileURL(u, "preview")
 }
 
 // previewType is its preview's type ("": none).
@@ -558,14 +577,14 @@ func (h *Hub) UploadPreview(key string) {
 		return
 	}
 	if ch, ok := h.chatOf(m.ChannelID); ok {
-		h.sendTo(ch, map[string]any{"type": "message-edited", "message": toWire(m)})
+		h.sendTo(ch, map[string]any{"type": "message-edited", "message": h.toWire(m)})
 	}
 }
 
-func toWire(m store.Message) wireMessage { return toWireFor(m, nil) }
+func (h *Hub) toWire(m store.Message) wireMessage { return h.toWireFor(m, nil) }
 
 // toWireFor: for one reader (see toWirePoll).
-func toWireFor(m store.Message, viewer *uint32) wireMessage {
+func (h *Hub) toWireFor(m store.Message, viewer *uint32) wireMessage {
 	w := wireMessage{ID: m.ID, Channel: m.ChannelID, Author: m.Author, Text: m.Text, At: m.CreatedAt.UnixMilli(), Verified: m.Verified, AuthorID: m.AuthorID, Webhook: m.Webhook}
 	if !m.EditedAt.IsZero() {
 		w.Edited = m.EditedAt.UnixMilli()
@@ -577,8 +596,8 @@ func toWireFor(m store.Message, viewer *uint32) wireMessage {
 		w.Reply = &wireQuote{ID: r.ID, Author: r.Author, Text: shorten(r.Text, quoteLength), Webhook: r.Webhook}
 	}
 	for _, u := range m.Uploads {
-		w.Uploads = append(w.Uploads, wireUpload{URL: FileURL(u), Name: u.Name, Type: u.Type, Size: u.Size, Width: u.Width, Height: u.Height,
-			Duration: u.Duration, Preview: previewURL(u), PreviewType: previewType(u), Description: u.Description})
+		w.Uploads = append(w.Uploads, wireUpload{URL: h.fileURL(u, ""), Name: u.Name, Type: u.Type, Size: u.Size, Width: u.Width, Height: u.Height,
+			Duration: u.Duration, Preview: h.previewURL(u), PreviewType: previewType(u), Description: u.Description})
 	}
 	if len(w.Uploads) > 0 {
 		w.Upload = &w.Uploads[0]
@@ -629,7 +648,7 @@ type request struct {
 	Moderator   bool             `json:"moderator"`   // set-moderator
 	Admin       bool             `json:"admin"`       // set-admin
 	Users       []uint32         `json:"users"`       // set-listen-only: who may speak
-	Messages    []int64          `json:"messages"`    // previews
+	Messages    []int64          `json:"messages"`    // previews, file-links
 	Emoji       string           `json:"emoji"`       // react; add-user-emoji, remove-emoji-image; sticker-token, rename-sticker: the related emoji
 	Sticker     int64            `json:"sticker"`     // send: a sticker message; rename-sticker, delete-sticker
 	Description string           `json:"description"` // sticker-token, rename-sticker
@@ -766,6 +785,9 @@ func (c *Conn) Handle(raw []byte) {
 		return
 	case "previews":
 		c.previews(*id, req)
+		return
+	case "file-links":
+		c.fileLinks(*id, req)
 		return
 	case "set-moderator", "set-admin":
 		// The voice server reports the change (RolesChanged).
@@ -985,7 +1007,7 @@ func (h *Hub) storeMumble(from mumble.Identity, where chat, text string, images 
 			return
 		}
 		n, last = n+1, m.ID
-		h.sendTo(where, map[string]any{"type": "message", "message": toWire(m)})
+		h.sendTo(where, map[string]any{"type": "message", "message": h.toWire(m)})
 		h.pushFor(where, m)
 	}
 	// Only registered users' images are kept (with their upload quota):
@@ -1054,7 +1076,7 @@ func (c *Conn) history(req request) {
 	}
 	wire := make([]wireMessage, len(msgs))
 	for i, m := range msgs {
-		wire[i] = toWireFor(m, c.viewer())
+		wire[i] = c.hub.toWireFor(m, c.viewer())
 	}
 	c.send(map[string]any{"type": "history", "channel": req.Channel, "messages": wire, "more": more})
 }
@@ -1069,7 +1091,7 @@ func (c *Conn) post(id mumble.Identity, req request, ch chat) {
 	stored := func() bool {
 		m, err := c.hub.store.MessageByNonce(n)
 		if err == nil {
-			c.send(map[string]any{"type": "message", "message": toWire(m), "nonce": req.Nonce})
+			c.send(map[string]any{"type": "message", "message": c.hub.toWire(m), "nonce": req.Nonce})
 		}
 		return err == nil
 	}
@@ -1155,7 +1177,7 @@ func (h *Hub) deliver(from mumble.Identity, ch chat, m store.Message, by *Conn, 
 	if ch.parent != 0 {
 		h.threadFollowers(from, ch, m)
 	}
-	ev := map[string]any{"type": "message", "message": toWire(m)}
+	ev := map[string]any{"type": "message", "message": h.toWire(m)}
 	mine := ev
 	if nonce != "" {
 		mine = map[string]any{"type": "message", "message": ev["message"], "nonce": nonce}
@@ -1233,7 +1255,7 @@ func (h *Hub) mumbleText(m store.Message) string {
 	for _, u := range m.Uploads {
 		file := "[" + u.Name + "]"
 		if h.publicBase != "" {
-			file = h.publicBase + FileURL(u)
+			file = h.publicBase + h.fileURL(u, "")
 		}
 		text = strings.TrimSpace(text + " " + file)
 	}
