@@ -62,6 +62,12 @@ brackets.
   Hugging Face, checked by SHA-256) and keeps it in `TRANSLATION_DIR`
   (`translation-models` next to the database). Clients get models only
   from the server.
+- `TRANSLATION_LLM=0`: no "Better translation" model (Hy-MT2, 1.4 GB, for
+  clients with WebGPU). By default the server fetches it the first time a
+  client turns it on and asks; that first request waits until the server
+  has all of it (about a minute on a fast line). A reverse proxy with a short
+  read timeout can end that request first: the client then translates with
+  the smaller models, and the next request gets the model.
 - `FEDI_LOGIN=0`: no "Log in with the fediverse". By default users can
   log in, create accounts and link accounts with a fediverse account
   (Mastodon API: Mastodon, Pleroma/Akkoma, GoToSocial, ...). It needs the

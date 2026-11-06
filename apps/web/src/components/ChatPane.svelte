@@ -898,7 +898,9 @@
   // the languages are told again.
   let languages = new WeakMap<object, { text: string; lang: string | null }>();
   let detector = $state(false);
-  void loadDetector().then(() => ((languages = new WeakMap()), (detector = true)));
+  // When the browser is idle: it is about 300 kB.
+  const idle = (f: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(f, { timeout: 5000 }) : setTimeout(f, 2000));
+  idle(() => void loadDetector().then(() => ((languages = new WeakMap()), (detector = true))));
   const languageOf = (m: ChatMessage | DisplayMessage) => {
     void detector;
     let found = languages.get(m);
@@ -987,7 +989,7 @@
   // (the browser's own menu), nor where another menu opened.
   const messageMenu = (e: MouseEvent, m: ChatMessage | DisplayMessage) => {
     if (e.defaultPrevented || !e.isTrusted || matchMedia("(hover: none)").matches) return;
-    if ((e.target as Element).closest?.("a, img, video, audio") || getSelection()?.toString()) return;
+    if ((e.target as Element).closest?.("a, img, video, audio, textarea, input, [contenteditable]") || getSelection()?.toString()) return;
     if (!sheetItems(m).length) return;
     e.preventDefault();
     menuFor = { m, x: e.clientX, y: e.clientY };
@@ -1711,6 +1713,7 @@
     <li class="line" class:first={i === 0} class:mentioned={pingsMe(pingText(m), group.actorName, replyPing(m as DisplayMessage), me, allOf(m))}
       class:flash={idOf(m) !== undefined && idOf(m) === flashed}
       class:sheet-open={sheetMessage === m}
+      class:menu-open={menuFor?.m === m}
       use:hold={() => openSheet(m)}
       oncontextmenu={(e) => messageMenu(e, m)}
       data-message={idOf(m)}>
@@ -1997,7 +2000,7 @@
       type="button"
       aria-label={t("chat.messageActions")}
       title={t("chat.messageActions")}
-      aria-haspopup="menu"
+      aria-haspopup="dialog"
       aria-expanded={menuFor?.m === m}
       onclick={(e) => {
         const box = e.currentTarget.getBoundingClientRect();
@@ -2378,7 +2381,8 @@
   .line.first {
     margin-top: 16px;
   }
-  .line:hover {
+  .line:hover,
+  .line.menu-open {
     background: rgb(0 0 0 / 0.08);
   }
   .gutter {
@@ -2728,6 +2732,7 @@
   }
   .line:hover .actions,
   .line:focus-within .actions,
+  .line.menu-open .actions,
   .actions.confirming {
     opacity: 1;
   }

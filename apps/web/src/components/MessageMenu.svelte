@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import ContextMenu from "./ContextMenu.svelte";
   import Icon from "./Icon.svelte";
   import type { SheetItem } from "./MessageSheet.svelte";
@@ -9,8 +10,10 @@
   // (confirm) asks here.
   let { x, y, anchor, items, onClose }: { x: number; y: number; anchor?: HTMLElement; items: SheetItem[]; onClose: () => void } = $props();
   let asking = $state<SheetItem | null>(null);
+  let confirmButton: HTMLButtonElement | undefined = $state();
   const run = (item: SheetItem) => {
-    if (item.confirm && asking !== item) return void (asking = item);
+    // The question replaces the list: focus goes to its button (keyboard).
+    if (item.confirm && asking !== item) return void ((asking = item), tick().then(() => confirmButton?.focus()));
     onClose();
     item.run();
   };
@@ -19,7 +22,7 @@
 <ContextMenu {x} {y} {anchor} label={t("chat.messageActions")} {onClose}>
   {#if asking}
     <p class="ask">{asking.confirm}</p>
-    <button type="button" class="danger" onclick={() => run(asking!)}>{asking.label}</button>
+    <button type="button" class="danger" bind:this={confirmButton} onclick={() => run(asking!)}>{asking.label}</button>
     <button type="button" onclick={() => (asking = null)}>{t("common.cancel")}</button>
   {:else}
     {#each items as item (item.label)}
