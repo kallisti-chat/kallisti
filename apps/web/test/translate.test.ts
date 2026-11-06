@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detect, registryOf, route, targetOf } from "../src/lib/translate/languages";
+import { detect, reachable, registryOf, targetOf } from "../src/lib/translate/languages";
 
 describe("translation languages", () => {
   it("tells the language of a chat message by its script and common words", () => {
@@ -17,6 +17,12 @@ describe("translation languages", () => {
     expect(detect("ok")).toBeNull();
   });
 
+  it("does not take English with single letters, kaomoji or Chinese names for another language", () => {
+    for (const line of ["fix a typo in a comment", "a bug in a test", "const a = b || a", "¯\\_(ツ)_/¯ no idea", "talked to 王伟 about it today, he said it was fine"])
+      expect([line, detect(line)]).not.toEqual([line, expect.stringMatching(/^(pt|it|ja|zh)/)]);
+    expect(detect("talked to 王伟 about it today, he said it was fine")).toBe("en");
+  });
+
   it("translates into the app's language", () => {
     expect(targetOf("zh-Hans")).toBe("zh");
     expect(targetOf("zh-Hant")).toBe("zh-Hant");
@@ -26,10 +32,9 @@ describe("translation languages", () => {
 
   it("goes straight, or through English", () => {
     const pairs = new Set(["zh-en", "en-zh", "en-de", "de-en"]);
-    expect(route("zh", "en", pairs)).toEqual([["zh", "en"]]);
-    expect(route("zh", "de", pairs)).toEqual([["zh", "en"], ["en", "de"]]);
-    expect(route("zh", "zh", pairs)).toEqual([]);
-    expect(route("ja", "en", pairs)).toBeNull();
+    expect(reachable("zh", "en", pairs)).toBe(true);
+    expect(reachable("zh", "de", pairs)).toBe(true);
+    expect(reachable("ja", "en", pairs)).toBe(false);
   });
 
   it("lists the server's models for the translator, at the server", () => {
