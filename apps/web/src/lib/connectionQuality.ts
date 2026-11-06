@@ -1,4 +1,4 @@
-import { BUFFERS, type PlaybackBuffer } from "./voice/buffer";
+import { toBufferMs, type PlaybackBuffer } from "./voice/buffer";
 import { t } from "./i18n.svelte";
 
 // The connection info next to "Voice connected": ping and late or lost
@@ -50,8 +50,17 @@ export const qualityLevel = (rtt: number | null, bad: number | null): Level | nu
 
 // Late audio from "fair" on (see LIMITS): suggest the next playback
 // buffer, if there is one.
-export const biggerBuffer = (late: number | null, buffer: PlaybackBuffer): PlaybackBuffer | null =>
-  late !== null && late >= LIMITS[0]![2] ? (BUFFERS[BUFFERS.indexOf(buffer) + 1] ?? null) : null;
+export const biggerBuffer = (late: number | null, buffer: PlaybackBuffer): PlaybackBuffer | null => {
+  if (late === null || late < LIMITS[0]![2]) return null;
+  if (buffer === "low") return "medium";
+  if (buffer === "medium") return "high";
+  if (typeof buffer === "number") {
+    if (buffer < 120) return "medium";
+    if (buffer < 250) return "high";
+    if (buffer < 500) return Math.min(500, buffer + 50);
+  }
+  return null;
+};
 
 export const connectionLabel = (level: Level | null, rtt: number | null) =>
   level === null || rtt === null

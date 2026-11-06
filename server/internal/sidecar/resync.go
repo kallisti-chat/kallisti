@@ -22,6 +22,7 @@ func (h *Hub) readyFor(id mumble.Identity) map[string]any {
 		ready["channelTimeouts"] = h.channelTimeoutsFor(id)
 		ready["private"], ready["members"] = h.privateFor(id), h.members()
 		ready["guestsReadOnly"], ready["captcha"] = h.voice.GuestsReadOnly(), h.voice.Captcha()
+		ready["qualityLimits"] = h.voice.QualityLimits()
 		if on, err := h.store.InviteOnly(); err == nil {
 			ready["inviteOnly"] = on
 		}

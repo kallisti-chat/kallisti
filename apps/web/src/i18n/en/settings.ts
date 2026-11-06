@@ -108,6 +108,7 @@ export default {
   "settings.cameraNumbered": "Camera {number}",
   "settings.cameraListHint": "The list fills once you have turned the camera on in voice.",
   "settings.noiseSuppression": "Noise suppression",
+  "settings.noiseOff": "Off (no noise suppression)",
   "settings.noiseStandard": "Standard (the browser's)",
   "settings.noiseStrong": "Strong (RNNoise)",
   "settings.noiseStrongest": "Strongest (DeepFilterNet3)",
@@ -125,6 +126,15 @@ export default {
   "settings.playbackBuffer": "Playback buffer",
   "settings.playbackBufferHint":
     "How long others' voices wait before they play. More fills gaps on a bad connection, but adds delay. Music always gets at least 500 ms.",
+  "settings.voiceBitrate": "Voice bitrate",
+  "settings.voiceBitrateHint": "Bitrate used for speech. Higher bitrate improves voice clarity but uses more bandwidth.",
+  "settings.musicBitrate": "Music bitrate",
+  "settings.musicBitrateHint": "Bitrate used in music mode (stereo).",
+  "settings.audioChannels": "Audio channels",
+  "settings.audioChannelsAuto": "Auto (mono for speech, stereo for music)",
+  "settings.audioChannelsMono": "Mono",
+  "settings.audioChannelsStereo": "Stereo",
+  "settings.audioChannelsHint": "Choose whether your microphone transmits in mono or stereo.",
   "settings.inputMode": "Input mode",
   "settings.voiceActivity": "Voice activity",
   "settings.pushToTalk": "Push to talk",
@@ -143,6 +153,8 @@ export default {
   "settings.echoCancellation": "Echo cancellation",
   "settings.echoCancellationHint":
     "Needed with speakers. With a headset you can turn it off: on a Mac, the desktop app and Safari otherwise switch Bluetooth headsets to their call mode, with worse sound.",
+  "settings.autoGainControl": "Automatic volume (gain control)",
+  "settings.autoGainControlHint": "Automatically adjusts your microphone volume. Turn off if your volume fluctuates unexpectedly.",
   "settings.musicMode": "Music mode",
   "settings.musicModeHint":
     "For playing music: no noise suppression, echo cancellation or automatic volume, and better sound (stereo if the microphone has two channels). Use a headset.",
@@ -150,6 +162,10 @@ export default {
   "settings.closeMicHint": "The browser then stops showing it as recording, but the sound stops for a moment when you mute or unmute.",
   "settings.streamPreviews": "Show a preview of my screen share and camera",
   "settings.streamPreviewsHint": "People who are not watching see a small picture, updated every few seconds.",
+  "settings.streamQualityScreen": "Default screen share quality",
+  "settings.streamQualityScreenHint": "Resolution and framerate used when starting a screen share.",
+  "settings.streamQualityCamera": "Default camera quality",
+  "settings.streamQualityCameraHint": "Resolution and framerate used when starting a camera stream.",
 
   // Streams (lib/stream/quality) and OBS.
   "settings.qualityLabel": "{height}p {fps} fps",
@@ -160,7 +176,8 @@ export default {
   "settings.obsSteps":
     "OBS 30 or newer can stream into your voice channel: it shows like a screen share. Be connected here and in a voice channel where you may speak. In OBS, Settings → Stream: Service \"WHIP\", Server {url}, Bearer Token: your stream key.",
   "settings.obsOutput":
-    "Settings → Output (Advanced): H.264 video, keyframe interval 1 or 2 s, profile baseline or main, 1080p and 8 Mbit/s at most.",
+    "Settings → Output (Advanced): H.264 video, keyframe interval 1 or 2 s, profile baseline or main.",
+  "settings.obsLimits": "Server limits: up to {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "No B-frames (we forward the video as it is; with them the picture breaks up or turns pink): with x264, type {option} in \"x264 Options\"; with NVENC, QuickSync or AMF, set B-Frames to 0.",
   "settings.obsNewKey": "Your stream key (shown only now): {key}",

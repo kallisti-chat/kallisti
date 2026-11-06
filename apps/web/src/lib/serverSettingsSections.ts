@@ -4,11 +4,12 @@ import { t } from "./i18n.svelte";
 
 // The server settings' categories (see ModerationDialog, CategoryDialog).
 
-export type ServerSectionId = "registration" | "server" | "emoji" | "stickers" | "threads" | "rules" | "users" | "bans" | "guests" | "connections" | "recordings";
+export type ServerSectionId = "registration" | "server" | "quality" | "emoji" | "stickers" | "threads" | "rules" | "users" | "bans" | "guests" | "connections" | "recordings";
 type Group = "server" | "members" | "monitoring";
 
 const ALL: { id: ServerSectionId; title: Key; group: Group; needs: keyof ServerRights }[] = [
   { id: "server", title: "admin.sectionOverview", group: "server", needs: "server" },
+  { id: "quality", title: "admin.sectionQuality", group: "server", needs: "server" },
   { id: "emoji", title: "admin.sectionEmoji", group: "server", needs: "emoji" },
   { id: "stickers", title: "admin.sectionStickers", group: "server", needs: "emoji" },
   { id: "threads", title: "admin.sectionThreads", group: "server", needs: "threads" },

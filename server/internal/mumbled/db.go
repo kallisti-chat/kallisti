@@ -428,6 +428,20 @@ func (d *DB) MessageRules() (msgrules.Rules, error) {
 
 func (d *DB) SetMessageRules(r msgrules.Rules) error { return d.setSetting("message_rules", r) }
 
+// QualityLimits are the saved quality limits (see Server.SetQualityLimits).
+func (d *DB) QualityLimits() (QualityLimits, error) {
+	var q QualityLimits
+	ok, err := d.setting("quality_limits", &q)
+	if err != nil || !ok {
+		return DefaultQualityLimits(), err
+	}
+	return sanitizeQualityLimits(q), nil
+}
+
+func (d *DB) SetQualityLimits(q QualityLimits) error {
+	return d.setSetting("quality_limits", q)
+}
+
 // ServerName is the name an admin set ("": none, see Server.SetServerName).
 func (d *DB) ServerName() (string, error) {
 	var name string

@@ -2,6 +2,7 @@
   import { t } from "../lib/i18n.svelte";
   import { around } from "../lib/i18n";
   import type { AccountActions, StreamKey } from "../lib/accounts";
+  import type { QualityLimits } from "../lib/textChannels";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import SaveStatus from "./SaveStatus.svelte";
@@ -9,7 +10,12 @@
   // Streaming from OBS (WHIP): the steps, the address and the stream key. A
   // new key is shown once (the server keeps only its hash). live: our
   // stream from OBS runs.
-  let { account, live = false, onClose }: { account: AccountActions; live?: boolean; onClose: () => void } = $props();
+  let {
+    account,
+    live = false,
+    qualityLimits = null,
+    onClose,
+  }: { account: AccountActions; live?: boolean; qualityLimits?: QualityLimits | null; onClose: () => void } = $props();
 
   let dialog: HTMLDialogElement | undefined = $state();
   let key = $state<StreamKey | null>(null);
@@ -59,6 +65,15 @@
     <button class="link" onclick={() => copy(account.whipUrl)}>{copied === account.whipUrl ? t("common.copied") : t("common.copy")}</button>{steps[1]}
   </p>
   <p>{t("settings.obsOutput")}</p>
+  {#if qualityLimits}
+    <p>
+      {t("settings.obsLimits", {
+        side: qualityLimits.maxSide,
+        fps: qualityLimits.maxFps,
+        bitrate: ((qualityLimits.bytesPerSecond * 8) / 1_000_000).toFixed(1),
+      })}
+    </p>
+  {/if}
   <p>{bFrames[0]}<code>bframes=0</code>{bFrames[1]}</p>
   {#if newKey}
     <p class="key">

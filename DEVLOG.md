@@ -2732,3 +2732,22 @@ Bergamot was close to useless for Chinese. Tests of small models on the hard cha
 Detection: Latin-script lines are told by eld (n-grams, extra-small database, about 300 kB, loaded when idle; only languages with models; only a reliable answer, at least two words); before, common words missed most short French lines. eld 2.1.0, as 2.1.1 was younger than the lockfile's minimum release age.
 
 The hover bar showed every action as a word. As Discord now: icons for React, Reply, Edit, Translate (messages in another language) and More; More and a right-click (not on links, media, inputs or selected text) open a menu with the phone sheet's list; delete asks there. Not checked in a browser with WebGPU f16 here (headless Chromium has none): the user tests on test.kallisti.chat.
+
+## Manual audio and video quality settings and server caps
+
+Users asked for fine-grained manual control over audio and video quality, instead of fixed defaults and coarse dropdowns.
+
+Changes across client and server:
+- Voice & audio settings:
+  - Playback buffer: replaced the 3-option dropdown (`low` 60 ms, `medium` 120 ms, `high` 250 ms) with a continuous slider from 30 ms to 500 ms (10 ms steps), with quick preset tick marks and a real-time millisecond readout.
+  - Audio bitrate: users can adjust voice bitrate (default 40 kbps, 16–128+ kbps) and music mode bitrate (default 128 kbps, 32–320+ kbps), both dynamically bounded by server caps.
+  - Audio channels: selectable mode (`auto`, `mono`, `stereo`) allowing stereo microphone transmission when hardware supports it.
+  - Audio filters: Automatic Gain Control (AGC) is now individually toggleable, and noise suppression can be set to "Off" in standard speech mode, allowing completely unfiltered studio/microphone input.
+  - Stream quality defaults: users can configure default resolution and frame rate for screen shares and camera streams.
+- Server moderation & caps:
+  - Added a "Voice & streaming" section in Server Settings (ModerationDialog) for administrators to configure maximum allowed speech bitrate, music bitrate, stream resolution, frame rate (up to 120 fps), and total stream bandwidth.
+  - Limits persist in SQLite (`mumble_settings`) and broadcast to connected clients via sidecar (`quality-limits` event), immediately clamping active encoders and setting limits.
+  - Stream handler and WHIP (OBS) ingest dynamically enforce bandwidth and framerate limits on media streams.
+  - Updated OBS stream dialog and instructions to align with server limits.
+- Full parity across web and desktop (Tauri v2) with complete translations for all 7 supported languages.
+

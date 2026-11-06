@@ -102,7 +102,8 @@ export default {
   "settings.cameraNumbered": "摄像头 {number}",
   "settings.cameraListHint": "在语音中开启过摄像头后，列表才会显示。",
   "settings.noiseSuppression": "降噪",
-  "settings.noiseStandard": "标准（浏览器自带）",
+    "settings.noiseOff": "关闭（无降噪）",
+"settings.noiseStandard": "标准（浏览器自带）",
   "settings.noiseStrong": "强（RNNoise）",
   "settings.noiseStrongest": "最强（DeepFilterNet3）",
   "settings.noiseOffMusic": "音乐模式下关闭。",
@@ -119,7 +120,16 @@ export default {
   "settings.playbackBuffer": "播放缓冲",
   "settings.playbackBufferHint":
     "其他人的声音在播放前等待的时间。更长可以在网络不好时填补空隙，但会增加延迟。音乐至少为 500 ms。",
-  "settings.inputMode": "输入模式",
+    "settings.voiceBitrate": "语音码率",
+  "settings.voiceBitrateHint": "用于语音的码率。较高的码率可提高声音清晰度，但会消耗更多带宽。",
+  "settings.musicBitrate": "音乐码率",
+  "settings.musicBitrateHint": "音乐模式（立体声）使用的码率。",
+  "settings.audioChannels": "音频声道",
+  "settings.audioChannelsAuto": "自动（语音单声道，音乐立体声）",
+  "settings.audioChannelsMono": "单声道",
+  "settings.audioChannelsStereo": "立体声",
+  "settings.audioChannelsHint": "选择麦克风以单声道还是立体声传输。",
+"settings.inputMode": "输入模式",
   "settings.voiceActivity": "语音激活",
   "settings.pushToTalk": "按键说话",
   "settings.pttKey": "按键说话快捷键",
@@ -137,7 +147,9 @@ export default {
   "settings.echoCancellation": "回声消除",
   "settings.echoCancellationHint":
     "使用扬声器时需要开启。使用耳机时可以关闭：在 Mac 上，否则桌面应用和 Safari 会将蓝牙耳机切换到通话模式，音质更差。",
-  "settings.musicMode": "音乐模式",
+    "settings.autoGainControl": "自动音量（增益控制）",
+  "settings.autoGainControlHint": "自动调节麦克风音量。如果音量异常波动，请关闭。",
+"settings.musicMode": "音乐模式",
   "settings.musicModeHint":
     "用于演奏音乐：不使用降噪、回声消除或自动音量，音质更好（若麦克风有两个声道则为立体声）。请使用耳机。",
   "settings.closeMic": "静音时关闭麦克风",
@@ -145,7 +157,11 @@ export default {
   "settings.streamPreviews": "显示我的屏幕共享和摄像头的预览",
   "settings.streamPreviewsHint": "未观看的人会看到一张小图，每隔几秒更新一次。",
 
-  "settings.qualityLabel": "{height}p {fps} fps",
+    "settings.streamQualityScreen": "屏幕共享默认质量",
+  "settings.streamQualityScreenHint": "开始屏幕共享时使用的分辨率和帧率。",
+  "settings.streamQualityCamera": "摄像头默认质量",
+  "settings.streamQualityCameraHint": "开始摄像头推流时使用的分辨率和帧率。",
+"settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的屏幕",
   "settings.streamCamera": "{name} 的摄像头",
   "settings.obsTitle": "从 OBS 直播",
@@ -153,7 +169,8 @@ export default {
   "settings.obsSteps":
     "OBS 30 或更新版本可以直播到你的语音频道：显示效果与屏幕共享相同。你需要在这里保持连接，并位于可以发言的语音频道中。在 OBS 中，设置 → 直播：服务选择“WHIP”，服务器填 {url}，Bearer Token 填你的直播密钥。",
   "settings.obsOutput":
-    "设置 → 输出（高级）：H.264 视频，关键帧间隔 1 或 2 秒，配置 baseline 或 main，最高 1080p 和 8 Mbit/s。",
+    "设置 → 输出（高级）：H.264 视频，关键帧间隔 1 或 2 秒，配置 baseline 或 main。",
+  "settings.obsLimits": "服务器限制：最高 {side}p、{fps} fps、{bitrate} Mbit/s。",
   "settings.obsBFrames":
     "不要使用 B 帧（我们按原样转发视频；有 B 帧时画面会破碎或变成粉色）：使用 x264 时，在“x264 选项”中输入 {option}；使用 NVENC、QuickSync 或 AMF 时，将 B 帧设为 0。",
   "settings.obsNewKey": "你的直播密钥（仅显示这一次）：{key}",

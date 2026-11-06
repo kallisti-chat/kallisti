@@ -4,7 +4,7 @@ import { shouldFallBack } from "../voice/fallback";
 import { createPlayout, lastDue, type Playout } from "./playout";
 import { t } from "../i18n.svelte";
 import { cannotPlay, decodeFrame, decodeWatch, encodeFrame, pickCodec, previewSize } from "./protocol";
-import { DEFAULT_LIMITS, DEFAULT_QUALITY, KINDS, cameraConstraints, encoding, nextCamera, parseLimits, sources, type Kind, type Quality } from "./quality";
+import { DEFAULT_LIMITS, DEFAULT_QUALITY, KINDS, cameraConstraints, encoding, nextCamera, parseLimits, sources, type Kind, type Limits, type Quality } from "./quality";
 import Ticker from "./ticker.worker?worker";
 
 // Screen sharing and cameras over the stream connection (/api/stream, see
@@ -177,6 +177,9 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
     const kind: Kind = m.camera ? "camera" : "screen"; // of our own stream
     const o = out[kind];
     switch (m.type) {
+      case "limits":
+        limits = parseLimits(m.limits);
+        break;
       case "started":
         o.started?.(null);
         break;
@@ -624,6 +627,9 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
     },
     get limits() {
       return limits;
+    },
+    setLimits: (l: Limits) => {
+      limits = l;
     },
     get error() {
       return error;
