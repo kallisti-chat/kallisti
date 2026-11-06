@@ -82,7 +82,7 @@ func (s *session) open(o offer, sdp string, voice uint32) (string, error) {
 	s.feed.bytes.SetLimit(rate.Limit(bps))
 	s.feed.bytes.SetBurst(2 * bps)
 	s.feed.fps.SetLimit(rate.Limit(fps))
-	s.feed.fps.SetBurst(max(2, fps/10))
+	s.feed.fps.SetBurst(max(10, 2*fps))
 	api, err := s.h.api(o)
 	if err != nil {
 		return "", err
