@@ -17,6 +17,7 @@ import (
 	"kallisti.chat/server/internal/config"
 	"kallisti.chat/server/internal/mumble"
 	"kallisti.chat/server/internal/mumble/pb"
+	"kallisti.chat/server/internal/mumbled"
 	"kallisti.chat/server/internal/password"
 	"kallisti.chat/server/internal/store"
 )
@@ -181,5 +182,37 @@ func TestDeleteWebAccount(t *testing.T) {
 	db.Close()
 	if err := del("alice", accountCertHash(alice)); err == nil {
 		t.Error("a database error deleted nothing, silently")
+	}
+}
+
+// A push goes to the account's own registration (by certificate), not to a
+// Mumble user with its name.
+func TestPushUser(t *testing.T) {
+	db, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	mdb, err := mumbled.OpenDB(db.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	account := func(name string) store.Account {
+		certPEM, keyPEM, _ := certs.Generate(name)
+		acc, _ := db.CreateAccount(store.Account{Name: name, PasswordHash: "x", CertPEM: certPEM, KeyPEM: keyPEM}, time.Now(), "")
+		return acc
+	}
+	alice, _ := mdb.RegisterUser("alice", accountCertHash(account("alice")))
+	account("bob")
+	mdb.RegisterUser("bob", "a Mumble client's")
+	mdb.RegisterUser("carol2", accountCertHash(account("carol"))) // renamed by an admin: no login
+	user := pushUser(db, mdb)
+	if id, ok := user("Alice"); !ok || id != alice {
+		t.Errorf("alice: %d %v", id, ok)
+	}
+	for _, name := range []string{"bob", "carol", "nobody"} {
+		if id, ok := user(name); ok {
+			t.Errorf("%s: %d", name, id)
+		}
 	}
 }

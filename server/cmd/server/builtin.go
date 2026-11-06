@@ -105,6 +105,23 @@ func accountLogin(db *store.Store) func(name, pw string) (*mumbled.WebAccount, b
 	}
 }
 
+// pushUser: the registration with the account's certificate, which gets
+// the account's pushes (see sidecar.Hub.PushUser). Not when an admin
+// renamed it: the account cannot log in then.
+func pushUser(db *store.Store, mdb *mumbled.DB) func(name string) (uint32, bool) {
+	return func(name string) (uint32, bool) {
+		acc, err := db.AccountByName(name)
+		if err != nil {
+			return 0, false
+		}
+		r, err := mdb.UserByHash(accountCertHash(acc))
+		if err != nil || r == nil || names.Key(r.Name) != names.Key(acc.Name) {
+			return 0, false
+		}
+		return r.ID, true
+	}
+}
+
 // startBuiltin starts the server. With a hub, voice channels get stored
 // chats (publicBase: the server's address, for upload links).
 // deleteAccount: see mumbled.Config.DeleteAccount.
@@ -180,6 +197,7 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 		streams.OnPreview = func(i stream.Info) { hub.StreamPreview(liveStreams([]stream.Info{i})[0]) }
 		hub.LiveStreams = func() []sidecar.LiveStream { return liveStreams(streams.Streams()) }
 		hub.StreamToken = streamTokens.Issue
+		hub.PushUser = pushUser(db, mdb)
 		onText = func(t mumbled.ChannelText) {
 			from := mumble.Identity{Session: t.From, Name: t.Name, Registered: t.Registered, UserID: t.UserID}
 			hub.MumbleText(from, t.Channel, t.Text, sidecarImages(t.Images))

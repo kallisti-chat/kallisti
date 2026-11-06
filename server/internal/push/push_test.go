@@ -269,6 +269,20 @@ func TestDeliverSkipsBlockedAuthors(t *testing.T) {
 	}
 }
 
+// A note the hub no longer allows (access lost while queued) goes nowhere.
+func TestDeliverChecksAgain(t *testing.T) {
+	s, f, _ := newService(t)
+	call(t, s, "POST", "/api/push/subscriptions", "a1", subscribe(phone))
+	s.deliver(context.Background(), "alice", Note{Channel: 1, Body: "x", URL: "/", Allowed: func() bool { return false }})
+	if got := f.take(); len(got) != 0 {
+		t.Errorf("not allowed: got %+v", got)
+	}
+	s.deliver(context.Background(), "alice", Note{Channel: 1, Body: "x", URL: "/", Allowed: func() bool { return true }})
+	if got := f.take(); len(got) != 1 {
+		t.Errorf("allowed: got %+v", got)
+	}
+}
+
 func TestSendErrorsKeepTheSubscription(t *testing.T) {
 	s, _, _ := newService(t)
 	call(t, s, "POST", "/api/push/subscriptions", "a1", subscribe(phone))

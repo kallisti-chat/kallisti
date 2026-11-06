@@ -39,16 +39,18 @@ const (
 // Note is one push: a short text without the message itself (privacy), the
 // page to open, its chat (Parent: a thread's channel) and author. Tag:
 // notifications of a chat replace each other. Title, Icon: the server's
-// name and logo (see Service.Brand).
+// name and logo (see Service.Brand). Allowed: the user may still get it,
+// asked again before sending (nil: yes).
 type Note struct {
-	Channel int64  `json:"-"`
-	Parent  int64  `json:"-"`
-	Author  string `json:"-"`
-	Body    string `json:"body"`
-	URL     string `json:"url"`
-	Tag     string `json:"tag"`
-	Title   string `json:"title,omitempty"`
-	Icon    string `json:"icon,omitempty"`
+	Channel int64       `json:"-"`
+	Parent  int64       `json:"-"`
+	Author  string      `json:"-"`
+	Allowed func() bool `json:"-"`
+	Body    string      `json:"body"`
+	URL     string      `json:"url"`
+	Tag     string      `json:"tag"`
+	Title   string      `json:"title,omitempty"`
+	Icon    string      `json:"icon,omitempty"`
 }
 
 // Sender delivers an encrypted push; status is the push service's answer.
@@ -154,8 +156,12 @@ func quiet(sub store.PushSubscription, n Note) bool {
 }
 
 // deliver sends a note to a user's browsers, but not to those that keep
-// its chat quiet or blocked its author. Gone subscriptions are dropped.
+// its chat quiet or blocked its author, and not when the note is no longer
+// allowed. Gone subscriptions are dropped.
 func (s *Service) deliver(ctx context.Context, name string, n Note) {
+	if n.Allowed != nil && !n.Allowed() {
+		return
+	}
 	user, now := names.Key(name), s.Now()
 	subs, err := s.Store.PushSubscriptions(user, now)
 	if err != nil {

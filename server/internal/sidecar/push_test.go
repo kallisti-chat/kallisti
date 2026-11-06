@@ -99,7 +99,8 @@ func TestWantsPush(t *testing.T) {
 
 // pushHub: privateHub, with registered users mod (10, session 1, online),
 // bob (20), carol (30, session 3, online) and alice (40); all but mod and
-// carol have push subscriptions. It returns the pushes so far.
+// carol have push subscriptions (their accounts are those users, see
+// PushUser). It returns the pushes so far.
 func pushHub(t *testing.T) (*Hub, *fakeVoice, *Conn, *Conn, func() []string) {
 	t.Helper()
 	h, v, _ := privateHub(t)
@@ -114,6 +115,8 @@ func pushHub(t *testing.T) (*Hub, *fakeVoice, *Conn, *Conn, func() []string) {
 		h.store.CreateSession(session, acc.ID, clock.Add(time.Hour))
 		h.store.SetPushSubscription(session, store.PushSubscription{Endpoint: "https://fcm.googleapis.com/" + name, P256dh: "p", Auth: "a"}, clock)
 	}
+	users := map[string]uint32{"bob": 20, "alice": 40, "mod": 10}
+	h.PushUser = func(name string) (uint32, bool) { u, ok := users[name]; return u, ok }
 	var mu sync.Mutex
 	var got []string
 	h.Push = func(name string, n push.Note) {
@@ -150,6 +153,54 @@ func post(t *testing.T, h *Hub, c *Conn, channel int64, extra string) string {
 		if m["type"] == "error" {
 			t.Fatalf("error %v", m)
 		}
+	}
+}
+
+// A web account with a registered user's name but another certificate is
+// not that user: it gets none of its pushes.
+func TestPushesGoToTheAccountsRegistration(t *testing.T) {
+	h, v, mod, _, pushes := pushHub(t)
+	v.names[50] = "dave"
+	acc, err := h.store.CreateAccount(store.Account{Name: "dave", PasswordHash: "h", CertPEM: []byte("other"), KeyPEM: []byte("k")}, clock, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.store.CreateSession("sd", acc.ID, clock.Add(time.Hour))
+	h.store.SetPushSubscription("sd", store.PushSubscription{Endpoint: "https://fcm.googleapis.com/dave", P256dh: "p", Auth: "a"}, clock)
+	post(t, h, mod, h.channels[0].ID, `"text":"@dave hi"`)
+	if got := pushes(); len(got) != 0 {
+		t.Errorf("got %q", got)
+	}
+}
+
+// A queued push asks again before it goes: the user may lose the chat or
+// be banned meanwhile.
+func TestPushesCheckAgainBeforeSending(t *testing.T) {
+	h, v, mod, _, _ := pushHub(t)
+	var got []push.Note
+	h.Push = func(_ string, n push.Note) { got = append(got, n) }
+	post(t, h, mod, h.channels[0].ID, `"text":"@alice hi"`)
+	if len(got) != 1 || got[0].Allowed == nil || !got[0].Allowed() {
+		t.Fatalf("got %+v", got)
+	}
+	v.mu.Lock()
+	v.banned = map[uint32]bool{40: true}
+	v.mu.Unlock()
+	if got[0].Allowed() {
+		t.Error("banned since")
+	}
+	v.mu.Lock()
+	v.banned, v.hidden[100] = nil, true
+	v.mu.Unlock()
+	if got[0].Allowed() {
+		t.Error("the chat is private since")
+	}
+	v.mu.Lock()
+	v.hidden[100] = false
+	v.mu.Unlock()
+	h.PushUser = func(string) (uint32, bool) { return 50, true } // a new account with the name
+	if got[0].Allowed() {
+		t.Error("the account is another user's")
 	}
 }
 

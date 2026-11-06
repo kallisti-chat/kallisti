@@ -91,7 +91,7 @@ func (h *Hub) where(c chat) string {
 // time).
 func (h *Hub) pushFor(c chat, m store.Message) {
 	// Most messages ping nobody: no queries for them.
-	if h.Push == nil || h.voice == nil || !c.direct && m.MentionAll != "everyone" && m.Reply == nil && !strings.Contains(m.Text, "@") {
+	if h.Push == nil || h.PushUser == nil || h.voice == nil || !c.direct && m.MentionAll != "everyone" && m.Reply == nil && !strings.Contains(m.Text, "@") {
 		return
 	}
 	subscribed, err := h.store.PushNames(h.now())
@@ -101,14 +101,10 @@ func (h *Hub) pushFor(c chat, m store.Message) {
 	if len(subscribed) == 0 {
 		return
 	}
-	ids := map[string]uint32{}
-	for id, name := range h.voice.Users() {
-		ids[names.Key(name)] = id
-	}
 	online := h.voice.Online()
 	note := push.Note{Channel: c.id, Parent: c.parent, Author: m.Author, Body: pushBody(m, c.direct, h.where(c)), URL: fmt.Sprintf("/channels/%d/%d", c.id, m.ID)}
 	for _, name := range subscribed {
-		user, ok := ids[names.Key(name)]
+		user, ok := h.PushUser(name)
 		if !ok || !pings(m, c.direct, name, user) {
 			continue
 		}
@@ -124,7 +120,14 @@ func (h *Hub) pushFor(c chat, m store.Message) {
 			t.dnd = view(st, h.now()).Status == "dnd"
 		}
 		if wantsPush(t) {
-			h.Push(name, note)
+			// Asked again when it is sent: access may end while queued, or
+			// the name be another account's.
+			n := note
+			n.Allowed = func() bool {
+				u, ok := h.PushUser(name)
+				return ok && u == user && !h.voice.UserBanned(user) && h.userMay(user, c)
+			}
+			h.Push(name, n)
 		}
 	}
 }
