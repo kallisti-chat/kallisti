@@ -205,11 +205,12 @@ func TestPushUser(t *testing.T) {
 	alice, _ := mdb.RegisterUser("alice", accountCertHash(account("alice")))
 	account("bob")
 	mdb.RegisterUser("bob", "a Mumble client's")
+	mdb.RegisterUser("carol2", accountCertHash(account("carol"))) // renamed by an admin: no login
 	user := pushUser(db, mdb)
 	if id, ok := user("Alice"); !ok || id != alice {
 		t.Errorf("alice: %d %v", id, ok)
 	}
-	for _, name := range []string{"bob", "nobody"} {
+	for _, name := range []string{"bob", "carol", "nobody"} {
 		if id, ok := user(name); ok {
 			t.Errorf("%s: %d", name, id)
 		}

@@ -120,8 +120,13 @@ func (h *Hub) pushFor(c chat, m store.Message) {
 			t.dnd = view(st, h.now()).Status == "dnd"
 		}
 		if wantsPush(t) {
-			n := note // asked again when it is sent: access may end while queued
-			n.Allowed = func() bool { return !h.voice.UserBanned(user) && h.userMay(user, c) }
+			// Asked again when it is sent: access may end while queued, or
+			// the name be another account's.
+			n := note
+			n.Allowed = func() bool {
+				u, ok := h.PushUser(name)
+				return ok && u == user && !h.voice.UserBanned(user) && h.userMay(user, c)
+			}
 			h.Push(name, n)
 		}
 	}

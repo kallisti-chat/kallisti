@@ -106,7 +106,8 @@ func accountLogin(db *store.Store) func(name, pw string) (*mumbled.WebAccount, b
 }
 
 // pushUser: the registration with the account's certificate, which gets
-// the account's pushes (see sidecar.Hub.PushUser).
+// the account's pushes (see sidecar.Hub.PushUser). Not when an admin
+// renamed it: the account cannot log in then.
 func pushUser(db *store.Store, mdb *mumbled.DB) func(name string) (uint32, bool) {
 	return func(name string) (uint32, bool) {
 		acc, err := db.AccountByName(name)
@@ -114,7 +115,7 @@ func pushUser(db *store.Store, mdb *mumbled.DB) func(name string) (uint32, bool)
 			return 0, false
 		}
 		r, err := mdb.UserByHash(accountCertHash(acc))
-		if err != nil || r == nil {
+		if err != nil || r == nil || names.Key(r.Name) != names.Key(acc.Name) {
 			return 0, false
 		}
 		return r.ID, true

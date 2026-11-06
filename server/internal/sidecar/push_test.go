@@ -195,6 +195,13 @@ func TestPushesCheckAgainBeforeSending(t *testing.T) {
 	if got[0].Allowed() {
 		t.Error("the chat is private since")
 	}
+	v.mu.Lock()
+	v.hidden[100] = false
+	v.mu.Unlock()
+	h.PushUser = func(string) (uint32, bool) { return 50, true } // a new account with the name
+	if got[0].Allowed() {
+		t.Error("the account is another user's")
+	}
 }
 
 func TestPushes(t *testing.T) {

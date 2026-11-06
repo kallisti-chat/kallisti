@@ -273,11 +273,13 @@ func TestDeliverSkipsBlockedAuthors(t *testing.T) {
 func TestDeliverChecksAgain(t *testing.T) {
 	s, f, _ := newService(t)
 	call(t, s, "POST", "/api/push/subscriptions", "a1", subscribe(phone))
-	for _, allowed := range []bool{false, true} {
-		s.deliver(context.Background(), "alice", Note{Channel: 1, Body: "x", URL: "/", Allowed: func() bool { return allowed }})
-		if got := f.take(); len(got) != map[bool]int{false: 0, true: 1}[allowed] {
-			t.Errorf("allowed %v: got %+v", allowed, got)
-		}
+	s.deliver(context.Background(), "alice", Note{Channel: 1, Body: "x", URL: "/", Allowed: func() bool { return false }})
+	if got := f.take(); len(got) != 0 {
+		t.Errorf("not allowed: got %+v", got)
+	}
+	s.deliver(context.Background(), "alice", Note{Channel: 1, Body: "x", URL: "/", Allowed: func() bool { return true }})
+	if got := f.take(); len(got) != 1 {
+		t.Errorf("allowed: got %+v", got)
 	}
 }
 
