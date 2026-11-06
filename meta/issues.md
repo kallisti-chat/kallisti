@@ -30,3 +30,4 @@
     - [ ] [QR scan: the Android release app crashes when the camera opens](issues/qr-scan-android-crash.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
+- [ ] [The unread bar goes once seen](issues/unread-bar-after-scroll.md)
