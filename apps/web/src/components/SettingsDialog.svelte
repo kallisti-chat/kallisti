@@ -571,7 +571,7 @@
         </select>
       </label>
     {:else if id === "translation"}
-      <p class="hint">{t("settings.translationIntro")}</p>
+      <p class="hint intro">{t("settings.translationIntro")}</p>
       <label class="check">
         <input
           type="checkbox"
@@ -689,6 +689,10 @@
   }
   .hint.warn {
     color: var(--danger);
+  }
+  /* A section's opening sentence: spaced as a field. */
+  .hint.intro {
+    margin-bottom: 16px;
   }
   /* Checkbox, text, and a hint under the text. */
   .check {
