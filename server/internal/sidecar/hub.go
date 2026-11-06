@@ -291,6 +291,9 @@ type Hub struct {
 	// Push sends a push notification to a user's browsers, by name (nil:
 	// none; see push.go). It must not block.
 	Push func(name string, n push.Note)
+	// PushUser: the registered user of the web account with this name, by
+	// its certificate (a Mumble user may have the name too).
+	PushUser func(name string) (uint32, bool)
 	// Per voice server session: the last message seen in each mirror.
 	visitsMu sync.Mutex
 	visits   map[uint32]*visit
