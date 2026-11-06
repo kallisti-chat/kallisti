@@ -5,8 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && node scripts/bergamot.mjs && vite",
-    "build": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && node scripts/bergamot.mjs && vite build",
+    "dev": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && node scripts/translation-assets.mjs && vite",
+    "build": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && node scripts/translation-assets.mjs && vite build",
     "test": "vitest run",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
@@ -23,6 +23,7 @@
     "vitest": "^5.0.4"
   },
   "dependencies": {
+    "@huggingface/transformers": "4.3.2",
     "@jitsi/rnnoise-wasm": "0.2.1",
     "@kallisti/protocol": "workspace:*",
     "@mkljczk/bergamot-translator": "0.4.16",
