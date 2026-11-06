@@ -5,9 +5,10 @@
 import { cpSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 const from = join(dirname(require.resolve("@mkljczk/bergamot-translator/package.json")), "worker");
-const to = new URL("../public/bergamot/", import.meta.url).pathname;
+const to = fileURLToPath(new URL("../public/bergamot/", import.meta.url));
 mkdirSync(to, { recursive: true });
 for (const f of ["translator-worker.js", "bergamot-translator-worker.js", "bergamot-translator-worker.wasm"]) cpSync(join(from, f), join(to, f));
