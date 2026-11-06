@@ -358,3 +358,5 @@
   - [x] [Private-room media: a mode without signed links](issues/private-room-media-no-signed-links.md)
 - [x] [Push notifications: the right account, and access at send time](issues/push-access.md)
 - [x] [The unread bar goes once seen](issues/unread-bar-after-scroll.md)
+- [x] [Better translation: Hy-MT2 on the device (WebGPU)](issues/better-translation.md)
+- [x] [Message actions: a short bar and a menu (as Discord)](issues/message-actions-menu.md)
