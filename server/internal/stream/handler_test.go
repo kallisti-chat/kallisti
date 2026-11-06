@@ -78,3 +78,24 @@ func TestHandlerForwardsFrames(t *testing.T) {
 		t.Fatal("a bad token was let in")
 	}
 }
+
+func TestHandlerDynamicLimits(t *testing.T) {
+	hub := New(&fakeVoice{channels: map[uint32]uint32{1: 5}})
+	tokens := NewTokens()
+	srv := httptest.NewServer(&Handler{
+		Hub:            hub,
+		Redeem:         tokens.Redeem,
+		AllowedOrigins: []string{"*"},
+		BytesPerSecond: 1 << 20,
+		Limits: func() (int, int, int) {
+			return 2_000_000, 1080, 30
+		},
+	})
+	defer srv.Close()
+	ws := dialStream(t, srv, tokens.Issue(1))
+	ready := readText(t, ws, "ready")
+	limits, ok := ready["limits"].(map[string]any)
+	if !ok || limits["bytesPerSecond"] != float64(2_000_000) || limits["maxSide"] != float64(1080) || limits["maxFps"] != float64(30) {
+		t.Fatalf("expected dynamic limits, got %v", ready)
+	}
+}

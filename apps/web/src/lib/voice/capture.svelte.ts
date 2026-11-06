@@ -6,7 +6,7 @@ import { levelDb, shouldTransmit, vadStep, voiceLevel, type TransmitMode, type V
 import rnnoiseUrl from "@jitsi/rnnoise-wasm/dist/rnnoise.wasm?url";
 import { fallbackMode, noiseLabel, type NoiseMode } from "./noise";
 import { micConstraints } from "../settings";
-import { encoderConfig, FRAME_MS, sendChannels } from "./opus";
+import { encoderConfig, FRAME_MS, sendChannels, type AudioChannels } from "./opus";
 import { voiceEncoder, type VoiceEncoder } from "./codec";
 import { loadCaptureWorklet } from "./worklet";
 import { micInfo, type MicInfo } from "./micInfo";
@@ -82,13 +82,20 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
   // plays our worklet's frames.
   let noise: NoiseMode = "browser";
   let cancelEcho = true; // see Settings.echoCancellation
+  let autoGainControl = true; // see Settings.autoGainControl
+  let audioChannels: AudioChannels = "auto";
+  let voiceBitrate = 40_000;
+  let musicBitrate = 128_000;
+  let maxBitrateVoice = 128_000;
+  let maxBitrateMusic = 320_000;
   // See Settings.musicMode: no filter at all. channels: what the frames
   // have (see the worklet), so what the encoder gets.
   let music = $state(false);
   let channels = 1;
   // What the browser says about the microphone in use (see micInfo).
   let trackSettings = $state<MediaTrackSettings | null>(null);
-  const filter = (): NoiseMode | null => (music ? null : noise);
+  const filter = (): NoiseMode | null => (music || noise === "off" ? null : noise);
+  const currentBitrate = () => Math.min(music ? musicBitrate : voiceBitrate, music ? maxBitrateMusic : maxBitrateVoice);
   let running = $state<NoiseMode | null>(null);
   let noiseError = $state<string | null>(null);
   let rnnoise: Promise<ArrayBuffer> | null = null; // its bytes (see the worklet)
@@ -98,10 +105,10 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
   const ECHO_GAIN = 0.7; // a little quieter: less feedback on speakers
   // A fresh encoder for every talk spurt (see encoderRotation). madeFor:
   // the settings of the current one.
-  const encoderKey = () => `${music}/${channels}`;
+  const encoderKey = () => `${music}/${channels}/${currentBitrate()}`;
   let madeFor = "";
   const makeEncoder = (): VoiceEncoder => {
-    const encoder = voiceEncoder(encoderConfig(music, channels), {
+    const encoder = voiceEncoder(encoderConfig(music, channels, currentBitrate()), {
       output: (opus) => {
         const input = encoders.output(encoder);
         if (!input) return; // after the last input (see encoderRotation)
@@ -282,7 +289,14 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
     let next: MediaStream | null = null; // stopped on failure until it is stream
     try {
       // The browser's noise filter only without ours (not twice).
-      const constraints = () => micConstraints(deviceId, { browserNoise: filter() === "browser", cancelEcho, music });
+      const constraints = () =>
+        micConstraints(deviceId, {
+          browserNoise: filter() === "browser",
+          cancelEcho,
+          autoGainControl,
+          music,
+          channels: audioChannels,
+        });
       const asked = constraints();
       const key = JSON.stringify(asked);
       next = takeHanded(key) ?? (await navigator.mediaDevices.getUserMedia({ audio: asked }));
@@ -299,8 +313,8 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
       stream = next;
       streamKey = key;
       const track = next.getAudioTracks()[0];
-      // Stereo in music mode, if the microphone has two channels.
-      const ch = sendChannels(music, track?.getSettings().channelCount);
+      // Stereo if requested or in music mode, if the microphone has two channels.
+      const ch = sendChannels(music, track?.getSettings().channelCount, audioChannels);
       n.channelCount = ch;
       n.port.postMessage({ channels: ch });
       source = ctx.createMediaStreamSource(next);
@@ -397,6 +411,24 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
       const was = filter();
       music = on;
       refilter(was, true);
+    },
+    setAutoGainControl: (on: boolean) => {
+      if (on === autoGainControl) return;
+      autoGainControl = on;
+      if (stream && !music) void start(device);
+    },
+    setAudioChannels: (mode: AudioChannels) => {
+      if (mode === audioChannels) return;
+      audioChannels = mode;
+      if (stream) void start(device);
+    },
+    setBitrates: (voice: number, musicBr: number) => {
+      voiceBitrate = voice;
+      musicBitrate = musicBr;
+    },
+    setLimits: (maxVoice: number, maxMusic: number) => {
+      maxBitrateVoice = maxVoice;
+      maxBitrateMusic = maxMusic;
     },
     // The echo test: what the microphone sends, after the filters.
     setEcho: (on: boolean) => {

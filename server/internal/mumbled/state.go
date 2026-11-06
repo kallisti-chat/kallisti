@@ -26,6 +26,8 @@ type State struct {
 	held uint32
 	// Guests may not write (see guests.go).
 	GuestsReadOnly bool
+	// Server-wide voice and stream quality limits (see quality.go).
+	QualityLimits QualityLimits
 	// Index in CaptchaLevels (see captcha.go).
 	Captcha uint32
 	// OnMove hears every change of a user's channel; NoChannel stands for

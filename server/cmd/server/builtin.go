@@ -155,6 +155,7 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 	var checkText func(session, channel uint32) error
 	var onPrivate func(mumbled.PrivateText)
 	var onRoles, onListenOnly, onPrivateChannels, onTimeouts, onGuestsReadOnly, onRecording func()
+	var onQualityLimits func(mumbled.QualityLimits)
 	var onUser func(id uint32, name string)
 	var onPicture func(id uint32, picture bool)
 	var textOverflows func() map[uint32]uint64
@@ -168,6 +169,9 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 	if hub != nil {
 		onRoles, onListenOnly, onPrivateChannels, onTimeouts = hub.RolesChanged, hub.ListenOnlyChanged, hub.PrivateChanged, hub.TimeoutsChanged
 		onGuestsReadOnly, onRecording = hub.GuestsReadOnlyChanged, hub.RecordingChanged
+		onQualityLimits = func(q mumbled.QualityLimits) {
+			hub.QualityLimitsChanged(sidecar.QualityLimits(q))
+		}
 		checkText = hub.MumbleTextAllowed
 		onUser, onPicture = hub.UserChanged, hub.PictureChanged
 		textOverflows = hub.Overflows
@@ -235,6 +239,7 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 		OnPrivateChanged:        onPrivateChannels,
 		OnTimeoutsChanged:       onTimeouts,
 		OnGuestsReadOnlyChanged: onGuestsReadOnly,
+		OnQualityLimitsChanged:  onQualityLimits,
 		OnUserMoved:             onMoved,
 		TextOverflows:           textOverflows,
 		Recordings:              recordings,
@@ -388,6 +393,15 @@ func (v voiceServer) Connections(session uint32) ([]sidecar.Connection, error) {
 		out[i].StreamPictures, out[i].StreamSound = d.Pictures, d.Sound
 	}
 	return out, err
+}
+
+func (v voiceServer) QualityLimits() sidecar.QualityLimits {
+	return sidecar.QualityLimits(v.Server.QualityLimits())
+}
+
+func (v voiceServer) SetQualityLimits(session uint32, q sidecar.QualityLimits) (sidecar.QualityLimits, error) {
+	updated, err := v.Server.SetQualityLimits(session, mumbled.QualityLimits(q))
+	return sidecar.QualityLimits(updated), err
 }
 
 // dial makes an in-process session for a web client.
