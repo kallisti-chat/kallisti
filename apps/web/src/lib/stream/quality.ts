@@ -14,7 +14,7 @@ export type Quality = { height: number; fps: number; bitrate?: number };
 export type Limits = { bytesPerSecond: number; maxSide: number; maxFps?: number };
 
 const HEIGHTS = [480, 720, 1080];
-const FPS = [15, 30, 60];
+const FPS = [15, 30, 60, 120];
 export const DEFAULT_LIMITS: Limits = { bytesPerSecond: 1 << 20, maxSide: 4096, maxFps: 60 };
 export const DEFAULT_QUALITY: Record<Kind, Quality> = { screen: { height: 720, fps: 30 }, camera: { height: 720, fps: 30 } };
 

@@ -4,7 +4,7 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "服务器设置",
   "admin.sectionOverview": "概况",
-    "admin.sectionQuality": "语音与直播质量",
+  "admin.sectionQuality": "语音与直播",
   "admin.qualityMaxVoiceBitrate": "最大语音码率",
   "admin.qualityMaxVoiceBitrateNote": "用户可选择的语音码率上限（默认 128 kbps）。",
   "admin.qualityMaxMusicBitrate": "最大音乐码率",

@@ -4,7 +4,7 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "サーバー設定",
   "admin.sectionOverview": "概要",
-    "admin.sectionQuality": "音声と配信の品質",
+  "admin.sectionQuality": "音声と配信",
   "admin.qualityMaxVoiceBitrate": "最大音声ビットレート",
   "admin.qualityMaxVoiceBitrateNote": "ユーザーが選択できる音声ビットレートの上限です（デフォルト: 128 kbps）。",
   "admin.qualityMaxMusicBitrate": "最大音楽ビットレート",

@@ -30,7 +30,7 @@ func TestQualityLimitsValidation(t *testing.T) {
 	}
 
 	invalidFps := valid
-	invalidFps.MaxFps = 120
+	invalidFps.MaxFps = 240
 	if err := validateQualityLimits(invalidFps); err == nil {
 		t.Fatalf("expected error for too high fps")
 	}

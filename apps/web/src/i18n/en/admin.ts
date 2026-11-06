@@ -6,7 +6,7 @@ export default {
   // Server settings: categories and their groups.
   "admin.serverSettingsTitle": "Server settings",
   "admin.sectionOverview": "Overview",
-  "admin.sectionQuality": "Voice & streaming quality",
+  "admin.sectionQuality": "Voice & streaming",
   "admin.qualityMaxVoiceBitrate": "Maximum voice bitrate",
   "admin.qualityMaxVoiceBitrateNote": "Upper limit for voice speech bitrate chosen by users (default 128 kbps).",
   "admin.qualityMaxMusicBitrate": "Maximum music bitrate",

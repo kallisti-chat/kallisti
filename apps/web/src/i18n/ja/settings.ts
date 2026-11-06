@@ -169,7 +169,7 @@ export default {
   "settings.obsSteps":
     "OBS 30 以降では、ボイスチャンネルに配信できます。画面共有と同じように表示されます。ここに接続し、発言できるボイスチャンネルに参加してください。OBS の 設定 → 配信 で、サービス「WHIP」、サーバー {url}、Bearer トークン: 配信キー を設定します。",
   "settings.obsOutput":
-    "設定 → 出力 (詳細): H.264 映像、キーフレーム間隔 1 または 2 秒、プロファイル baseline または main、最大 1080p・8 Mbit/s。",
+    "設定 → 出力 (詳細): H.264 映像、キーフレーム間隔 1 または 2 秒、プロファイル baseline または main。",
   "settings.obsBFrames":
     "B フレームは使わないでください (映像はそのまま転送するため、使うと映像が崩れたりピンク色になったりします)。x264 では「x264 オプション」に {option} と入力し、NVENC、QuickSync、AMF では B フレームを 0 にします。",
   "settings.obsNewKey": "配信キー (今だけ表示されます): {key}",
