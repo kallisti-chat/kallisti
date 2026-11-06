@@ -64,6 +64,7 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
+  import { detect, targetOf } from "../lib/translate/languages";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { barDone, unreadBar } from "../lib/unread";
@@ -882,6 +883,49 @@
       () => notify(done),
       () => notify(t("chat.copyFailed")),
     );
+  // Translations of messages on this device (see lib/translate), by
+  // message key, into the app's language.
+  type Translation = { state: "loading" } | { state: "done"; from: string; text: string } | { state: "error"; text: string };
+  let translations = $state<Record<string, Translation>>({});
+  const translateTo = $derived(targetOf(i18n.ui));
+  const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
+  const startTranslation = async (key: string, text: string) => {
+    translations = { ...translations, [key]: { state: "loading" } };
+    let done: Translation;
+    try {
+      const { translate } = await import("../lib/translate/engine");
+      done = { state: "done", ...(await translate(text, translateTo, httpBase)) };
+    } catch (e) {
+      const { reason, from } = e as { reason?: string; from?: string };
+      const error =
+        reason === "unknown" ? t("chat.translateUnknown") : reason === "unsupported" ? t("chat.translateUnsupported", { lang: languageName(from!) }) : t("chat.translateFailed");
+      if (!reason) console.error("translation", e);
+      done = { state: "error", text: error };
+    }
+    if (key in translations) translations = { ...translations, [key]: done }; // not hidden meanwhile
+  };
+  const hideTranslation = (key: string) => {
+    const { [key]: _, ...rest } = translations;
+    translations = rest;
+  };
+  // A message's text to translate: one in another language than the app's
+  // (null: none, or its language unknown).
+  // Cached per message object (the list keeps them, see toChatMessage).
+  const languages = new WeakMap<object, { text: string; lang: string | null }>();
+  const foreignText = (m: ChatMessage | DisplayMessage) => {
+    let found = languages.get(m);
+    if (!found) {
+      const text = refsAsNames("source" in m && m.source ? m.source.text : htmlToText(m.text));
+      languages.set(m, (found = { text, lang: text ? detect(text) : null }));
+    }
+    return found.lang && found.lang !== translateTo ? found.text : null;
+  };
+  const toggleTranslation = (m: ChatMessage | DisplayMessage) => {
+    const key = messageKey(m);
+    const text = foreignText(m);
+    if (key in translations) hideTranslation(key);
+    else if (text) void startTranslation(key, text);
+  };
   const sheetItems = (m: ChatMessage | DisplayMessage): SheetItem[] => {
     const may = allowed(m);
     const done = (f: () => void) => () => ((sheetFor = null), f());
@@ -890,6 +934,9 @@
       ...(may && canReply ? [{ label: t("chat.reply"), icon: "reply" as const, run: done(() => startReply(m)) }] : []),
       ...(may && canThread(may.id) ? [{ label: t("chat.createThread"), icon: "thread" as const, run: done(() => onCreateThread?.(may.id, refsAsNames(text))) }] : []),
       ...(text ? [{ label: t("chat.copyText"), icon: "copy" as const, run: done(() => copy(refsAsNames(text), t("chat.textCopied"))) }] : []),
+      ...(messageKey(m) in translations || foreignText(m)
+        ? [{ label: messageKey(m) in translations ? t("chat.hideTranslation") : t("chat.translate"), icon: "translate" as const, run: done(() => toggleTranslation(m)) }]
+        : []),
       ...(may && linkTo ? [{ label: t("chat.copyLink"), icon: "copy" as const, run: done(() => copy(linkTo(may.id), t("chat.linkCopied"))) }] : []),
       ...(may && onMarkUnread ? [{ label: t("chat.markUnread"), icon: "unread" as const, run: done(() => onMarkUnread?.(may.id)) }] : []),
       ...("source" in m && m.source ? [{ label: t("chat.info"), icon: "info" as const, run: done(() => showInfo(m)) }] : []),
@@ -1755,6 +1802,17 @@
         onclick={(e) => toggleLong(key, e.currentTarget.closest("li"))}>{open ? t("chat.showLess") : t("chat.showMore")}</button
       >
     {/if}
+    {@const tr = translations[key]}
+    {#if tr}
+      <div class="translation" aria-live="polite">
+        {#if tr.state === "done"}
+          <p lang={translateTo}>{tr.text}</p>
+          <span class="note">{t("chat.translatedFrom", { lang: languageName(tr.from) })}</span>
+        {:else}
+          <span class="note">{tr.state === "loading" ? t("chat.translating") : tr.text}</span>
+        {/if}
+      </div>
+    {/if}
   {/if}
   {@render attachment(m)}
   {#if "source" in m && m.source && previewOf?.(m.source.id)}
@@ -1873,6 +1931,9 @@
           {/if}
           {#if linkTo}
             <button type="button" aria-label={t("chat.copyLinkToMessage")} title={t("chat.copyLink")} onclick={() => copy(linkTo(id), t("chat.linkCopied"))}>{t("chat.linkAction")}</button>
+          {/if}
+          {#if messageKey(m) in translations || foreignText(m)}
+            <button type="button" aria-pressed={messageKey(m) in translations} title={t("chat.translate")} onclick={() => toggleTranslation(m)}>{t("chat.translate")}</button>
           {/if}
           {#if onMarkUnread}
             <button type="button" aria-label={t("chat.markUnreadFromHere")} title={t("chat.markUnreadTitle")} onclick={() => onMarkUnread?.(id)}>{t("chat.unreadAction")}</button>
@@ -2754,6 +2815,21 @@
   }
   .reaction .emoji {
     font-size: 16px;
+  }
+  /* A message's translation, under it (see startTranslation). */
+  .translation {
+    margin-top: 4px;
+    padding-left: 8px;
+    border-left: 2px solid var(--text-muted);
+  }
+  .translation p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .translation .note {
+    font-size: 12px;
+    color: var(--text-muted);
   }
   .edited {
     margin-left: 4px;
