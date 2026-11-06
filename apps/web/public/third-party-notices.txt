@@ -20,6 +20,14 @@ Emojibase data (emoji names, keywords and shortcodes for the picker)
   Copyright (c) 2017-2019 Miles Johnson. MIT License.
   https://github.com/milesj/emojibase
 
+Bergamot translator (message translation on the device)
+  By the Bergamot project, Mozilla and contributors. Mozilla Public License 2.0:
+  https://www.mozilla.org/MPL/2.0/ (source of this build:
+  https://codeberg.org/mkljczk/bergamot-translator, @mkljczk/bergamot-translator).
+  It contains Marian NMT (MIT License) and other parts under their licenses.
+  The translation models (downloaded on use) are Mozilla's Firefox
+  Translations models, MPL 2.0: https://github.com/mozilla/translations
+
 DeepFilterNet3 (noise suppression, "Strongest")
   By Hendrik Schröter and contributors. MIT License or Apache License 2.0.
   https://github.com/Rikorose/DeepFilterNet
