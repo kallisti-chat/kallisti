@@ -2710,3 +2710,9 @@ Now as Discord: messages carry signed file links (HMAC with a key kept in the ne
 ## Private-room media without signed links
 
 `PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS=1` (with the experiment; Helm `privateRoomMediaNoSignedLinks`): the server makes no signer, so messages carry plain links and every file request takes the session check. For operators who want no link to work outside the chat at all. Accepted: the apps, other servers' tabs and Mumble clients show private files as broken in this mode (no session with their media requests), and there is no browser cache for them.
+
+## Push notifications: the right account, and access at send time
+
+A security review: pushes found their user by name (the account's name, then the Mumble registration with it). A Mumble user may have registered a name before a web account took it, so that account got the user's pushes: who wrote, in which chat, also private ones. Now the hub asks PushUser (the registration with the account's certificate; none when an admin renamed it, as the login refuses it then). And a queued push went out after its user lost the chat or was banned: each note carries an Allowed check from the hub (still the account's user, not banned, may read the chat), asked when a worker sends it.
+
+Review (a subagent): the renamed registration and a name taken by a new account while a push waits, both fixed. Left: a push stopped at send time still counts for the minute's collapse of that chat (it may hold back the next one, never leak it).

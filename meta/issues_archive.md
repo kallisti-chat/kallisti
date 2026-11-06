@@ -356,3 +356,4 @@
 - [x] [Apps: voice over UDP on Kallisti servers](issues/app-udp-voice-kallisti.md)
 - [x] [Private-room media (PR #18) without broken apps or slow reads](issues/private-room-media.md)
   - [x] [Private-room media: a mode without signed links](issues/private-room-media-no-signed-links.md)
+- [x] [Push notifications: the right account, and access at send time](issues/push-access.md)
