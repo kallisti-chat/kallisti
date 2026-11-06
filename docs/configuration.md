@@ -193,8 +193,8 @@ their channel. Files of public rooms stay readable by everyone; files in
 direct messages keep their old rule (anyone with the link).
 
 Enable it in the server environment and restart: in Compose,
-`EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "1"` in the `kallisti` service's
-`environment`, then `docker compose up -d` with your usual Compose files
+`EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` in `deploy/.env` (or in the `kallisti`
+service's `environment`), then `docker compose up -d` with your usual Compose files
 (`docker compose restart` does not apply environment changes); in the Helm
 chart, `experimentalPrivateRoomMedia: true`. It
 needs the built-in Mumble server: with `MUMBLE_HOST` the server does not start.

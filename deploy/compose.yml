@@ -36,6 +36,9 @@ services:
       # keep the password from an earlier start.
       MUMBLED_SUPERUSER_PASSWORD: "${SUPERUSER_PASSWORD:-}"
       BACKUP_DIR: "/data/backups" # daily database backups, the newest 7 kept
+      # Private rooms' files only for their readers (see docs/configuration.md).
+      EXPERIMENTAL_PRIVATE_ROOM_MEDIA: "${EXPERIMENTAL_PRIVATE_ROOM_MEDIA:-}"
+      PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS: "${PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS:-}"
       # Before Caddy gets its first certificate, Kallisti uses its saved self-signed one.
       MUMBLE_CERT_FILE: "${MUMBLE_CERT_FILE:-/data/mumble-tls/current/mumble.crt}"
       MUMBLE_KEY_FILE: "${MUMBLE_KEY_FILE:-/data/mumble-tls/current/mumble.key}"
