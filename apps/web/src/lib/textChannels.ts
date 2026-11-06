@@ -553,6 +553,13 @@ const toggled = (ids: ReadonlySet<number>, id: number, on: boolean) => {
 const isStreamPreview = (v: unknown): v is string => isStr(v) && v.startsWith("data:image/jpeg;base64,");
 const isStreams = (v: unknown): v is LiveStream[] =>
   Array.isArray(v) && v.every((s) => isObj(s) && isNum(s.session) && isNum(s.channel) && (s.preview === undefined || isStreamPreview(s.preview)));
+const isQualityLimits = (v: unknown): v is QualityLimits =>
+  isObj(v) &&
+  isNum(v.maxBitrateVoice) &&
+  isNum(v.maxBitrateMusic) &&
+  isNum(v.bytesPerSecond) &&
+  isNum(v.maxSide) &&
+  isNum(v.maxFps);
 // Thumbnails of the streams that are still live.
 const keepPreviews = (previews: TextState["streamPreviews"], streams: readonly LiveStream[]) =>
   Object.fromEntries(streams.flatMap((s) => (s.preview ?? previews[s.session] ? [[s.session, s.preview ?? previews[s.session]!]] : [])));
@@ -688,6 +695,7 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         ...(isIds(v.follows) ? { follows: v.follows } : {}),
         ...(isObj(v.channelList) ? { channelList: parseChannelList(v.channelList) } : {}),
         ...(isNum(v.threadArchive) ? { threadArchive: v.threadArchive } : {}),
+        ...(isQualityLimits(v.qualityLimits) ? { qualityLimits: v.qualityLimits } : {}),
       };
     }
     case "member":
@@ -751,6 +759,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
     }
     case "guests-read-only":
       return typeof v.on === "boolean" ? { type: "guests-read-only", on: v.on } : null;
+    case "quality-limits":
+      return isQualityLimits(v.qualityLimits) ? { type: "quality-limits", qualityLimits: v.qualityLimits } : null;
     case "captcha":
       return isCaptchaLevel(v.level) ? { type: "captcha", level: v.level } : null;
     case "server-name":

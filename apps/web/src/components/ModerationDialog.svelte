@@ -214,11 +214,11 @@
     if (onSaveQualityLimits) {
       saves.quality.run(() =>
         onSaveQualityLimits({
-          maxBitrateVoice: voiceBitrateDraft * 1000,
-          maxBitrateMusic: musicBitrateDraft * 1000,
-          bytesPerSecond: streamBandwidthDraft,
-          maxSide: streamSideDraft,
-          maxFps: streamFpsDraft,
+          maxBitrateVoice: Number(voiceBitrateDraft) * 1000,
+          maxBitrateMusic: Number(musicBitrateDraft) * 1000,
+          bytesPerSecond: Number(streamBandwidthDraft),
+          maxSide: Number(streamSideDraft),
+          maxFps: Number(streamFpsDraft),
         })
       );
     }
@@ -435,6 +435,7 @@
             <option value={15}>15 fps</option>
             <option value={30}>30 fps</option>
             <option value={60}>60 fps</option>
+            <option value={120}>120 fps</option>
           </select>
         </label>
         <p class="note">{t("admin.qualityMaxStreamFramerateNote")}</p>

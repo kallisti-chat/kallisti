@@ -2969,7 +2969,8 @@ Changes across client and server:
   - Audio filters: Automatic Gain Control (AGC) is now individually toggleable, and noise suppression can be set to "Off" in standard speech mode, allowing completely unfiltered studio/microphone input.
   - Stream quality defaults: users can configure default resolution and frame rate for screen shares and camera streams.
 - Server moderation & caps:
-  - Added a "Quality & limits" section in Server Settings (ModerationDialog) for administrators to configure maximum allowed speech bitrate, music bitrate, stream resolution, frame rate, and total stream bandwidth.
+  - Added a "Voice & streaming" section in Server Settings (ModerationDialog) for administrators to configure maximum allowed speech bitrate, music bitrate, stream resolution, frame rate (up to 120 fps), and total stream bandwidth.
   - Limits persist in SQLite (`mumble_settings`) and broadcast to connected clients via sidecar (`quality-limits` event), immediately clamping active encoders and setting limits.
-  - Stream handler dynamically enforces bandwidth limits on WebRTC/media streams.
+  - Stream handler and WHIP (OBS) ingest dynamically enforce bandwidth and framerate limits on media streams.
+  - Updated OBS stream dialog and instructions to align with server limits.
 - Full parity across web and desktop (Tauri v2) with complete translations for all 7 supported languages.

@@ -4,7 +4,7 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "Paramètres du serveur",
   "admin.sectionOverview": "Vue d'ensemble",
-    "admin.sectionQuality": "Qualité voix et streaming",
+  "admin.sectionQuality": "Voix et streaming",
   "admin.qualityMaxVoiceBitrate": "Débit vocal maximal",
   "admin.qualityMaxVoiceBitrateNote": "Limite supérieure pour le débit vocal choisi par les utilisateurs (128 kbps par défaut).",
   "admin.qualityMaxMusicBitrate": "Débit musical maximal",
