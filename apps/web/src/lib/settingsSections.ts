@@ -4,7 +4,7 @@ import type { Category } from "./dialogCategories";
 // The user settings' categories (see SettingsDialog, lib/dialogCategories);
 // titles are text keys (t() where they show).
 
-export type SectionId = "profile" | "account" | "voice" | "notifications" | "appearance";
+export type SectionId = "profile" | "account" | "voice" | "notifications" | "appearance" | "translation";
 export type Section = Category<SectionId, "user" | "app"> & { title: Key };
 
 const ALL: Section[] = [
@@ -13,6 +13,7 @@ const ALL: Section[] = [
   { id: "voice", title: "settings.sectionVoice", group: "app" },
   { id: "notifications", title: "settings.sectionNotifications", group: "app" },
   { id: "appearance", title: "settings.sectionAppearance", group: "app" },
+  { id: "translation", title: "settings.sectionTranslation", group: "app" },
 ];
 
 export const GROUP_TITLES = { user: "settings.groupUser", app: "settings.groupApp" } as const satisfies Record<Section["group"], Key>;

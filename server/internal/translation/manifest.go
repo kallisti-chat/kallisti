@@ -24,10 +24,19 @@ type File struct {
 }
 
 // Manifest: where the files are (Source + pair + "/" + name) and the files
-// of each pair ("zh-en") by part (see Part).
+// of each pair ("zh-en") by part (see Part). LLM: the larger model's files
+// (the client's "better translation") by path, at LLMSource + path.
 type Manifest struct {
-	Source string                     `json:"source"`
-	Pairs  map[string]map[string]File `json:"pairs"`
+	Source    string                     `json:"source"`
+	Pairs     map[string]map[string]File `json:"pairs"`
+	LLMSource string                     `json:"llmSource,omitempty"`
+	LLM       map[string]File            `json:"llm,omitempty"`
+}
+
+// WithoutLLM: the pairs only.
+func (m Manifest) WithoutLLM() Manifest {
+	m.LLMSource, m.LLM = "", nil
+	return m
 }
 
 // Part is what a model file is for Bergamot ("": none of its files).
@@ -54,7 +63,7 @@ func (m Manifest) For(langs []string) Manifest {
 	if slices.Contains(langs, "*") {
 		return m
 	}
-	out := Manifest{Source: m.Source, Pairs: map[string]map[string]File{}}
+	out := Manifest{Source: m.Source, Pairs: map[string]map[string]File{}, LLMSource: m.LLMSource, LLM: m.LLM}
 	for pair, files := range m.Pairs {
 		other, ok := strings.CutPrefix(pair, "en-")
 		if !ok {

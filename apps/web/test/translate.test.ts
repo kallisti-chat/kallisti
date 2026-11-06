@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detect, reachable, registryOf, targetOf } from "../src/lib/translate/languages";
+import { detect, loadDetector, reachable, registryOf, targetOf } from "../src/lib/translate/languages";
 
 describe("translation languages", () => {
   it("tells the language of a chat message by its script and common words", () => {
@@ -15,6 +15,25 @@ describe("translation languages", () => {
     // Links, mentions and emoji do not count; too little text: unknown.
     expect(detect("@lain https://github.com/kallisti-chat/kallisti/pull/18 :tada:")).toBeNull();
     expect(detect("ok")).toBeNull();
+  });
+
+  it("with the detector loaded, tells short Latin-script chat lines", async () => {
+    await loadDetector();
+    for (const [want, line] of [
+      ["de", "Kannst du mal kurz in den Sprachkanal kommen?"],
+      ["fr", "Ça marche nickel depuis la mise à jour, merci !"],
+      ["fr", "On se retrouve dans le salon vocal dans 5 min ?"],
+      ["fr", "Franchement l'appli plante tout le temps sur mon tel."],
+      ["es", "Me uno al canal de voz en un rato, voy a cenar."],
+      ["en", "fix a typo in a comment"],
+      ["en", "translation test posts end here"],
+    ] as const)
+      expect([line, detect(line)]).toEqual([line, want]);
+    // Too short to tell: no language (no Translate on "hello").
+    for (const line of ["hello", "np", "Hi", "Kallisti"]) expect([line, detect(line)]).toEqual([line, null]);
+    // Still by script: Chinese, Simplified or Traditional; Japanese.
+    expect(detect("這個功能什麼時候上線？我等好久了")).toBe("zh-Hant");
+    expect(detect("それめっちゃいいね、助かる！")).toBe("ja");
   });
 
   it("does not take English with single letters, kaomoji or Chinese names for another language", () => {

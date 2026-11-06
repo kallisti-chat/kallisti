@@ -25,6 +25,9 @@
     sticker: "M4 4h16v9l-7 7H4zM20 13h-5a2 2 0 0 0-2 2v5",
     copy: "M9 9h11v11H9zM5 15H4V4h11v1",
     info: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5v.5",
+    // A face (add a reaction), three dots (more).
+    smile: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 14a4.5 4.5 0 0 0 7 0M9 9.5v.5M15 9.5v.5",
+    more: "M5 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM19 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",
     // A character and an "A": translate.
     translate: "M3 5h9M7.5 3v2M5 5c1 4 3.5 6.5 7 8M10 5c-1 4-3.5 6.5-7 8M13 21l4-9 4 9M14.5 18h5",
   unread: "M4 6h16v12H4zM4 7l8 6 8-6",

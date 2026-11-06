@@ -1828,5 +1828,43 @@
 				"sha256": "dff594318ab7d8b7b60b844ab98ebe6b932ae8045fab15235404c787715965b3"
 			}
 		}
+	},
+	"llmSource": "https://huggingface.co/DavidLuong/Hy-MT2-1.8B-ONNX-q4f16/resolve/cb415aec769544c3f9cefdc312142b592e731bb9/",
+	"llm": {
+		"chat_template.jinja": {
+			"name": "chat_template.jinja",
+			"size": 654,
+			"sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee"
+		},
+		"config.json": {
+			"name": "config.json",
+			"size": 1518,
+			"sha256": "c0621df26e008b9a9d3a288062aebd150169e25aa707400c58fecd410e20d8f8"
+		},
+		"generation_config.json": {
+			"name": "generation_config.json",
+			"size": 221,
+			"sha256": "0e28667f1cb4c7b880b9223b2d87978f88e79ed7ae037de1021f826c18d4ed6f"
+		},
+		"onnx/model_q4f16.onnx": {
+			"name": "onnx/model_q4f16.onnx",
+			"size": 1373443906,
+			"sha256": "c0f5921fe143b05a420334392c59c175389d87dcfd60dc2554ca1c629eebec2a"
+		},
+		"special_tokens_map.json": {
+			"name": "special_tokens_map.json",
+			"size": 488,
+			"sha256": "bb9f59990034dae326581b9c62471523975417869f78a244b7ae2ce8cbb085eb"
+		},
+		"tokenizer.json": {
+			"name": "tokenizer.json",
+			"size": 9527287,
+			"sha256": "b475bbef1b0b2fd57dcb865332b546475bd1ede2deb3bb91bafd0c047a8a530a"
+		},
+		"tokenizer_config.json": {
+			"name": "tokenizer_config.json",
+			"size": 166491,
+			"sha256": "273eea0d246839923aa90d4e376e4bce6ae9ad2ea82ff17c1db76a99d6a50e92"
+		}
 	}
 }

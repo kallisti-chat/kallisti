@@ -308,7 +308,11 @@ func run() error {
 	mux.Handle("/api/link-image/", linkImages)
 	var models http.Handler = http.NotFoundHandler()
 	if len(cfg.TranslationLanguages) > 0 {
-		models = &translation.Handler{Manifest: translation.Bundled().For(cfg.TranslationLanguages), Dir: cfg.TranslationDir}
+		manifest := translation.Bundled().For(cfg.TranslationLanguages)
+		if cfg.NoTranslationLLM {
+			manifest = manifest.WithoutLLM()
+		}
+		models = &translation.Handler{Manifest: manifest, Dir: cfg.TranslationDir}
 	}
 	mux.Handle("/api/translation/", models)
 	mux.Handle("/api/push", pushes)

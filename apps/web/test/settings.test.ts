@@ -28,13 +28,14 @@ describe("parseSettings", () => {
       streamQuality: { screen: { height: 720, fps: 60 }, camera: { height: 480, fps: 15 } },
       sounds: false,
       soundVolume: 0.3,
+      betterTranslation: true,
     };
     expect(parseSettings(JSON.stringify(stored))).toEqual(stored);
   });
 
   it("replaces invalid values one by one", () => {
     const parsed = parseSettings(
-      JSON.stringify({ mode: "shout", pttKey: 5, vadThresholdDb: -300, inputDeviceId: "mic-2", notifications: "yes", closeMicWhenMuted: 1, noiseSuppression: "max", musicMode: "on", playbackBuffer: "huge", cameraDeviceId: 3, streamQuality: { screen: { height: 333, fps: 30 }, camera: "hd" } }),
+      JSON.stringify({ mode: "shout", pttKey: 5, vadThresholdDb: -300, inputDeviceId: "mic-2", notifications: "yes", closeMicWhenMuted: 1, betterTranslation: "on", noiseSuppression: "max", musicMode: "on", playbackBuffer: "huge", cameraDeviceId: 3, streamQuality: { screen: { height: 333, fps: 30 }, camera: "hd" } }),
     );
     expect(parsed).toEqual({ ...DEFAULT_SETTINGS, inputDeviceId: "mic-2" });
   });

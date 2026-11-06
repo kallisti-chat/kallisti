@@ -9,6 +9,7 @@
   import StickerPicker from "./StickerPicker.svelte";
   import { stickerText, type Sticker } from "../lib/stickers";
   import MessageSheet, { type SheetItem } from "./MessageSheet.svelte";
+  import MessageMenu from "./MessageMenu.svelte";
   import ChannelSheet from "./ChannelSheet.svelte";
   import { headerParts } from "../lib/chatHeader";
   import { hold, longPress } from "../lib/longPress";
@@ -64,7 +65,9 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
-  import { detect, targetOf } from "../lib/translate/languages";
+  import { detect, loadDetector, targetOf } from "../lib/translate/languages";
+  import type { Loading } from "../lib/translate/llm";
+  import { tip } from "../lib/tooltip";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { barDone, unreadBar } from "../lib/unread";
@@ -887,14 +890,21 @@
   // message key, into the app's language.
   // source, to: the text translated (an edit makes a new one) and into
   // which language (the app's may change).
-  type Translation = { source: string; to: string } & ({ state: "loading" } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
+  type Translation = { source: string; to: string } & ({ state: "loading"; model?: Loading } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
   let translations = $state<Record<string, Translation>>({});
   const translateTo = $derived(targetOf(i18n.ui));
   const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
   // A message's text and language, cached per message object (the list
   // keeps them, see toChatMessage).
-  const languages = new WeakMap<object, { text: string; lang: string | null }>();
+  // Latin script needs the detector (loaded once, see loadDetector): then
+  // the languages are told again.
+  let languages = new WeakMap<object, { text: string; lang: string | null }>();
+  let detector = $state(false);
+  // When the browser is idle: it is about 300 kB.
+  const idle = (f: () => void) => ("requestIdleCallback" in window ? requestIdleCallback(f, { timeout: 5000 }) : setTimeout(f, 2000));
+  idle(() => void loadDetector().then(() => ((languages = new WeakMap()), (detector = true))));
   const languageOf = (m: ChatMessage | DisplayMessage) => {
+    void detector;
     let found = languages.get(m);
     if (!found) {
       // Not hidden spoilers: a translation would show them.
@@ -914,13 +924,26 @@
     const tr = translations[messageKey(m)];
     return tr?.source === languageOf(m).text && tr.to === translateTo ? tr : undefined;
   };
-  const startTranslation = async (key: string, source: string, from: string) => {
+  // The model's context (better translation): the messages before it,
+  // and the names it keeps.
+  const contextOf = (m: ChatMessage | DisplayMessage) => {
+    const at = messages.indexOf(m);
+    const before = messages
+      .slice(Math.max(0, at - 3), Math.max(0, at))
+      .map((b) => ({ author: b.actorName ?? "", text: languageOf(b).text }))
+      .filter((b) => b.text);
+    return { before, names: [...knownNames, ...channelNames] };
+  };
+  const startTranslation = async (key: string, source: string, from: string, m: ChatMessage | DisplayMessage) => {
     const to = translateTo;
     translations = { ...translations, [key]: { source, to, state: "loading" } };
+    const loading = () => translations[key]?.state === "loading" && translations[key].source === source;
+    const onProgress = (model: Loading) => loading() && (translations = { ...translations, [key]: { source, to, state: "loading", model } });
     let done: Translation;
     try {
       const { translate } = await import("../lib/translate/engine");
-      done = { source, to, state: "done", from, text: await translate(source, from, to, httpBase) };
+      const better = settings.value.betterTranslation;
+      done = { source, to, state: "done", from, text: await translate(source, from, to, httpBase, { better, context: contextOf(m), onProgress }) };
     } catch (e) {
       const unsupported = (e as { unsupported?: boolean }).unsupported === true;
       if (!unsupported) console.error("translation", e);
@@ -937,7 +960,7 @@
     const key = messageKey(m);
     const { text, lang } = languageOf(m);
     if (translationOf(m)) hideTranslation(key);
-    else if (lang && lang !== translateTo) void startTranslation(key, text, lang);
+    else if (lang && lang !== translateTo) void startTranslation(key, text, lang, m);
   };
   const sheetItems = (m: ChatMessage | DisplayMessage): SheetItem[] => {
     const may = allowed(m);
@@ -961,6 +984,17 @@
         ? [{ label: t("chat.deleteMessage"), icon: "trash" as const, danger: true, confirm: t("chat.deleteConfirm"), run: done(() => onDelete?.(may.id)) }]
         : []),
     ];
+  };
+  // Desktop: the menu of a message's actions (More, a right-click).
+  let menuFor = $state.raw<{ m: ChatMessage | DisplayMessage; x: number; y: number; anchor?: HTMLElement } | null>(null);
+  // A right-click on a message opens it; not on a link or selected text
+  // (the browser's own menu), nor where another menu opened.
+  const messageMenu = (e: MouseEvent, m: ChatMessage | DisplayMessage) => {
+    if (e.defaultPrevented || !e.isTrusted || matchMedia("(hover: none)").matches) return;
+    if ((e.target as Element).closest?.("a, img, video, audio, textarea, input, [contenteditable]") || getSelection()?.toString()) return;
+    if (!sheetItems(m).length) return;
+    e.preventDefault();
+    menuFor = { m, x: e.clientX, y: e.clientY };
   };
   // Not for a message without actions (an unstored image, read-only).
   const openSheet = (m: ChatMessage | DisplayMessage) => {
@@ -1672,13 +1706,18 @@
 {#if lightbox}
   <Lightbox {...lightbox} onClose={() => (lightbox = null)} />
 {/if}
+{#if menuFor}
+  <MessageMenu x={menuFor.x} y={menuFor.y} anchor={menuFor.anchor} items={sheetItems(menuFor.m)} onClose={() => (menuFor = null)} />
+{/if}
 
 {#snippet lines(group: MessageGroup)}
   {#each group.messages as m, i (messageKey(m))}
     <li class="line" class:first={i === 0} class:mentioned={pingsMe(pingText(m), group.actorName, replyPing(m as DisplayMessage), me, allOf(m))}
       class:flash={idOf(m) !== undefined && idOf(m) === flashed}
       class:sheet-open={sheetMessage === m}
+      class:menu-open={menuFor?.m === m}
       use:hold={() => openSheet(m)}
+      oncontextmenu={(e) => messageMenu(e, m)}
       data-message={idOf(m)}>
       {#if i === 0}
         <div class="gutter">
@@ -1822,7 +1861,17 @@
           <p lang={translateTo}>{tr.text}</p>
           <span class="note">{t("chat.translatedFrom", { lang: languageName(tr.from) })}</span>
         {:else}
-          <span class="note">{tr.state === "loading" ? t("chat.translating") : tr.text}</span>
+          {#if tr.state === "error"}
+            <span class="note">{tr.text}</span>
+          {:else}
+            <span class="note working"
+              >{!tr.model
+                ? t("chat.translating")
+                : "cached" in tr.model
+                  ? t("chat.translationLoad")
+                  : t("chat.translationDownload", { percent: tr.model.download })}</span
+            >
+          {/if}
         {/if}
       </div>
     {/if}
@@ -1926,49 +1975,48 @@
           <button type="button" class="danger" onclick={() => (onDelete?.(id), endConfirm())}>{t("common.delete")}</button>
           <button type="button" bind:this={cancelButton} onclick={endConfirm}>{t("common.cancel")}</button>
         {:else}
+          <!-- The common actions; the others in the menu (More, a right-click). -->
           {#if canReact}
-            <button type="button" class="react-button" aria-label={t("chat.addReaction")} title={t("chat.react")} onclick={() => openPicker(id)}>{t("chat.react")}</button>
+            <button type="button" class="react-button" aria-label={t("chat.addReaction")} {@attach tip(t("chat.addReaction"))} onclick={() => openPicker(id)}><Icon name="smile" size={18} /></button>
           {/if}
           {#if canReply}
-            <button type="button" aria-label={t("chat.reply")} title={t("chat.reply")} onclick={() => startReply(m)}>{t("chat.reply")}</button>
+            <button type="button" aria-label={t("chat.reply")} {@attach tip(t("chat.reply"))} onclick={() => startReply(m)}><Icon name="reply" size={18} /></button>
           {/if}
-          {#if canThread(id)}
-            <button type="button" aria-label={t("chat.createThread")} title={t("chat.createThread")} onclick={() => onCreateThread?.(id, "source" in m && m.source ? refsAsNames(m.source.text) : "")}
-              >{t("chat.threadAction")}</button
-            >
-          {/if}
-          {#if canPin}
-            <button type="button" aria-label={pinned ? t("chat.unpinMessage") : t("chat.pinMessage")} title={pinned ? t("chat.unpin") : t("chat.pin")} onclick={() => onPin?.(id, !pinned)}
-              >{pinned ? t("chat.unpin") : t("chat.pin")}</button
-            >
-          {/if}
-          {#if linkTo}
-            <button type="button" aria-label={t("chat.copyLinkToMessage")} title={t("chat.copyLink")} onclick={() => copy(linkTo(id), t("chat.linkCopied"))}>{t("chat.linkAction")}</button>
+          {#if canEdit}
+            <button type="button" aria-label={t("chat.editMessage")} {@attach tip(t("common.edit"))} onclick={() => startEdit(m)}><Icon name="edit" size={18} /></button>
           {/if}
           {@render translateButton(m)}
-          {#if onMarkUnread}
-            <button type="button" aria-label={t("chat.markUnreadFromHere")} title={t("chat.markUnreadTitle")} onclick={() => onMarkUnread?.(id)}>{t("chat.unreadAction")}</button>
-          {/if}
-          <button type="button" aria-label={t("chat.messageInfo")} title={t("chat.messageInfoTitle")} onclick={() => showInfo(m)}>{t("chat.info")}</button>
-          {#if canEdit}
-            <button type="button" aria-label={t("chat.editMessage")} title={t("common.edit")} onclick={() => startEdit(m)}>{t("common.edit")}</button>
-          {/if}
-          {#if canDelete}
-            <button type="button" aria-label={t("chat.deleteMessage")} title={t("common.delete")} onclick={() => startConfirm(id)}>{t("common.delete")}</button>
-          {/if}
+          {@render moreButton(m)}
         {/if}
       </div>
     {/if}
-  {:else if translationOf(m) || foreignText(m)}
-    <!-- A Mumble client's line: only translating. -->
-    <div class="actions">{@render translateButton(m)}</div>
+  {:else if translationOf(m) || foreignText(m) || sheetItems(m).length}
+    <!-- A Mumble client's line. -->
+    <div class="actions">{@render translateButton(m)}{@render moreButton(m)}</div>
   {/if}
 {/snippet}
 
 {#snippet translateButton(m: ChatMessage | DisplayMessage)}
   {#if translationOf(m) || foreignText(m)}
     {@const shown = !!translationOf(m)}
-    <button type="button" aria-pressed={shown} onclick={() => toggleTranslation(m)}>{shown ? t("chat.originalAction") : t("chat.translate")}</button>
+    {@const label = shown ? t("chat.hideTranslation") : t("chat.translate")}
+    <button type="button" aria-pressed={shown} aria-label={label} {@attach tip(label)} onclick={() => toggleTranslation(m)}><Icon name="translate" size={18} /></button>
+  {/if}
+{/snippet}
+
+{#snippet moreButton(m: ChatMessage | DisplayMessage)}
+  {#if sheetItems(m).length}
+    <button
+      type="button"
+      aria-label={t("chat.messageActions")}
+      {@attach tip(t("chat.more"))}
+      aria-haspopup="dialog"
+      aria-expanded={menuFor?.m === m}
+      onclick={(e) => {
+        const box = e.currentTarget.getBoundingClientRect();
+        menuFor = menuFor?.m === m ? null : { m, x: box.right, y: box.bottom + 4, anchor: e.currentTarget };
+      }}><Icon name="more" size={18} /></button
+    >
   {/if}
 {/snippet}
 
@@ -2343,7 +2391,8 @@
   .line.first {
     margin-top: 16px;
   }
-  .line:hover {
+  .line:hover,
+  .line.menu-open {
     background: rgb(0 0 0 / 0.08);
   }
   .gutter {
@@ -2691,8 +2740,10 @@
     display: grid;
     grid-template-columns: repeat(10, auto);
   }
+  /* Keyboard focus keeps it; a click's focus does not (it would stay). */
   .line:hover .actions,
-  .line:focus-within .actions,
+  .line:has(:focus-visible) .actions,
+  .line.menu-open .actions,
   .actions.confirming {
     opacity: 1;
   }
@@ -2721,6 +2772,10 @@
   }
   .actions span {
     padding: 0 6px;
+  }
+  .actions button[aria-expanded="true"],
+  .actions button[aria-pressed="true"] {
+    background: var(--bg-active);
   }
   .actions button {
     padding: 4px 8px;
@@ -2851,6 +2906,20 @@
   .translation .note {
     font-size: 12px;
     color: var(--text-muted);
+  }
+  /* Work going on: a slow pulse (none with reduced motion). */
+  .translation .working {
+    animation: working 1.4s ease-in-out infinite;
+  }
+  @keyframes working {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .translation .working {
+      animation: none;
+    }
   }
   .edited {
     margin-left: 4px;

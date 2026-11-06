@@ -3,6 +3,10 @@ import type { Messages } from "../../lib/i18n";
 export default {
   "settings.language": "Language",
   "settings.languageAuto": "As the browser",
+  "settings.translationIntro": "Messages are translated on this device. They are not sent to any translation service.",
+  "settings.betterTranslation": "Better translation",
+  "settings.betterTranslationHint": "Translates messages with a larger model on this device (Hy-MT2). It downloads about 1.4 GB once and needs a graphics card (WebGPU).",
+  "settings.betterTranslationNoGpu": "Not available here: this browser or graphics card has no WebGPU with 16-bit numbers.",
 
   // Categories (lib/settingsSections) and the dialog around them.
   "settings.groupUser": "User settings",
@@ -12,6 +16,7 @@ export default {
   "settings.sectionVoice": "Voice & video",
   "settings.sectionNotifications": "Notifications",
   "settings.sectionAppearance": "Appearance",
+  "settings.sectionTranslation": "Translation",
   "settings.categoriesLabel": "{title} categories",
   "settings.categoryHeading": "{title}: {category}",
   "settings.editProfile": "Edit profile ›",

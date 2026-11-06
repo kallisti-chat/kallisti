@@ -40,6 +40,9 @@ export type Settings = {
   // Mute and deafen sounds (see sounds.ts), volume 0 to 1.
   sounds: boolean;
   soundVolume: number;
+  // Translate with the larger model (see translate/llm.ts): a download of
+  // about 1.4 GB, WebGPU only.
+  betterTranslation: boolean;
 };
 
 // What to ask the browser for: exactly the chosen microphone (null: the
@@ -81,6 +84,7 @@ export const DEFAULT_SETTINGS: Settings = {
   streamQuality: DEFAULT_QUALITY,
   sounds: true,
   soundVolume: 0.5,
+  betterTranslation: false,
 };
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -120,6 +124,7 @@ export const parseSettings = (raw: string | null): Settings => {
     streamQuality: { screen: parseQuality(quality.screen, "screen"), camera: parseQuality(quality.camera, "camera") },
     sounds: d.sounds !== false,
     soundVolume: typeof d.soundVolume === "number" ? clamp(d.soundVolume, 0, 1) : DEFAULT_SETTINGS.soundVolume,
+    betterTranslation: d.betterTranslation === true,
   };
 };
 

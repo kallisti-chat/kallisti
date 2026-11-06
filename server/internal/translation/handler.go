@@ -48,21 +48,39 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.list(w)
 		return
 	}
+	if path, ok := strings.CutPrefix(r.URL.Path, "/api/translation/llm/"); ok {
+		f, found := h.Manifest.LLM[path]
+		if !found {
+			http.NotFound(w, r)
+			return
+		}
+		h.serve(w, r, h.Manifest.LLMSource+path, f)
+		return
+	}
 	sum, ok := strings.CutPrefix(r.URL.Path, "/api/translation/files/")
 	pair, f, found := h.find(sum)
 	if !ok || !found {
 		http.NotFound(w, r)
 		return
 	}
+	h.serve(w, r, h.Manifest.Source+pair+"/"+f.Name, f)
+}
+
+// serve answers with a file, fetched from url first if it is not kept.
+func (h *Handler) serve(w http.ResponseWriter, r *http.Request, url string, f File) {
 	path := filepath.Join(h.Dir, f.SHA256)
 	if _, err := os.Stat(path); err != nil {
-		if err := h.fetchOnce(r.Context(), pair, f); err != nil {
-			slog.Error("translation model", "pair", pair, "file", f.Name, "err", err)
+		if err := h.fetchOnce(r.Context(), url, f); err != nil {
+			slog.Error("translation model", "url", url, "err", err)
 			http.Error(w, "cannot get the model", http.StatusBadGateway)
 			return
 		}
 	}
-	w.Header().Set("Content-Type", "application/octet-stream")
+	contentType := "application/octet-stream"
+	if strings.HasSuffix(f.Name, ".json") {
+		contentType = "application/json"
+	}
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	http.ServeFile(w, r, path)
 }
@@ -79,9 +97,17 @@ func (h *Handler) list(w http.ResponseWriter) {
 			pairs[pair][p] = part{f.SHA256, f.Size}
 		}
 	}
+	out := map[string]any{"pairs": pairs}
+	if len(h.Manifest.LLM) > 0 {
+		var size int64
+		for _, f := range h.Manifest.LLM {
+			size += f.Size
+		}
+		out["llm"] = map[string]int64{"size": size}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-cache")
-	_ = json.NewEncoder(w).Encode(map[string]any{"pairs": pairs})
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 func (h *Handler) find(sum string) (string, File, bool) {
@@ -97,7 +123,7 @@ func (h *Handler) find(sum string) (string, File, bool) {
 
 // fetchOnce fetches a file, or waits for the fetch already running (until
 // the client goes).
-func (h *Handler) fetchOnce(ctx context.Context, pair string, f File) error {
+func (h *Handler) fetchOnce(ctx context.Context, url string, f File) error {
 	h.clean.Do(func() {
 		old, _ := filepath.Glob(filepath.Join(h.Dir, ".fetch-*"))
 		for _, p := range old {
@@ -117,7 +143,7 @@ func (h *Handler) fetchOnce(ctx context.Context, pair string, f File) error {
 		}
 		h.loading[f.SHA256] = l
 		go func() {
-			l.err = h.fetch(pair, f)
+			l.err = h.fetch(url, f)
 			h.mu.Lock()
 			delete(h.loading, f.SHA256)
 			h.mu.Unlock()
@@ -133,12 +159,13 @@ func (h *Handler) fetchOnce(ctx context.Context, pair string, f File) error {
 	}
 }
 
-func (h *Handler) fetch(pair string, f File) error {
+func (h *Handler) fetch(url string, f File) error {
 	client := h.Client
 	if client == nil {
-		client = &http.Client{Timeout: 10 * time.Minute}
+		// Ten minutes and 256 KiB/s (the larger model has 1.4 GB).
+		client = &http.Client{Timeout: 10*time.Minute + time.Duration(f.Size>>18)*time.Second}
 	}
-	res, err := client.Get(h.Manifest.Source + pair + "/" + f.Name)
+	res, err := client.Get(url)
 	if err != nil {
 		return err
 	}

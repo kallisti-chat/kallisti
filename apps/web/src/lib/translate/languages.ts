@@ -21,9 +21,28 @@ const WORDS: Record<string, string[]> = {
 
 const count = (text: string, re: RegExp) => text.match(re)?.length ?? 0;
 
+// Languages in the Latin script that the models know (Firefox's pairs):
+// the detector picks only among them.
+const LATIN = ["en", "de", "fr", "es", "it", "pt", "nl", "pl", "cs", "sk", "sl", "hr", "ro", "hu", "fi", "sv", "da", "nb", "et", "lv", "lt", "tr", "id", "ms", "vi", "ca", "gl", "eu", "sq", "is", "az", "af"];
+
+// The detector for Latin-script text (eld: n-grams, good on short lines),
+// once loaded; before, common words (WORDS).
+let latin: ((text: string) => string | null) | null = null;
+let loadingDetector: Promise<void> | null = null;
+export const loadDetector = () =>
+  (loadingDetector ??= import("eld/extrasmall").then(({ eld }) => {
+    eld.setLanguageSubset(LATIN);
+    // Only a reliable answer ("hello" looks Italian to it).
+    latin = (text) => {
+      const r = eld.detect(text);
+      return r.isReliable() ? r.language || null : null;
+    };
+  }));
+
 // The language of a chat message, or null when it cannot tell (too little
 // text, words of no language here). Links, mentions and :emoji: do not
-// count.
+// count. Other scripts than Latin by their letters, Latin by the detector
+// (see loadDetector).
 export const detect = (raw: string): string | null => {
   const text = raw.replace(/https?:\/\/\S+|@\S+|:[\w+-]+:|`[^`]*`/g, " ");
   const kana = count(text, /[\p{Script=Hiragana}\p{Script=Katakana}]/gu);
@@ -49,6 +68,8 @@ export const detect = (raw: string): string | null => {
   const [other, n] = scripts.reduce((a, b) => (b[1] > a[1] ? b : a));
   if (most(n)) return other === "ru" && /[іїєґ]/i.test(text) ? "uk" : other === "ar" && /[پچژگ]/.test(text) ? "fa" : other;
   const words = text.toLowerCase().match(/[\p{L}']+/gu) ?? [];
+  if (words.length < 2) return null; // one word: a name, "ok", "hello"
+  if (latin) return latin(text);
   const scores = Object.entries(WORDS).map(([lang, list]): [string, number] => [lang, words.filter((w) => list.includes(w)).length]);
   scores.sort((a, b) => b[1] - a[1]);
   const [best, second] = scores;

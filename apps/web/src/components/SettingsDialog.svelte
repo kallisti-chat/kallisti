@@ -23,6 +23,7 @@
   import FediAccount from "./FediAccount.svelte";
   import AllowedSites from "./AllowedSites.svelte";
   import QrShowDialog from "./QrShowDialog.svelte";
+  import { webGPU } from "../lib/translate/llm";
 
   let {
     settings,
@@ -79,6 +80,9 @@
   const groupTitles = $derived({ user: t(GROUP_TITLES.user), app: t(GROUP_TITLES.app) });
   const footer = $derived(around(t("settings.footer"), "link"));
   let section = $state<SectionId | null>(null);
+  // Better translation needs WebGPU with 16-bit floats (asked once).
+  let gpu = $state(false);
+  void webGPU().then((ok) => (gpu = ok));
 
   // Saved when the field loses focus or the settings close. The draft
   // follows changes of the text only (not of the rest of our state), and
@@ -566,6 +570,18 @@
           <option value="12">{t("settings.time12")}</option>
         </select>
       </label>
+    {:else if id === "translation"}
+      <p class="hint intro">{t("settings.translationIntro")}</p>
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={settings.betterTranslation && gpu}
+          disabled={!gpu}
+          onchange={(e) => onChange({ betterTranslation: e.currentTarget.checked })}
+        />
+        <span>{t("settings.betterTranslation")}</span>
+        <span class="hint">{gpu ? t("settings.betterTranslationHint") : t("settings.betterTranslationNoGpu")}</span>
+      </label>
     {/if}
   {/snippet}
 </CategoryDialog>
@@ -673,6 +689,10 @@
   }
   .hint.warn {
     color: var(--danger);
+  }
+  /* A section's opening sentence: spaced as a field. */
+  .hint.intro {
+    margin-bottom: 16px;
   }
   /* Checkbox, text, and a hint under the text. */
   .check {

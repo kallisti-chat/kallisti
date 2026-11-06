@@ -44,6 +44,19 @@ Bergamot translator (message translation on the device)
   Mozilla's Firefox Translations models, MPL 2.0:
   https://github.com/mozilla/translations
 
+eld, Efficient Language Detector (the language of a message, for translation)
+  Copyright Nito T.M. Apache License 2.0: https://github.com/nitotm/efficient-language-detector-js
+
+Transformers.js (better translation, on the device)
+  Copyright Hugging Face, Inc. Apache License 2.0.
+  https://github.com/huggingface/transformers.js
+  ONNX Runtime Web (its WebAssembly and WebGPU runtime), Copyright
+  Microsoft Corporation, MIT License: https://github.com/microsoft/onnxruntime
+  The model (downloaded on use, through this server): Hy-MT2-1.8B,
+  Copyright 2026 Tencent, Apache License 2.0:
+  https://huggingface.co/tencent/Hy-MT2-1.8B
+  (ONNX conversion: https://huggingface.co/DavidLuong/Hy-MT2-1.8B-ONNX-q4f16)
+
 DeepFilterNet3 (noise suppression, "Strongest")
   By Hendrik Schröter and contributors. MIT License or Apache License 2.0.
   https://github.com/Rikorose/DeepFilterNet
