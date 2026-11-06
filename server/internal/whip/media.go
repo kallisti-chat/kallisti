@@ -195,7 +195,7 @@ func newFeed(hub *stream.Hub, session uint32, audio bool, bytesPerSec int, hooks
 	f := &feed{hub: hub, hooks: hooks, now: time.Now, sClock: clock{rate: 48_000},
 		bytes:   rate.NewLimiter(rate.Limit(bytesPerSec), 2*bytesPerSec),
 		sounds:  rate.NewLimiter(soundsPerSec, soundsPerSec/2),
-		fps:     rate.NewLimiter(rate.Limit(60), 6),
+		fps:     rate.NewLimiter(rate.Limit(60), 120),
 		maxSide: 4096,
 		maxFps:  60,
 		lastBps: bytesPerSec,
@@ -262,7 +262,7 @@ func (f *feed) picture(t timed) error {
 			f.bytes.SetLimit(rate.Limit(bps))
 			f.bytes.SetBurst(2 * bps)
 			f.fps.SetLimit(rate.Limit(fps))
-			f.fps.SetBurst(max(2, fps/10))
+			f.fps.SetBurst(max(10, 2*fps))
 		}
 	}
 	if (t.width > f.maxSide || t.height > f.maxSide) && f.maxSide > 0 {
