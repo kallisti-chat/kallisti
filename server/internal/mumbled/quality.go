@@ -28,7 +28,7 @@ const (
 	MinStreamSide = 480
 	MaxStreamSide = 4096
 	MinStreamFps = 15
-	MaxStreamFps = 60
+	MaxStreamFps = 120
 )
 
 func DefaultQualityLimits() QualityLimits {

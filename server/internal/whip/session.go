@@ -52,7 +52,11 @@ func newSession(h *Handler, id, account string) *session {
 // open answers the offer.
 func (s *session) open(o offer, sdp string, voice uint32) (string, error) {
 	defer close(s.opened)
-	s.feed = newFeed(s.h.Hub, voice, o.audio != nil, s.h.BytesPerSecond, stream.IngestHooks{
+	bps := s.h.BytesPerSecond
+	if s.h.Limits != nil {
+		bps = s.h.Limits()
+	}
+	s.feed = newFeed(s.h.Hub, voice, o.audio != nil, bps, stream.IngestHooks{
 		Keyframe: func() {
 			select {
 			case s.pli <- struct{}{}:

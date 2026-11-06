@@ -169,7 +169,7 @@ export default {
   "settings.obsSteps":
     "OBS 30 或更新版本可以直播到你的语音频道：显示效果与屏幕共享相同。你需要在这里保持连接，并位于可以发言的语音频道中。在 OBS 中，设置 → 直播：服务选择“WHIP”，服务器填 {url}，Bearer Token 填你的直播密钥。",
   "settings.obsOutput":
-    "设置 → 输出（高级）：H.264 视频，关键帧间隔 1 或 2 秒，配置 baseline 或 main，最高 1080p 和 8 Mbit/s。",
+    "设置 → 输出（高级）：H.264 视频，关键帧间隔 1 或 2 秒，配置 baseline 或 main。",
   "settings.obsBFrames":
     "不要使用 B 帧（我们按原样转发视频；有 B 帧时画面会破碎或变成粉色）：使用 x264 时，在“x264 选项”中输入 {option}；使用 NVENC、QuickSync 或 AMF 时，将 B 帧设为 0。",
   "settings.obsNewKey": "你的直播密钥（仅显示这一次）：{key}",

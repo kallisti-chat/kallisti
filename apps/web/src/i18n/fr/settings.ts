@@ -177,7 +177,7 @@ export default {
   "settings.obsSteps":
     "OBS 30 ou plus récent peut streamer dans ton salon vocal : il s'affiche comme un partage d'écran. Sois connecté ici et dans un salon vocal où tu peux parler. Dans OBS, Paramètres → Stream : Service « WHIP », Serveur {url}, Bearer Token : ta clé de stream.",
   "settings.obsOutput":
-    "Paramètres → Sortie (Avancé) : vidéo H.264, intervalle d'images clés 1 ou 2 s, profil baseline ou main, 1080p et 8 Mbit/s au maximum.",
+    "Paramètres → Sortie (Avancé) : vidéo H.264, intervalle d'images clés 1 ou 2 s, profil baseline ou main.",
   "settings.obsBFrames":
     "Pas de B-frames (on transmet la vidéo telle quelle ; avec elles, l'image se casse ou devient rose) : avec x264, écris {option} dans « Options x264 » ; avec NVENC, QuickSync ou AMF, mets B-Frames à 0.",
   "settings.obsNewKey": "Ta clé de stream (affichée seulement maintenant) : {key}",

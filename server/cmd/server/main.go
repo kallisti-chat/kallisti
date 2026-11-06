@@ -497,6 +497,9 @@ func startWHIP(cfg *config.Builtin, b *builtin, accounts *auth.Service, previews
 	}
 	h := &whip.Handler{
 		Settings: settings, Hub: b.streams, BytesPerSecond: streamBytesPerSecond, MaxSessions: whipMaxSessions,
+		Limits: func() int {
+			return b.srv.QualityLimits().BytesPerSecond
+		},
 		Account: func(key string) (string, bool) {
 			acc, ok := accounts.StreamKeyAccount(key)
 			return acc.Name, ok

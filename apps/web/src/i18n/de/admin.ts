@@ -4,7 +4,7 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "Servereinstellungen",
   "admin.sectionOverview": "Übersicht",
-    "admin.sectionQuality": "Sprach- & Streaming-Qualität",
+  "admin.sectionQuality": "Sprache & Streaming",
   "admin.qualityMaxVoiceBitrate": "Maximale Sprachbitrate",
   "admin.qualityMaxVoiceBitrateNote": "Obergrenze für die von Benutzern gewählte Sprachbitrate (Standard: 128 kbit/s).",
   "admin.qualityMaxMusicBitrate": "Maximale Musikbitrate",
