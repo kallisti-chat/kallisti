@@ -64,7 +64,7 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
-  import { detect, targetOf } from "../lib/translate/languages";
+  import { detect, loadDetector, targetOf } from "../lib/translate/languages";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { barDone, unreadBar } from "../lib/unread";
@@ -893,8 +893,13 @@
   const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
   // A message's text and language, cached per message object (the list
   // keeps them, see toChatMessage).
-  const languages = new WeakMap<object, { text: string; lang: string | null }>();
+  // Latin script needs the detector (loaded once, see loadDetector): then
+  // the languages are told again.
+  let languages = new WeakMap<object, { text: string; lang: string | null }>();
+  let detector = $state(false);
+  void loadDetector().then(() => ((languages = new WeakMap()), (detector = true)));
   const languageOf = (m: ChatMessage | DisplayMessage) => {
+    void detector;
     let found = languages.get(m);
     if (!found) {
       // Not hidden spoilers: a translation would show them.
