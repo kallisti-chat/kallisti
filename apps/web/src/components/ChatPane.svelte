@@ -9,6 +9,7 @@
   import StickerPicker from "./StickerPicker.svelte";
   import { stickerText, type Sticker } from "../lib/stickers";
   import MessageSheet, { type SheetItem } from "./MessageSheet.svelte";
+  import MessageMenu from "./MessageMenu.svelte";
   import ChannelSheet from "./ChannelSheet.svelte";
   import { headerParts } from "../lib/chatHeader";
   import { hold, longPress } from "../lib/longPress";
@@ -980,6 +981,17 @@
         : []),
     ];
   };
+  // Desktop: the menu of a message's actions (More, a right-click).
+  let menuFor = $state<{ m: ChatMessage | DisplayMessage; x: number; y: number; anchor?: HTMLElement } | null>(null);
+  // A right-click on a message opens it; not on a link or selected text
+  // (the browser's own menu), nor where another menu opened.
+  const messageMenu = (e: MouseEvent, m: ChatMessage | DisplayMessage) => {
+    if (e.defaultPrevented || !e.isTrusted || matchMedia("(hover: none)").matches) return;
+    if ((e.target as Element).closest?.("a, img, video, audio") || getSelection()?.toString()) return;
+    if (!sheetItems(m).length) return;
+    e.preventDefault();
+    menuFor = { m, x: e.clientX, y: e.clientY };
+  };
   // Not for a message without actions (an unstored image, read-only).
   const openSheet = (m: ChatMessage | DisplayMessage) => {
     const id = idOf(m);
@@ -1690,6 +1702,9 @@
 {#if lightbox}
   <Lightbox {...lightbox} onClose={() => (lightbox = null)} />
 {/if}
+{#if menuFor}
+  <MessageMenu x={menuFor.x} y={menuFor.y} anchor={menuFor.anchor} items={sheetItems(menuFor.m)} onClose={() => (menuFor = null)} />
+{/if}
 
 {#snippet lines(group: MessageGroup)}
   {#each group.messages as m, i (messageKey(m))}
@@ -1697,6 +1712,7 @@
       class:flash={idOf(m) !== undefined && idOf(m) === flashed}
       class:sheet-open={sheetMessage === m}
       use:hold={() => openSheet(m)}
+      oncontextmenu={(e) => messageMenu(e, m)}
       data-message={idOf(m)}>
       {#if i === 0}
         <div class="gutter">
@@ -1946,49 +1962,48 @@
           <button type="button" class="danger" onclick={() => (onDelete?.(id), endConfirm())}>{t("common.delete")}</button>
           <button type="button" bind:this={cancelButton} onclick={endConfirm}>{t("common.cancel")}</button>
         {:else}
+          <!-- The common actions; the others in the menu (More, a right-click). -->
           {#if canReact}
-            <button type="button" class="react-button" aria-label={t("chat.addReaction")} title={t("chat.react")} onclick={() => openPicker(id)}>{t("chat.react")}</button>
+            <button type="button" class="react-button" aria-label={t("chat.addReaction")} title={t("chat.react")} onclick={() => openPicker(id)}><Icon name="smile" size={18} /></button>
           {/if}
           {#if canReply}
-            <button type="button" aria-label={t("chat.reply")} title={t("chat.reply")} onclick={() => startReply(m)}>{t("chat.reply")}</button>
+            <button type="button" aria-label={t("chat.reply")} title={t("chat.reply")} onclick={() => startReply(m)}><Icon name="reply" size={18} /></button>
           {/if}
-          {#if canThread(id)}
-            <button type="button" aria-label={t("chat.createThread")} title={t("chat.createThread")} onclick={() => onCreateThread?.(id, "source" in m && m.source ? refsAsNames(m.source.text) : "")}
-              >{t("chat.threadAction")}</button
-            >
-          {/if}
-          {#if canPin}
-            <button type="button" aria-label={pinned ? t("chat.unpinMessage") : t("chat.pinMessage")} title={pinned ? t("chat.unpin") : t("chat.pin")} onclick={() => onPin?.(id, !pinned)}
-              >{pinned ? t("chat.unpin") : t("chat.pin")}</button
-            >
-          {/if}
-          {#if linkTo}
-            <button type="button" aria-label={t("chat.copyLinkToMessage")} title={t("chat.copyLink")} onclick={() => copy(linkTo(id), t("chat.linkCopied"))}>{t("chat.linkAction")}</button>
+          {#if canEdit}
+            <button type="button" aria-label={t("chat.editMessage")} title={t("common.edit")} onclick={() => startEdit(m)}><Icon name="edit" size={18} /></button>
           {/if}
           {@render translateButton(m)}
-          {#if onMarkUnread}
-            <button type="button" aria-label={t("chat.markUnreadFromHere")} title={t("chat.markUnreadTitle")} onclick={() => onMarkUnread?.(id)}>{t("chat.unreadAction")}</button>
-          {/if}
-          <button type="button" aria-label={t("chat.messageInfo")} title={t("chat.messageInfoTitle")} onclick={() => showInfo(m)}>{t("chat.info")}</button>
-          {#if canEdit}
-            <button type="button" aria-label={t("chat.editMessage")} title={t("common.edit")} onclick={() => startEdit(m)}>{t("common.edit")}</button>
-          {/if}
-          {#if canDelete}
-            <button type="button" aria-label={t("chat.deleteMessage")} title={t("common.delete")} onclick={() => startConfirm(id)}>{t("common.delete")}</button>
-          {/if}
+          {@render moreButton(m)}
         {/if}
       </div>
     {/if}
-  {:else if translationOf(m) || foreignText(m)}
-    <!-- A Mumble client's line: only translating. -->
-    <div class="actions">{@render translateButton(m)}</div>
+  {:else if translationOf(m) || foreignText(m) || sheetItems(m).length}
+    <!-- A Mumble client's line. -->
+    <div class="actions">{@render translateButton(m)}{@render moreButton(m)}</div>
   {/if}
 {/snippet}
 
 {#snippet translateButton(m: ChatMessage | DisplayMessage)}
   {#if translationOf(m) || foreignText(m)}
     {@const shown = !!translationOf(m)}
-    <button type="button" aria-pressed={shown} onclick={() => toggleTranslation(m)}>{shown ? t("chat.originalAction") : t("chat.translate")}</button>
+    {@const label = shown ? t("chat.hideTranslation") : t("chat.translate")}
+    <button type="button" aria-pressed={shown} aria-label={label} title={label} onclick={() => toggleTranslation(m)}><Icon name="translate" size={18} /></button>
+  {/if}
+{/snippet}
+
+{#snippet moreButton(m: ChatMessage | DisplayMessage)}
+  {#if sheetItems(m).length}
+    <button
+      type="button"
+      aria-label={t("chat.messageActions")}
+      title={t("chat.messageActions")}
+      aria-haspopup="menu"
+      aria-expanded={menuFor?.m === m}
+      onclick={(e) => {
+        const box = e.currentTarget.getBoundingClientRect();
+        menuFor = menuFor?.m === m ? null : { m, x: box.right, y: box.bottom + 4, anchor: e.currentTarget };
+      }}><Icon name="more" size={18} /></button
+    >
   {/if}
 {/snippet}
 
