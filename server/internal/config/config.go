@@ -56,6 +56,10 @@ type Config struct {
 	// signed links (the apps and other servers' tabs show no private files).
 	ExperimentalPrivateRoomMedia  bool
 	PrivateRoomMediaNoSignedLinks bool
+	// Translation models for the clients (see translation): the languages
+	// paired with English ("*": all; none: off), kept in TranslationDir.
+	TranslationLanguages []string
+	TranslationDir       string
 	// Web Push notifications (built-in server).
 	Push Push
 	// Uploaded files, and the size limit per file.
@@ -257,6 +261,12 @@ func Parse(getenv func(string) string) (Config, error) {
 	}
 	c.WebDir = getenv("WEB_DIR")
 	c.DBPath = cmp.Or(getenv("DB_PATH"), "kallisti.db")
+	if getenv("TRANSLATION") != "0" {
+		if c.TranslationLanguages = list(getenv("TRANSLATION_LANGUAGES")); len(c.TranslationLanguages) == 0 {
+			c.TranslationLanguages = []string{"de", "es", "fr", "ja", "zh", "zh-Hant"}
+		}
+	}
+	c.TranslationDir = cmp.Or(getenv("TRANSLATION_DIR"), filepath.Join(filepath.Dir(c.DBPath), "translation-models"))
 	if c.TextChannels = list(getenv("TEXT_CHANNELS")); len(c.TextChannels) == 0 {
 		c.TextChannels = []string{"general"}
 	}

@@ -20,6 +20,30 @@ Emojibase data (emoji names, keywords and shortcodes for the picker)
   Copyright (c) 2017-2019 Miles Johnson. MIT License.
   https://github.com/milesj/emojibase
 
+Bergamot translator (message translation on the device)
+  @mkljczk/bergamot-translator 0.4.16 (the worker and its WebAssembly).
+  By the Bergamot project, Mozilla and contributors. Mozilla Public License 2.0:
+  https://www.mozilla.org/MPL/2.0/
+  Source: https://codeberg.org/mkljczk/bergamot-translator (version 0.4.16;
+  npm: https://registry.npmjs.org/@mkljczk/bergamot-translator/-/bergamot-translator-0.4.16.tgz)
+  The WebAssembly build contains, under their own licenses (see the LICENSE
+  files in the source):
+  - Marian NMT (marian-dev), MIT License, Copyright (c) Marcin
+    Junczys-Dowmunt, the University of Edinburgh, Adam Mickiewicz University
+    and contributors: https://github.com/browsermt/marian-dev
+  - intgemm, MIT License, Copyright (c) Kenneth Heafield and contributors:
+    https://github.com/kpu/intgemm
+  - SentencePiece, Apache License 2.0, Copyright Google LLC:
+    https://github.com/google/sentencepiece
+  - ssplit-cpp (sentence splitting), Apache License 2.0:
+    https://github.com/browsermt/ssplit-cpp
+  - PCRE2, BSD License, Copyright University of Cambridge:
+    https://github.com/PCRE2Project/pcre2
+  - Emscripten's runtime, MIT License: https://github.com/emscripten-core/emscripten
+  The translation models (downloaded on use, through this server) are
+  Mozilla's Firefox Translations models, MPL 2.0:
+  https://github.com/mozilla/translations
+
 DeepFilterNet3 (noise suppression, "Strongest")
   By Hendrik Schröter and contributors. MIT License or Apache License 2.0.
   https://github.com/Rikorose/DeepFilterNet

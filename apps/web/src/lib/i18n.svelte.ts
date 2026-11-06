@@ -38,6 +38,10 @@ export const i18n = {
   get language() {
     return languageStore().value;
   },
+  // The language of the texts in use (one of LOCALES).
+  get ui() {
+    return locale;
+  },
   setLanguage: (language: Language) => {
     languageStore().set(language);
     return loadChosen();

@@ -5,8 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && vite",
-    "build": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && vite build",
+    "dev": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && node scripts/bergamot.mjs && vite",
+    "build": "node scripts/twemoji.mjs && node scripts/emojidata.mjs && node scripts/bergamot.mjs && vite build",
     "test": "vitest run",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
@@ -25,6 +25,7 @@
   "dependencies": {
     "@jitsi/rnnoise-wasm": "0.2.1",
     "@kallisti/protocol": "workspace:*",
+    "@mkljczk/bergamot-translator": "0.4.16",
     "@tauri-apps/api": "^2.12.3",
     "@tauri-apps/plugin-barcode-scanner": "^2.5.3",
     "@tauri-apps/plugin-global-shortcut": "^2.4.1",

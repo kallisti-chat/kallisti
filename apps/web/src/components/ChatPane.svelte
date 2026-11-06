@@ -15,7 +15,7 @@
   import { createHoldTalk } from "../lib/holdTalk";
   import { htmlToLines, htmlToText } from "../lib/htmlText";
   import { collapses, MAX_HEIGHT_PX } from "../lib/collapse";
-  import { previewText, toggleSpoiler } from "../lib/markdown";
+  import { previewText, toggleSpoiler, withoutSpoilers } from "../lib/markdown";
   import { loadEmojiData, normalEmoji, quickRows, searchEmoji, withTone, type EmojiData } from "../lib/emojiPicker";
   import { emojiUses, recentEmoji, skinTone, usedEmoji } from "../lib/emojiPrefs.svelte";
   import { customEmojiFor, customEntries, jumboEmoji, knownEmoji, refsAsNames } from "../lib/customEmoji";
@@ -64,6 +64,7 @@
   import { linuxApp } from "../lib/desktop";
   import { formatSeconds, slowLeft } from "../lib/slowMode";
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
+  import { detect, targetOf } from "../lib/translate/languages";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
   import { barDone, unreadBar } from "../lib/unread";
@@ -882,6 +883,62 @@
       () => notify(done),
       () => notify(t("chat.copyFailed")),
     );
+  // Translations of messages on this device (see lib/translate), by
+  // message key, into the app's language.
+  // source, to: the text translated (an edit makes a new one) and into
+  // which language (the app's may change).
+  type Translation = { source: string; to: string } & ({ state: "loading" } | { state: "done"; from: string; text: string } | { state: "error"; text: string });
+  let translations = $state<Record<string, Translation>>({});
+  const translateTo = $derived(targetOf(i18n.ui));
+  const languageName = (code: string) => new Intl.DisplayNames(i18n.locale, { type: "language" }).of(code) ?? code;
+  // A message's text and language, cached per message object (the list
+  // keeps them, see toChatMessage).
+  const languages = new WeakMap<object, { text: string; lang: string | null }>();
+  const languageOf = (m: ChatMessage | DisplayMessage) => {
+    let found = languages.get(m);
+    if (!found) {
+      // Not hidden spoilers: a translation would show them.
+      const text = refsAsNames("source" in m && m.source ? withoutSpoilers(m.source.text).trim() : htmlToText(m.text));
+      languages.set(m, (found = { text, lang: text ? detect(text) : null }));
+    }
+    return found;
+  };
+  // A message's text to translate: in another language than the app's
+  // (null: none, or its language unknown).
+  const foreignText = (m: ChatMessage | DisplayMessage) => {
+    const { text, lang } = languageOf(m);
+    return lang && lang !== translateTo ? text : null;
+  };
+  // Its translation, if it is of the text it has now.
+  const translationOf = (m: ChatMessage | DisplayMessage) => {
+    const tr = translations[messageKey(m)];
+    return tr?.source === languageOf(m).text && tr.to === translateTo ? tr : undefined;
+  };
+  const startTranslation = async (key: string, source: string, from: string) => {
+    const to = translateTo;
+    translations = { ...translations, [key]: { source, to, state: "loading" } };
+    let done: Translation;
+    try {
+      const { translate } = await import("../lib/translate/engine");
+      done = { source, to, state: "done", from, text: await translate(source, from, to, httpBase) };
+    } catch (e) {
+      const unsupported = (e as { unsupported?: boolean }).unsupported === true;
+      if (!unsupported) console.error("translation", e);
+      done = { source, to, state: "error", text: unsupported ? t("chat.translateUnsupported", { lang: languageName(from) }) : t("chat.translateFailed") };
+    }
+    const now = translations[key];
+    if (now?.state === "loading" && now.source === source && now.to === to) translations = { ...translations, [key]: done }; // not hidden meanwhile
+  };
+  const hideTranslation = (key: string) => {
+    const { [key]: _, ...rest } = translations;
+    translations = rest;
+  };
+  const toggleTranslation = (m: ChatMessage | DisplayMessage) => {
+    const key = messageKey(m);
+    const { text, lang } = languageOf(m);
+    if (translationOf(m)) hideTranslation(key);
+    else if (lang && lang !== translateTo) void startTranslation(key, text, lang);
+  };
   const sheetItems = (m: ChatMessage | DisplayMessage): SheetItem[] => {
     const may = allowed(m);
     const done = (f: () => void) => () => ((sheetFor = null), f());
@@ -890,6 +947,9 @@
       ...(may && canReply ? [{ label: t("chat.reply"), icon: "reply" as const, run: done(() => startReply(m)) }] : []),
       ...(may && canThread(may.id) ? [{ label: t("chat.createThread"), icon: "thread" as const, run: done(() => onCreateThread?.(may.id, refsAsNames(text))) }] : []),
       ...(text ? [{ label: t("chat.copyText"), icon: "copy" as const, run: done(() => copy(refsAsNames(text), t("chat.textCopied"))) }] : []),
+      ...(translationOf(m) || foreignText(m)
+        ? [{ label: translationOf(m) ? t("chat.hideTranslation") : t("chat.translate"), icon: "translate" as const, run: done(() => toggleTranslation(m)) }]
+        : []),
       ...(may && linkTo ? [{ label: t("chat.copyLink"), icon: "copy" as const, run: done(() => copy(linkTo(may.id), t("chat.linkCopied"))) }] : []),
       ...(may && onMarkUnread ? [{ label: t("chat.markUnread"), icon: "unread" as const, run: done(() => onMarkUnread?.(may.id)) }] : []),
       ...("source" in m && m.source ? [{ label: t("chat.info"), icon: "info" as const, run: done(() => showInfo(m)) }] : []),
@@ -1755,6 +1815,17 @@
         onclick={(e) => toggleLong(key, e.currentTarget.closest("li"))}>{open ? t("chat.showLess") : t("chat.showMore")}</button
       >
     {/if}
+    {@const tr = translationOf(m)}
+    {#if tr}
+      <div class="translation" aria-live="polite">
+        {#if tr.state === "done"}
+          <p lang={translateTo}>{tr.text}</p>
+          <span class="note">{t("chat.translatedFrom", { lang: languageName(tr.from) })}</span>
+        {:else}
+          <span class="note">{tr.state === "loading" ? t("chat.translating") : tr.text}</span>
+        {/if}
+      </div>
+    {/if}
   {/if}
   {@render attachment(m)}
   {#if "source" in m && m.source && previewOf?.(m.source.id)}
@@ -1874,6 +1945,7 @@
           {#if linkTo}
             <button type="button" aria-label={t("chat.copyLinkToMessage")} title={t("chat.copyLink")} onclick={() => copy(linkTo(id), t("chat.linkCopied"))}>{t("chat.linkAction")}</button>
           {/if}
+          {@render translateButton(m)}
           {#if onMarkUnread}
             <button type="button" aria-label={t("chat.markUnreadFromHere")} title={t("chat.markUnreadTitle")} onclick={() => onMarkUnread?.(id)}>{t("chat.unreadAction")}</button>
           {/if}
@@ -1887,6 +1959,16 @@
         {/if}
       </div>
     {/if}
+  {:else if translationOf(m) || foreignText(m)}
+    <!-- A Mumble client's line: only translating. -->
+    <div class="actions">{@render translateButton(m)}</div>
+  {/if}
+{/snippet}
+
+{#snippet translateButton(m: ChatMessage | DisplayMessage)}
+  {#if translationOf(m) || foreignText(m)}
+    {@const shown = !!translationOf(m)}
+    <button type="button" aria-pressed={shown} onclick={() => toggleTranslation(m)}>{shown ? t("chat.originalAction") : t("chat.translate")}</button>
   {/if}
 {/snippet}
 
@@ -2754,6 +2836,21 @@
   }
   .reaction .emoji {
     font-size: 16px;
+  }
+  /* A message's translation, under it (see startTranslation). */
+  .translation {
+    margin-top: 4px;
+    padding-left: 8px;
+    border-left: 2px solid var(--text-muted);
+  }
+  .translation p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .translation .note {
+    font-size: 12px;
+    color: var(--text-muted);
   }
   .edited {
     margin-left: 4px;

@@ -30,3 +30,4 @@
     - [ ] [QR scan: the Android release app crashes when the camera opens](issues/qr-scan-android-crash.md)
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
+- [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
