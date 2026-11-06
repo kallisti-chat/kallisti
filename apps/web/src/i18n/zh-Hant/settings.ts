@@ -4,6 +4,7 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "語言",
   "settings.languageAuto": "與瀏覽器相同",
+  "settings.translationIntro": "訊息在此裝置上翻譯，不會傳送給任何翻譯服務。",
   "settings.betterTranslation": "更好的翻譯",
   "settings.betterTranslationHint": "在此裝置上用更大的模型（Hy-MT2）翻譯訊息。首次需要下載約 1.4 GB，並需要顯示卡（WebGPU）。",
   "settings.betterTranslationNoGpu": "此處無法使用：此瀏覽器或顯示卡不支援帶 16 位元數字的 WebGPU。",
@@ -15,6 +16,7 @@ export default {
   "settings.sectionVoice": "語音與視訊",
   "settings.sectionNotifications": "通知",
   "settings.sectionAppearance": "外觀",
+  "settings.sectionTranslation": "翻譯",
   "settings.categoriesLabel": "{title}類別",
   "settings.categoryHeading": "{title}：{category}",
   "settings.editProfile": "編輯個人資料 ›",

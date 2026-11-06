@@ -4,6 +4,7 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "语言",
   "settings.languageAuto": "跟随浏览器",
+  "settings.translationIntro": "消息在此设备上翻译，不会发送给任何翻译服务。",
   "settings.betterTranslation": "更好的翻译",
   "settings.betterTranslationHint": "在此设备上用更大的模型（Hy-MT2）翻译消息。首次需要下载约 1.4 GB，并需要显卡（WebGPU）。",
   "settings.betterTranslationNoGpu": "此处不可用：此浏览器或显卡不支持带 16 位数字的 WebGPU。",
@@ -15,6 +16,7 @@ export default {
   "settings.sectionVoice": "语音和视频",
   "settings.sectionNotifications": "通知",
   "settings.sectionAppearance": "外观",
+  "settings.sectionTranslation": "翻译",
   "settings.categoriesLabel": "{title}分类",
   "settings.categoryHeading": "{title}：{category}",
   "settings.editProfile": "编辑个人资料 ›",

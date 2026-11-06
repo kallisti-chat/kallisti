@@ -4,6 +4,7 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "Idioma",
   "settings.languageAuto": "Como el navegador",
+  "settings.translationIntro": "Los mensajes se traducen en este dispositivo. No se envían a ningún servicio de traducción.",
   "settings.betterTranslation": "Mejor traducción",
   "settings.betterTranslationHint": "Traduce los mensajes con un modelo más grande en este dispositivo (Hy-MT2). Descarga una vez unos 1,4 GB y necesita una tarjeta gráfica (WebGPU).",
   "settings.betterTranslationNoGpu": "No disponible aquí: este navegador o esta tarjeta gráfica no tiene WebGPU con números de 16 bits.",
@@ -15,6 +16,7 @@ export default {
   "settings.sectionVoice": "Voz y vídeo",
   "settings.sectionNotifications": "Notificaciones",
   "settings.sectionAppearance": "Apariencia",
+  "settings.sectionTranslation": "Traducción",
   "settings.categoriesLabel": "Categorías de {title}",
   "settings.categoryHeading": "{title}: {category}",
   "settings.editProfile": "Editar perfil ›",

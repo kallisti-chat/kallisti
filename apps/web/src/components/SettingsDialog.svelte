@@ -553,17 +553,6 @@
         </select>
       </label>
 
-      <label class="check">
-        <input
-          type="checkbox"
-          checked={settings.betterTranslation && gpu}
-          disabled={!gpu}
-          onchange={(e) => onChange({ betterTranslation: e.currentTarget.checked })}
-        />
-        <span>{t("settings.betterTranslation")}</span>
-        <span class="hint">{gpu ? t("settings.betterTranslationHint") : t("settings.betterTranslationNoGpu")}</span>
-      </label>
-
       <label>
         {t("settings.theme")}
         <select value={settings.theme} onchange={(e) => onChange({ theme: e.currentTarget.value as ThemeSetting })}>
@@ -580,6 +569,18 @@
           <option value="24">{t("settings.time24")}</option>
           <option value="12">{t("settings.time12")}</option>
         </select>
+      </label>
+    {:else if id === "translation"}
+      <p class="hint">{t("settings.translationIntro")}</p>
+      <label class="check">
+        <input
+          type="checkbox"
+          checked={settings.betterTranslation && gpu}
+          disabled={!gpu}
+          onchange={(e) => onChange({ betterTranslation: e.currentTarget.checked })}
+        />
+        <span>{t("settings.betterTranslation")}</span>
+        <span class="hint">{gpu ? t("settings.betterTranslationHint") : t("settings.betterTranslationNoGpu")}</span>
       </label>
     {/if}
   {/snippet}

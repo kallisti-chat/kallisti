@@ -4,6 +4,7 @@ import type { Translation } from "../types";
 export default {
   "settings.language": "言語",
   "settings.languageAuto": "ブラウザーに合わせる",
+  "settings.translationIntro": "メッセージはこの端末上で翻訳されます。翻訳サービスには送信されません。",
   "settings.betterTranslation": "高品質な翻訳",
   "settings.betterTranslationHint": "この端末上の大きなモデル（Hy-MT2）でメッセージを翻訳します。初回に約1.4 GBをダウンロードし、グラフィックカード（WebGPU）が必要です。",
   "settings.betterTranslationNoGpu": "ここでは使えません：このブラウザーまたはグラフィックカードは16ビット数値のWebGPUに対応していません。",
@@ -15,6 +16,7 @@ export default {
   "settings.sectionVoice": "音声・ビデオ",
   "settings.sectionNotifications": "通知",
   "settings.sectionAppearance": "表示",
+  "settings.sectionTranslation": "翻訳",
   "settings.categoriesLabel": "{title}のカテゴリー",
   "settings.categoryHeading": "{title}: {category}",
   "settings.editProfile": "プロフィールを編集 ›",
