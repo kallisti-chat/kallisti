@@ -38,3 +38,9 @@ export const nextLines = (
   for (const [id] of seen) if (!(id in out) && !watched.has(id) && (read[id] ?? 0) > 0) out[id] = read[id]!;
   return out;
 };
+
+// The unread bar goes for the rest of the visit (as Discord's) once the
+// reader saw the "New" line, or scrolled back down to the newest messages;
+// before and now: the line above the view, the reader away from the bottom.
+type View = { lineAbove: boolean; away: boolean };
+export const barDone = (done: boolean, before: View, now: View) => done || !now.lineAbove || (before.away && !now.away);

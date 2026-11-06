@@ -66,7 +66,7 @@
   import { chatItems, formatDay, formatTime, formatTimestamp, itemKey, messageKey, type MessageGroup } from "../lib/chat";
   import { awayFromBottom, nearTop, newSince, nextScrollTop, olderOnly } from "../lib/scroll";
   import { jumpStep } from "../lib/jump";
-  import { unreadBar } from "../lib/unread";
+  import { barDone, unreadBar } from "../lib/unread";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
   import Avatar from "./Avatar.svelte";
@@ -1051,10 +1051,19 @@
   });
   let seekUnread = $state(false);
   let unreadPages = 0;
+  // Gone for this visit once seen (see barDone).
+  let barGone = $state(false);
+  const scrolled = () => {
+    const before = { lineAbove, away };
+    trackBottom();
+    if (unread) checkLine();
+    barGone = barDone(barGone, before, { lineAbove, away });
+  };
   $effect(() => {
     void chat;
     seekUnread = false;
     unreadPages = 0;
+    barGone = false;
   });
   $effect(() => {
     if (!seekUnread) return;
@@ -1197,7 +1206,7 @@
   </header>
   {@render stage?.()}
 
-  {#if unread && lineAbove && !seekUnread}
+  {#if unread && lineAbove && !seekUnread && !barGone}
     <!-- Over the top of the list (the anchor takes no height). -->
     <div class="unread-anchor">
       <div class="unread-bar" role="status">
@@ -1213,7 +1222,7 @@
     class="scroller"
     inert={lost}
     bind:this={list}
-    onscroll={() => ((lastScroll = performance.now()), trackBottom(), unread && checkLine())}
+    onscroll={() => ((lastScroll = performance.now()), scrolled())}
     ontouchstart={() => (touching = byTouch = true)}
     onwheel={() => (byTouch = false)}
     onmousedown={() => (byTouch = false)}

@@ -2716,3 +2716,7 @@ Now as Discord: messages carry signed file links (HMAC with a key kept in the ne
 A security review: pushes found their user by name (the account's name, then the Mumble registration with it). A Mumble user may have registered a name before a web account took it, so that account got the user's pushes: who wrote, in which chat, also private ones. Now the hub asks PushUser (the registration with the account's certificate; none when an admin renamed it, as the login refuses it then). And a queued push went out after its user lost the chat or was banned: each note carries an Allowed check from the hub (still the account's user, not banned, may read the chat), asked when a worker sends it.
 
 Review (a subagent): the renamed registration and a name taken by a new account while a push waits, both fixed. Left: a push stopped at send time still counts for the minute's collapse of that chat (it may hold back the next one, never leak it).
+
+## The unread bar goes once seen
+
+A user: after scrolling up and back down to the newest messages, the "N new messages since" bar stayed (it showed whenever the "New" line was above the view). As Discord, it goes for the rest of the visit once the reader saw the line or scrolled back down to the newest messages (`barDone` in lib/unread); the line stays until the chat closes. The chat was already read on opening. Checked in headless Chromium (Alt+click "mark unread", up a little: the bar stays; back down: gone).

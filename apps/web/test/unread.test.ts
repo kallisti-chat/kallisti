@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextLines, sameRecord, unreadBar } from "../src/lib/unread";
+import { barDone, nextLines, sameRecord, unreadBar } from "../src/lib/unread";
 
 const msg = (id: number, by = "bob", at = id * 60_000) => ({ source: { id }, actorName: by, at });
 const mine = (m: { actorName: string | null }) => m.actorName === "me";
@@ -43,5 +43,16 @@ describe("nextLines", () => {
   it("sets none without an earlier read mark, and drops lines of closed chats", () => {
     expect(nextLines({}, { ...base, seen: [[2, 9]] })).toEqual({});
     expect(nextLines({ 1: 5, 3: 2 }, base)).toEqual({ 1: 5 });
+  });
+});
+
+describe("the unread bar after scrolling", () => {
+  it("goes once the line was in view or the reader came back down, and stays gone", () => {
+    const at = (lineAbove: boolean, away: boolean) => ({ lineAbove, away });
+    expect(barDone(false, at(true, true), at(true, true))).toBe(false); // up, the line still above
+    expect(barDone(false, at(true, true), at(false, true))).toBe(true); // the line came into view
+    expect(barDone(false, at(true, true), at(true, false))).toBe(true); // back down to the newest
+    expect(barDone(false, at(true, false), at(true, false))).toBe(false); // at the bottom from the start
+    expect(barDone(true, at(true, false), at(true, true))).toBe(true);
   });
 });
