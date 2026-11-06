@@ -194,9 +194,9 @@ func run() error {
 		pushes = svc
 	}
 	dial, upstream := murmurDialer(cfg)
-	cleanup := func(time.Time) {}                // guest accounts (built-in server)
-	var avatars http.Handler = mumbled.NoAvatars // Murmur's avatars are not ours to read
-	if cfg.ExperimentalPrivateRoomMedia {        // the built-in server's (see config)
+	cleanup := func(time.Time) {}                                               // guest accounts (built-in server)
+	var avatars http.Handler = mumbled.NoAvatars                                // Murmur's avatars are not ours to read
+	if cfg.ExperimentalPrivateRoomMedia && !cfg.PrivateRoomMediaNoSignedLinks { // the built-in server's (see config)
 		key, err := db.Secret("file_links")
 		if err != nil {
 			return fmt.Errorf("file link key: %w", err)
@@ -212,7 +212,7 @@ func run() error {
 		builtinServer = mumble
 		if cfg.ExperimentalPrivateRoomMedia {
 			fileHandler.AuthorizeRead = privateRoomMedia(accounts, hub, mumble.srv)
-			slog.Warn("experimental private-room media enabled")
+			slog.Warn("experimental private-room media enabled", "signedLinks", !cfg.PrivateRoomMediaNoSignedLinks)
 		}
 		named.Store(mumble.srv)
 		defer mumble.close()

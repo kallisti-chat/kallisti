@@ -48,6 +48,7 @@ brackets.
 - `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): files of private
   rooms only for who may read the room (built-in server only). See
   [private-room media](#private-room-media-experiment).
+  `PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS=1` with it: no signed links (see there).
 - `BACKUP_DIR` (none: no backups) and `BACKUP_KEEP` (7): see
   [backups](backups.md).
 - `LINK_PREVIEWS=0`: the server fetches no pages for link previews. By
@@ -211,6 +212,14 @@ How it works:
   room. Otherwise the answer is 404, the same as for a file that does not
   exist.
 - Files not yet sent have no room: 404 (the composer shows its own previews).
+
+Without signed links (`PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS=1`, Helm
+`privateRoomMediaNoSignedLinks: true`): messages carry plain links, and every
+file request needs a browser logged in to this server whose account may read
+the room. No link works outside the chat, not even for a day. The price: the
+desktop and Android apps, other servers' tabs and Mumble clients show the files
+of private rooms as broken (their pictures and videos send no session), and
+each request checks the session and the room again (no browser cache).
 
 Caches: a signed link's file may stay in the reader's browser cache
 (`private`); other answers are `private, no-store`. The server's link previews

@@ -114,6 +114,23 @@ class PrivateRoomMediaTest(unittest.TestCase):
                                 if enabled and container["name"] == "kallisti" else [])
                     self.assertEqual(flags, expected)
 
+    def test_no_signed_links(self):
+        for media, unsigned, expected in (("true", "true", ["1"]), ("true", "false", []), ("false", "true", [])):
+            with self.subTest(media=media, unsigned=unsigned):
+                rendered = subprocess.run(
+                    ["helm", "template", "kallisti", str(CHART), "-f", str(FIXTURE),
+                     "--set", "experimentalPrivateRoomMedia=" + media,
+                     "--set", "privateRoomMediaNoSignedLinks=" + unsigned],
+                    text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(rendered.returncode, 0, rendered.stderr)
+                deployment = next(item for item in yaml.safe_load_all(rendered.stdout)
+                                  if item["kind"] == "Deployment")
+                kallisti = next(c for c in deployment["spec"]["template"]["spec"]["containers"]
+                                if c["name"] == "kallisti")
+                self.assertEqual([e["value"] for e in kallisti.get("env", [])
+                                  if e["name"] == "PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS"], expected)
+
     def test_rejects_string_boolean(self):
         rendered = subprocess.run(
             ["helm", "template", "kallisti", str(CHART), "-f", str(FIXTURE),

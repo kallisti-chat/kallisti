@@ -51,9 +51,11 @@ type Config struct {
 	// with ffmpeg (FFMPEG_PATH, else on PATH).
 	NoMediaPreviews bool
 	FFmpegPath      string
-	// Opt-in experiment: room media requires current room access. Off by
-	// default; currently supports built-in, same-origin browser sessions.
-	ExperimentalPrivateRoomMedia bool
+	// Opt-in experiment: room media requires current room access (see
+	// docs/configuration.md). NoSignedLinks: only by a session, never by
+	// signed links (the apps and other servers' tabs show no private files).
+	ExperimentalPrivateRoomMedia  bool
+	PrivateRoomMediaNoSignedLinks bool
 	// Web Push notifications (built-in server).
 	Push Push
 	// Uploaded files, and the size limit per file.
@@ -228,6 +230,10 @@ func Parse(getenv func(string) string) (Config, error) {
 	c.ExperimentalPrivateRoomMedia = getenv("EXPERIMENTAL_PRIVATE_ROOM_MEDIA") == "1"
 	if c.ExperimentalPrivateRoomMedia && c.MumbleHost != "" {
 		return Config{}, errors.New("EXPERIMENTAL_PRIVATE_ROOM_MEDIA requires the built-in Mumble server")
+	}
+	c.PrivateRoomMediaNoSignedLinks = getenv("PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS") == "1"
+	if c.PrivateRoomMediaNoSignedLinks && !c.ExperimentalPrivateRoomMedia {
+		return Config{}, errors.New("PRIVATE_ROOM_MEDIA_NO_SIGNED_LINKS needs EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1")
 	}
 	c.FFmpegPath = getenv("FFMPEG_PATH")
 	var err error

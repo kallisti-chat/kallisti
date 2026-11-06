@@ -10,7 +10,8 @@ storage:
   caddySize: ""
 superuserSecretName: ""  # pre-create a Secret with key 'password'; never commit it
 imagePullSecrets: []  # existing registry Secrets in the release namespace; e.g. [{name: regcred}]
-experimentalPrivateRoomMedia: false # opt-in; same-origin browser media support
+experimentalPrivateRoomMedia: false # opt-in; see docs/configuration.md
+privateRoomMediaNoSignedLinks: false # with it: sessions only (apps show no private files)
 backup:
   confirmed: false  # set true only after off-cluster backups and a restore test
 resources:

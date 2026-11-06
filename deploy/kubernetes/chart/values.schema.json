@@ -5,6 +5,9 @@
     "experimentalPrivateRoomMedia": {
       "type": "boolean"
     },
+    "privateRoomMediaNoSignedLinks": {
+      "type": "boolean"
+    },
     "imagePullSecrets": {
       "type": "array",
       "items": {
