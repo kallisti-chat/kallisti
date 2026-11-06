@@ -173,6 +173,30 @@ func TestPushesGoToTheAccountsRegistration(t *testing.T) {
 	}
 }
 
+// A queued push asks again before it goes: the user may lose the chat or
+// be banned meanwhile.
+func TestPushesCheckAgainBeforeSending(t *testing.T) {
+	h, v, mod, _, _ := pushHub(t)
+	var got []push.Note
+	h.Push = func(_ string, n push.Note) { got = append(got, n) }
+	post(t, h, mod, h.channels[0].ID, `"text":"@alice hi"`)
+	if len(got) != 1 || got[0].Allowed == nil || !got[0].Allowed() {
+		t.Fatalf("got %+v", got)
+	}
+	v.mu.Lock()
+	v.banned = map[uint32]bool{40: true}
+	v.mu.Unlock()
+	if got[0].Allowed() {
+		t.Error("banned since")
+	}
+	v.mu.Lock()
+	v.banned, v.hidden[100] = nil, true
+	v.mu.Unlock()
+	if got[0].Allowed() {
+		t.Error("the chat is private since")
+	}
+}
+
 func TestPushes(t *testing.T) {
 	h, v, mod, carol, pushes := pushHub(t)
 	general, secret := h.channels[0].ID, h.channels[1].ID
