@@ -2786,3 +2786,19 @@ retention threshold. A separate browser check confirmed active hidden capture
 and incoming playback, native peer receipt, restart and settings capture.
 Regression tests include shared owners, stream demand, pending joins, context
 replacement and Linux readiness. Independent review approved the change.
+
+## Suspend finished notification audio
+
+Notification audio now suspends after all scheduled notes finish, including
+overlapping calls. Finished nodes disconnect. A later sound awaits resume
+before it reads the audio clock. In a matched context-only/full ABBA block,
+after mute and unmute sounds finished, hidden-tab content CPU fell from 2.10%
+to 0.46%; whole-browser CPU fell from 4.09% to 0.98%. Two runs of each build
+used the same notification stimulus. This is a useful reduction, so the
+notification change is kept too.
+
+A separate hidden-tab check played both sounds to completion after restart;
+the notification context returned to suspended. All 1,404 web tests, Svelte
+checks and the build passed. Independent source and measurement reviews
+approved keeping the changes, with the cross-block comparison limit above.
+The periodic collection-heavy bursts remain unexplained. No deployment.
