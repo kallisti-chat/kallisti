@@ -362,3 +362,4 @@
 - [x] [Message actions: a short bar and a menu (as Discord)](issues/message-actions-menu.md)
 - [x] [IRC text bridge](issues/irc-text-bridge.md)
 - [x] [IRC bridge flood protection](issues/irc-bridge-flood-protection.md)
+- [x] [YouTube link previews through oEmbed](issues/youtube-oembed-previews.md)

@@ -21,3 +21,10 @@ Fetch YouTube video metadata from its fixed oEmbed endpoint instead of relying o
 ## Notes
 
 Related approach: https://akkoma.dev/AkkomaGang/akkoma/pulls/1168. Implement the behavior in Go without copying the AGPL patch.
+
+## Verification
+
+- Implemented in `a746e847` with local fixtures; no live service or chat traffic.
+- Full server `go test -race ./...` and `go vet ./...` passed.
+- Repeated preview race tests and all six web link-preview tests passed.
+- Independent source review and a separate Astra security review approved the change.
