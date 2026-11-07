@@ -31,4 +31,3 @@
 - [ ] [A fixed handle and a display name](issues/handle-and-display-name.md)
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
-- [ ] [IRC text bridge](issues/irc-text-bridge.md)

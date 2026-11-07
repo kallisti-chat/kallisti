@@ -20,4 +20,11 @@ Build a standalone bot that relays text between mapped IRC and Kallisti channels
 
 ## Notes
 
-The existing TV and jukebox bots provide examples of native Mumble clients. Work belongs in a sibling bot repository, not the Kallisti server.
+The standalone bot is in `../kallisti-irc`, based on the TV bot's native Mumble approach. No Kallisti server code changed.
+
+## Verification
+
+- `go test -race -count=2 ./...` and `go vet ./...` passed in the bot repository.
+- Independent source review approved the fixes; a separate Astra security review found no security blockers.
+- Both mappings passed a marker-only end-to-end check in both directions, including after a service restart. Tests did not inspect other users' chat.
+- Deployment details remain in the untracked `ops/irc-bridge/` directory.

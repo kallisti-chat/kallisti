@@ -360,3 +360,4 @@
 - [x] [The unread bar goes once seen](issues/unread-bar-after-scroll.md)
 - [x] [Better translation: Hy-MT2 on the device (WebGPU)](issues/better-translation.md)
 - [x] [Message actions: a short bar and a menu (as Discord)](issues/message-actions-menu.md)
+- [x] [IRC text bridge](issues/irc-text-bridge.md)
