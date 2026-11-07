@@ -123,6 +123,7 @@
   import { loadSelfState, micWanted, saveSelfState, soundHint } from "../lib/voice";
   import { documentPage, restartOnJoin, watchOutputDevices } from "../lib/voice/restart";
   import { keepVoiceRunning } from "../lib/voice/background";
+  import { clientAudioDemand, type ContextDemand } from "../lib/voice/contextDemand";
   import { listenOnlySessions } from "../lib/listenOnly";
   import ChannelDialog from "./ChannelDialog.svelte";
   import StreamPreview from "./StreamPreview.svelte";
@@ -174,6 +175,7 @@
     resume = null,
     onPlace,
     audioState = null,
+    audioDemand,
     onRestartAudio,
     onLogIn,
     site = location.origin,
@@ -203,6 +205,8 @@
     onPlace?: (place: Place) => void;
     // The audio context's state (see soundHint).
     audioState?: string | null;
+    // Shared context demand; each mounted Client has its own owner.
+    audioDemand?: ContextDemand;
     // A fresh audio context (see lib/voice/restart).
     onRestartAudio?: (keepMic?: boolean) => void;
     // Back to the login screen (a guest that may only read).
@@ -263,6 +267,13 @@
     pushSync?: (prefs: PushPrefs) => void;
   } = $props();
 
+  const audioOwner = {};
+  const requestAudio = () => audioDemand?.set(audioOwner, true);
+  $effect(() => {
+    const demand = audioDemand;
+    return () => demand?.release(audioOwner);
+  });
+
   const server = $derived(connection.state);
   // A side panel that takes no input: lost, or not the one shown on a
   // phone (the chat takes care of lost itself: its menu leads to the rail).
@@ -311,7 +322,11 @@
   // The category the settings open at: the account's after a fresh login
   // for the first password, or for a guest keeping the account.
   let settingsStart = $state<SectionId | undefined>(untrack(() => (openSettings ? "account" : undefined)));
-  const openSettingsAt = (start?: SectionId) => ((settingsStart = start), (showSettings = true));
+  const openSettingsAt = (start?: SectionId) => {
+    requestAudio(); // still in the gesture, before the microphone effect
+    settingsStart = start;
+    showSettings = true;
+  };
   if (untrack(() => openSettings)) untrack(() => onSettingsOpened)?.(); // once, on mount
   let showSwitcher = $state(false);
   let showHidden = $state(false);
@@ -566,6 +581,16 @@
   // (or it failed): a second drop meanwhile keeps it, and so does the
   // media session.
   let rejoining = $state(back?.voice ?? null);
+  let pendingJoin = $state<number | null>(null);
+  $effect(() => {
+    if (pendingJoin !== null && (me?.channelId === pendingJoin || connection.closed)) pendingJoin = null;
+  });
+  $effect(() => {
+    if (pendingJoin === null) return;
+    const timer = setTimeout(() => (pendingJoin = null), REJOIN_MS);
+    return () => clearTimeout(timer); // refused or superseded join
+  });
+  $effect(() => audioDemand?.set(audioOwner, clientAudioDemand({ voice: voiceOn, rejoining, pendingJoin, micOn, streams: streamClient })));
   const voiceHere = $derived(rejoining ?? (voiceOn ? channelId : null));
   $effect(() => {
     if (rejoining !== null && me?.channelId === rejoining) rejoining = null;
@@ -1656,6 +1681,10 @@
   const join = (id: number) => {
     show({ kind: "voice" });
     if (!me || id === channelId) return;
+    if (!(lobby && id === 0)) {
+      pendingJoin = id;
+      requestAudio(); // before a new context or the server's answer
+    } else pendingJoin = null;
     // Into voice from outside it: a fresh audio context, made in the click.
     if (restartOnJoin({ inVoice: voiceOn, lobby, target: id })) onRestartAudio?.();
     connection.send(joinChannel(me.session, id));

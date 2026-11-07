@@ -46,7 +46,7 @@
   import { inviteOf } from "./lib/invites";
   import type { RailBadge } from "./lib/title";
   import { voiceSupported } from "./lib/voice/support";
-  import { audioNeedsResume } from "./lib/voice";
+  import { createContextDemand } from "./lib/voice/contextDemand";
   import { loadCaptureWorklet, startAfter } from "./lib/voice/worklet";
   import { closeVoiceOutput } from "./lib/voice/output";
   import { swapContext } from "./lib/voice/restart";
@@ -214,6 +214,7 @@
     addingFor = null;
     if (endAdded) hub.endAll();
     session.leave();
+    audioDemand.setContext(null);
     closeAudio(audio);
     audio = null;
   };
@@ -686,19 +687,19 @@
   // The audio context lives as long as the user stays: reconnects use it
   // again (a new one would need another click).
   let audio: AudioContext | null = null;
+  const audioDemand = createContextDemand();
   // Started without a click (a saved login, a refresh), browsers may hold
-  // it suspended: the first click or key turns the sound on. Not in the
-  // Linux app: it holds the context itself for a while (see startAfter).
+  // it suspended: a click or key turns needed sound on. The Linux app
+  // holds the context itself for a while (see startAfter).
   let audioState = $state<AudioContextState | null>(null);
-  const wakeSound = () => {
-    if (audioNeedsResume(audioState)) void audio?.resume().catch(() => {});
-  };
+  const wakeSound = () => audioDemand.wake();
   // Made in a click where possible: browsers allow audio only after a
   // user gesture.
   const makeAudio = () => {
     const ctx = new AudioContext({ sampleRate: 48_000, latencyHint: "interactive" });
     // Linux app: the capture module first, then the output (see startAfter).
-    if (linuxApp()) startAfter(ctx, loadCaptureWorklet(ctx));
+    const ready = linuxApp() ? startAfter(ctx, loadCaptureWorklet(ctx), () => {}) : undefined;
+    audioDemand.setContext(ctx, ready);
     audioState = linuxApp() ? null : ctx.state;
     if (!linuxApp()) ctx.onstatechange = () => audio === ctx && (audioState = ctx.state);
     return ctx;
@@ -725,8 +726,10 @@
     closeAudio(audio);
     // Created here: a login is a user gesture.
     audio = voiceSupported() ? makeAudio() : null;
-    if (!audio) audioState = null;
-    else for (const a of hub.servers) a.session?.setAudio(audio, true); // their microphones stay
+    if (!audio) {
+      audioState = null;
+      audioDemand.setContext(null);
+    } else for (const a of hub.servers) a.session?.setAudio(audio, true); // their microphones stay
     try {
       await started;
     } catch (err) {
@@ -780,7 +783,7 @@
         {/if}
         <!-- While lost, the old view stays readable but takes no input (it would be lost); the rail does. -->
         {#key s.connection}
-          <Client connection={s.connection} link={links.linkFor(id)} onLinkUsed={() => links.used(id)} onInvite={openInvite} onServerLink={openMessageLink} onBadge={(b) => setBadge(id, b)} active={shown} pttHere={pttOn(id)} remoteVoice={remoteVoiceFor(id)} onShow={() => selectServer(id)} lost={s.lost} {rail} resume={s.place} onPlace={(p) => s.keepPlace(p)} {audioState} onRestartAudio={restartAudio} drafts={s.drafts} pendingFiles={s.pendingFiles} streams={s.streams} {...own} />
+          <Client connection={s.connection} link={links.linkFor(id)} onLinkUsed={() => links.used(id)} onInvite={openInvite} onServerLink={openMessageLink} onBadge={(b) => setBadge(id, b)} active={shown} pttHere={pttOn(id)} remoteVoice={remoteVoiceFor(id)} onShow={() => selectServer(id)} lost={s.lost} {rail} resume={s.place} onPlace={(p) => s.keepPlace(p)} {audioState} {audioDemand} onRestartAudio={restartAudio} drafts={s.drafts} pendingFiles={s.pendingFiles} streams={s.streams} {...own} />
         {/key}
       </div>
     {/if}

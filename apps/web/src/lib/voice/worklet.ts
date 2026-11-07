@@ -16,10 +16,9 @@ export const loadCaptureWorklet = (ctx: AudioContext): Promise<void> => {
 // until GStreamer and the sound server answer, without a time limit: the
 // page hangs for good if they never do. Called right after the context is
 // made, this holds the output until `ready`, so it starts once, after it.
-export const startAfter = (ctx: Pick<AudioContext, "suspend" | "resume">, ready: Promise<unknown>) => {
-  void ctx.suspend();
-  void ready
-    .catch(() => {})
-    .then(() => ctx.resume())
+// A shared demand controller can supply its own start callback and use the
+// returned promise as a readiness barrier (including the initial suspend).
+export const startAfter = (ctx: Pick<AudioContext, "suspend" | "resume">, ready: Promise<unknown>, start: () => void | Promise<void> = () => ctx.resume()): Promise<void> =>
+  Promise.all([ctx.suspend().catch(() => {}), ready.catch(() => {})])
+    .then(start)
     .catch(() => {}); // closed meanwhile (a new login)
-};

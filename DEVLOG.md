@@ -2764,3 +2764,25 @@ was unchanged at about 1.5-1.6%. Here 100% is one CPU core. These measurements
 support keeping the capture change; they do not explain the reported periodic
 cycle-collection bursts. Tests cover pause, restart, buffer reset and final
 shutdown. Independent review found no blocking issue.
+
+## Suspend idle voice audio
+
+The shared voice context now suspends when no mounted client needs voice,
+microphone settings or watched-stream sound. Demand survives reconnects and
+context replacement. Joining voice and opening settings request sound inside
+the user gesture. Stream sound keeps its clock even at zero volume or while
+deafened; hiding a tab does not stop active audio. Linux startup still waits
+for the capture module before starting output. A new idle context needs an
+explicit suspend even if its initial state already says suspended.
+
+With capture shutdown already applied, two further isolated LibreWolf runs,
+before notification audio was created, measured fresh text content CPU at
+0.12% visible / 0.32% hidden, versus about 1.5-1.6% in the earlier block.
+After leaving voice it measured 0.16% visible / 0.52% hidden, then 0.12% in
+a later hidden window. This is a cross-block comparison, not a separate
+capture/context ABBA block; each hidden window was verified, with brief
+visible transitions between them. The reduction exceeds the 0.3 percentage-point
+retention threshold. A separate browser check confirmed active hidden capture
+and incoming playback, native peer receipt, restart and settings capture.
+Regression tests include shared owners, stream demand, pending joins, context
+replacement and Linux readiness. Independent review approved the change.
