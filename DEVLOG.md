@@ -2748,3 +2748,19 @@ thumbnail proxying, and private thumbnail addresses including redirects.
 Independent source and Astra security reviews approved the change. The full
 server race suite, vet, and existing web link-preview tests passed. No live
 service or chat traffic was used for verification.
+
+## Stop unused capture processing
+
+Leaving voice or closing settings now pauses the capture worklet before it
+collects frames or runs RNNoise. Restart reuses the node and clears partial
+frames and queued echo. Final capture close sends a terminal stop, frees the
+denoiser and closes the processor port. Disconnect alone did not stop work.
+
+Two matched baseline runs and two capture-only runs in isolated LibreWolf
+155.0.1-1 measured 25-second idle windows, without profiler or audio probes.
+After leaving voice, mean content-process CPU fell from 3.42% to 1.84% in a
+visible tab, and from 3.82% to 2.26% in a genuinely hidden tab. Fresh text idle
+was unchanged at about 1.5-1.6%. Here 100% is one CPU core. These measurements
+support keeping the capture change; they do not explain the reported periodic
+cycle-collection bursts. Tests cover pause, restart, buffer reset and final
+shutdown. Independent review found no blocking issue.

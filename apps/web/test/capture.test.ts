@@ -45,6 +45,21 @@ const setup = () => {
 describe("capture start", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("pauses the processor when capture stops and reuses it on restart", async () => {
+    const { capture } = setup();
+    await capture.start();
+    const node = vi.mocked(AudioWorkletNode).mock.results[0]!.value as ReturnType<typeof fakeNode>;
+    expect(node.port.postMessage).toHaveBeenCalledWith({ active: true });
+    capture.stop();
+    expect(node.port.postMessage).toHaveBeenLastCalledWith({ active: false });
+    await capture.start();
+    expect(vi.mocked(AudioWorkletNode)).toHaveBeenCalledTimes(1);
+    expect(node.port.postMessage).toHaveBeenLastCalledWith({ active: true });
+    capture.close();
+    await Promise.resolve();
+    expect(node.port.postMessage).toHaveBeenLastCalledWith({ stop: true });
+  });
+
   it("stops the microphone when the worklet fails to load", async () => {
     const { tracks, addModule, capture } = setup();
     addModule.mockRejectedValueOnce(new Error("no worklet"));

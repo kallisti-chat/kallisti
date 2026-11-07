@@ -102,11 +102,25 @@ if (typeof AudioWorkletProcessor !== "undefined") {
       this.denoiser = null;
       this.echo = new Fifo(this.size * 5);
       // { denoise: ArrayBuffer | null }: RNNoise (its bytes) on or off. It
-      // is made once and kept (switched off, not destroyed). The answer
+      // is made once and kept until closed (switched off, not destroyed). The answer
       // says whether it runs ({ denoising }) or failed. { channels }: 1 or
       // 2, from a new frame on.
       this.denoising = false;
+      this.active = false;
+      this.stopped = false;
       this.port.onmessage = ({ data }) => {
+        if (data.stop) {
+          this.stopped = true;
+          this.denoiser?.destroy();
+          this.denoiser = null;
+          this.port.close();
+          return;
+        }
+        if ("active" in data) {
+          this.active = data.active;
+          this.filled = 0;
+          this.echo.start = this.echo.length = 0;
+        }
         if ("channels" in data) {
           this.channels = data.channels;
           this.frame = new Float32Array(this.size * this.channels);
@@ -125,6 +139,8 @@ if (typeof AudioWorkletProcessor !== "undefined") {
     }
 
     process(inputs, outputs) {
+      if (this.stopped) return false;
+      if (!this.active) return true;
       const out = outputs[0]?.[0];
       const quantum = out?.length ?? 128;
       const left = inputBlock(inputs, quantum);

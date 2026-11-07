@@ -263,6 +263,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
     source?.disconnect();
     stopTracks(stream);
     source = stream = null;
+    node?.port.postMessage({ active: false });
   };
 
   // Opens the microphone (null: the default device). Also used to switch.
@@ -296,6 +297,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
       n.port.postMessage({ channels: ch });
       source = ctx.createMediaStreamSource(next);
       route();
+      n.port.postMessage({ active: true });
       micError = null;
       deviceLabel = track?.label ?? "";
       trackSettings = track?.getSettings() ?? null;
@@ -405,8 +407,12 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
         dfn.node.disconnect(); // kept for the next capture (see sharedDfn)
         dfn.handlers = null;
       }
-      // The node can still be on its way: disconnect it when it arrives.
-      void nodePromise?.then((n) => n.disconnect()).catch(() => {});
+      // A disconnected processor can keep running: stop it as well.
+      void nodePromise?.then((n) => {
+        n.port.postMessage({ stop: true });
+        n.disconnect();
+        echo.disconnect();
+      }).catch(() => {});
       encoders.closeAll();
       return kept;
     },
