@@ -2732,3 +2732,19 @@ Bergamot was close to useless for Chinese. Tests of small models on the hard cha
 Detection: Latin-script lines are told by eld (n-grams, extra-small database, about 300 kB, loaded when idle; only languages with models; only a reliable answer, at least two words); before, common words missed most short French lines. eld 2.1.0, as 2.1.1 was younger than the lockfile's minimum release age.
 
 The hover bar showed every action as a word. As Discord now: icons for React, Reply, Edit, Translate (messages in another language) and More; More and a right-click (not on links, media, inputs or selected text) open a menu with the phone sheet's list; delete asks there. Not checked in a browser with WebGPU f16 here (headless Chromium has none): the user tests on test.kallisti.chat.
+
+## YouTube link previews through oEmbed
+
+YouTube can return watch-page HTML without useful metadata to server requests.
+Recognized video links now use its fixed HTTPS oEmbed endpoint first, without an
+API key or cookies. Watch, short, Shorts, live and embed links use a validated
+video ID; tracking parameters stay out of the provider request. The existing
+card shows the title, channel name and proxied thumbnail. Returned embed HTML
+is ignored. Other sites and general cache/retry behavior are unchanged.
+
+Tests first failed for the missing handler, then passed with the implementation.
+Local fixtures cover URL validation, bounded JSON, failed lookups, text limits,
+thumbnail proxying, and private thumbnail addresses including redirects.
+Independent source and Astra security reviews approved the change. The full
+server race suite, vet, and existing web link-preview tests passed. No live
+service or chat traffic was used for verification.

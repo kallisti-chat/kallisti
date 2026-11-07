@@ -204,7 +204,13 @@ func (f *Fetcher) fetch(ctx context.Context, raw string) (Preview, picture, erro
 	if err := webURL(u); err != nil {
 		return Preview{}, picture{}, err
 	}
-	p, imageURL, err := f.page(ctx, u.String())
+	var p Preview
+	var imageURL string
+	if id := youtubeVideoID(u); id != "" {
+		p, imageURL, err = f.youtube(ctx, id)
+	} else {
+		p, imageURL, err = f.page(ctx, u.String())
+	}
 	if err != nil {
 		return Preview{}, picture{}, err
 	}
