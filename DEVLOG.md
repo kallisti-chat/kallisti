@@ -2906,3 +2906,7 @@ Applied one composer write policy to all entry paths without discarding unsent s
 ## 2026-11-08: Messages: retain edit drafts until the server accepts them
 
 Retained edit snapshots until correlated server results, including attachment-removal choices. Added edit-only request IDs without changing manage-request behavior. Component and protocol regressions, workspace checks, and Go race tests/vet passed; independent reviews approved the change.
+
+## 2026-11-08: Notifications: keep clicked links until the target client is ready
+
+Moved notification ingress to App and reused the server-link path. Added fake-worker tests for pre-mount delivery, target validation, owner changes, and listener cleanup. Workspace checks passed; independent reviews approved the change. No live browser notification test was run.

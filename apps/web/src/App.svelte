@@ -571,9 +571,10 @@
   });
   $effect(() => serverPush.dispose);
 
-  // Links from elsewhere: invites, ?join=, a push notice's ?open= (see
-  // lib/serverLinks).
+  // Links from elsewhere: invites, ?join=, and push clicks (worker
+  // messages or ?open=; see lib/serverLinks).
   const links = createServerLinks({
+    worker: navigator.serviceWorker,
     servers: () => hub.servers,
     home: homeOrigin,
     owner: () => owner,

@@ -874,16 +874,6 @@
     // An added server's push (see lib/push syncServerPush): the caller's.
     else if (pushSync && browserPushSupport() === "ok") pushSync(pushPrefs);
   });
-  $effect(() => {
-    const sw = navigator.serviceWorker;
-    const onMessage = (e: MessageEvent) => {
-      const link = e.data?.type === "open" && typeof e.data.url === "string" ? parseMessageLink(e.data.url, site) : null;
-      if (link) onShow?.();
-      openMessage(link);
-    };
-    sw?.addEventListener("message", onMessage);
-    return () => sw?.removeEventListener("message", onMessage);
-  });
   // Opened with a message link: there once the channels are known.
   let linked = untrack(() => parseMessageLink(location.href, site));
   $effect(() => {

@@ -33,5 +33,4 @@
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
-  - [ ] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)

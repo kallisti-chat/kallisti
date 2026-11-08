@@ -41,7 +41,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [x] [Search: distinguish DM and channel targets with the same name](search-target-kind.md)
 - [x] [Build: run emoji-data generation on Windows and spaced paths](emoji-data-cli-path.md)
 - [x] [Several servers: scope blocks and user audio preferences](server-scoped-user-preferences.md)
-- [ ] [Notifications: keep clicked links until the target client is ready](notification-click-ingress.md)
+- [x] [Notifications: keep clicked links until the target client is ready](notification-click-ingress.md)
 - [x] [Connections: bound the initial Mumble handshake](initial-connection-deadline.md)
 - [x] [Messages: retain edit drafts until the server accepts them](rejected-message-edit-draft.md)
 - [x] [Chat time-outs: disable all write paths and retain drafts](timeout-composer-send-guard.md)

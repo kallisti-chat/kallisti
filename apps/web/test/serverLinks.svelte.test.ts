@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync } from "svelte";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createServerLinks } from "../src/lib/serverLinks.svelte";
 
 const HOME = "https://home.example";
@@ -10,10 +10,12 @@ const TOKEN = "abcdefghij0123456789xyz";
 
 const setup = () => {
   let owner = $state<string | null>(`${HOME} alice`);
-  const servers = [{ origin: B, name: "al", session: {} }, { origin: C, name: "al", session: null }];
+  const servers = $state([{ origin: B, name: "al", session: {} }, { origin: C, name: "al", session: null as unknown }]);
+  const worker = new EventTarget();
   const shown: string[] = [];
   const adds: unknown[] = [];
   const links = createServerLinks({
+    worker,
     servers: () => servers,
     home: () => HOME,
     owner: () => owner,
@@ -21,7 +23,7 @@ const setup = () => {
     add: (target) => void adds.push(target),
   });
   flushSync();
-  return { links, shown, adds, login: (o: string | null) => (owner = o) };
+  return { links, shown, adds, servers, worker, login: (o: string | null) => (owner = o) };
 };
 
 describe("links from elsewhere", () => {
@@ -68,5 +70,119 @@ describe("links from elsewhere", () => {
     flushSync();
     expect(links.linkFor(B)).toBeNull();
     links.dispose();
+  });
+});
+
+// The App owns ingress even when no Client exists. These fake Clients only
+// model the link prop's readiness gate; no media or network APIs are needed.
+describe("worker click ingress", () => {
+  const click = (worker: EventTarget, data: unknown) => worker.dispatchEvent(new MessageEvent("message", { data }));
+  const mount = (links: ReturnType<typeof createServerLinks>, id: string, opened: string[]) => {
+    let ready = $state(false);
+    const dispose = $effect.root(() => {
+      $effect(() => {
+        const url = links.linkFor(id);
+        if (!ready || !url) return;
+        opened.push(url);
+        links.used(id);
+      });
+    });
+    return { ready: () => (ready = true), dispose };
+  };
+
+  it.each(["", B])("keeps a click before Client mount and readiness, once for %s", (id) => {
+    const { links, worker } = setup();
+    const url = `${id || HOME}/channels/1/2`;
+    click(worker, { type: "open", url });
+    flushSync();
+    expect(links.linkFor(id)).toBe(url);
+    const opened: string[] = [];
+    const other = mount(links, id === B ? "" : B, opened);
+    const target = mount(links, id, opened);
+    other.ready();
+    flushSync();
+    expect(opened).toEqual([]);
+    target.ready();
+    flushSync();
+    flushSync();
+    expect(opened).toEqual([url]);
+    expect(links.linkFor(id)).toBeNull();
+    other.dispose();
+    target.dispose();
+    links.dispose();
+  });
+
+  it("rejects malformed and foreign targets without replacing a valid click", () => {
+    const { links, worker, shown } = setup();
+    const url = `${HOME}/channels/1/2`;
+    click(worker, { type: "open", url });
+    for (const data of [null, {}, "open", { type: "other", url }, { type: "open", url: 1 },
+      ...["garbage", "/channels/1/2", `${HOME}/bad`, `${C}/channels/1/2`, "https://foreign.example/channels/1/2"].map((url) => ({ type: "open", url }))]) {
+      click(worker, data);
+    }
+    expect(shown).toEqual([""]);
+    expect(links.linkFor("")).toBe(url);
+    links.dispose();
+  });
+
+  it("retains only the latest validated message, bound to its server", () => {
+    const { links, worker } = setup();
+    click(worker, { type: "open", url: `${HOME}/channels/1/2` });
+    click(worker, { type: "open", url: `${B}/channels/3/4` });
+    expect(links.linkFor("")).toBeNull();
+    expect(links.linkFor(B)).toBe(`${B}/channels/3/4`);
+    links.dispose();
+  });
+
+  it("clears on owner change even before effects flush", () => {
+    const { links, worker, login } = setup();
+    click(worker, { type: "open", url: `${B}/channels/1/2` });
+    expect(links.linkFor(B)).toBe(`${B}/channels/1/2`);
+    login(`${HOME} bob`);
+    expect(links.linkFor(B)).toBeNull();
+    flushSync();
+    expect(links.linkFor(B)).toBeNull();
+    links.dispose();
+  });
+
+  it("removes its one listener and drops an unconsumed click on disposal", () => {
+    const { links, worker, shown } = setup();
+    const remove = vi.spyOn(worker, "removeEventListener");
+    click(worker, { type: "open", url: `${HOME}/channels/1/2` });
+    expect(links.linkFor("")).not.toBeNull();
+    links.dispose();
+    expect(remove).toHaveBeenCalledWith("message", expect.any(Function));
+    expect(links.linkFor("")).toBeNull();
+    click(worker, { type: "open", url: `${B}/channels/1/2` });
+    expect(shown).toEqual([""]);
+  });
+
+  it("replaces a server's invite with a message or the reverse, without replay", () => {
+    const { links, worker } = setup();
+    const invite = `${B}/invite/${TOKEN}`;
+    const url = `${B}/channels/1/2`;
+    links.openInvite(invite);
+    click(worker, { type: "open", url });
+    expect(links.linkFor(B)).toBe(url);
+    links.used(B);
+    expect(links.linkFor(B)).toBeNull();
+    click(worker, { type: "open", url });
+    links.openInvite(invite);
+    expect(links.linkFor(B)).toBe(invite);
+    links.used(B);
+    expect(links.linkFor(B)).toBeNull();
+    links.dispose();
+  });
+
+  it("does not deliver to a removed server or retain a disposed listener", () => {
+    const { links, worker, servers, shown } = setup();
+    click(worker, { type: "open", url: `${B}/channels/1/2` });
+    servers.splice(0, 1);
+    expect(links.linkFor(B)).toBeNull();
+    links.dispose();
+    expect(links.linkFor("")).toBeNull();
+    click(worker, { type: "open", url: `${HOME}/channels/3/4` });
+    expect(shown).toEqual([B]);
+    expect(links.linkFor("")).toBeNull();
   });
 });

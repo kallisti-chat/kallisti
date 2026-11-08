@@ -26,3 +26,9 @@ Evidence: Source finding; no end-to-end service-worker test was run.
 - apps/web/src/sw.ts:39-49
 - apps/web/src/components/Client.svelte:875
 - apps/web/src/lib/serverLinks.svelte.ts:46
+
+## Result (2026-11-08)
+
+App now owns one worker-message listener and passes validated clicks through createServerLinks. A click for an existing session waits for its target Client under the same owner. Owner changes, replacement links, and disposal clear pending state; Client still resolves and jumps to the message.
+
+Verification: Twelve serverLinks tests use a fake worker and simulated Clients to check early clicks, single consumption, invalid targets, owner boundaries, and disposal. Final workspace tests, typechecks, and web build passed. Independent 6.1-sol and Astra reviews approved the change. No real service-worker/browser round trip was run.

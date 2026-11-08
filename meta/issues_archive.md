@@ -387,3 +387,4 @@
 - [x] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
 - [x] [Chat time-outs: disable all write paths and retain drafts](issues/timeout-composer-send-guard.md)
 - [x] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)
+- [x] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
