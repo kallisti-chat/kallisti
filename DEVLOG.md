@@ -2894,3 +2894,7 @@ Large thread histories now delete with a fixed number of SQL parameters. Only at
 ## 2026-11-08: Sidecar: recover from outbox overflow without another event
 
 Queued bounded sidecar recovery at overflow. The no-further-event regression, full Go race tests, and go vet passed; independent reviews approved the change.
+
+## 2026-11-08: Messages: resolve nonce retries before new-post cooldowns
+
+Resolved authorized message retries before new-post checks. Added production-rule regressions for cooldown, access, invalid content, and cross-limit accounting. Full Go race tests and go vet passed; independent reviews approved the change.

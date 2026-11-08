@@ -384,3 +384,4 @@
 - [x] [Federation signup: offer a name when the remote handle is unusable locally](issues/fedi-signup-invalid-local-name.md)
 - [x] [Threads: delete large histories without exceeding SQLite limits](issues/thread-delete-sql-limit.md)
 - [x] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
+- [x] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)

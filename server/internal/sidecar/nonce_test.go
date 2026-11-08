@@ -1,10 +1,13 @@
 package sidecar
 
 import (
+	"kallisti.chat/server/internal/msgrules"
 	"strings"
 	"testing"
+	"time"
 
 	"kallisti.chat/server/internal/mumble"
+	"kallisti.chat/server/internal/store"
 )
 
 func TestSendWithANonce(t *testing.T) {
@@ -114,5 +117,147 @@ func TestRefusalsOfASendCarryItsNonce(t *testing.T) {
 	alice.Handle([]byte(`{"type":"send","channel":1,"text":"hi","nonce":"c"}`))
 	if m := next(t, alice); m["about"] != "refused" || m["nonce"] != "c" {
 		t.Fatalf("rate: %v", m)
+	}
+}
+
+// Keep the cooldown state, as the built-in server does. A stateless rule
+// checker cannot expose retries that incorrectly count as new posts.
+type cooldownVoice struct {
+	fakeVoice
+	last         map[uint32]time.Time
+	now          func() time.Time
+	allowUploads bool
+}
+
+func (v *cooldownVoice) CheckMessage(session uint32, m msgrules.Message) (string, error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	now := clock
+	if v.now != nil {
+		now = v.now()
+	}
+	a := msgrules.Author{Since: clock}
+	// Allow attachment validation tests to reach the store checks while
+	// retaining the stateful post cooldown.
+	if v.allowUploads {
+		m.Upload = false
+	}
+	r := msgrules.Rules{NewMinutes: 10, Replacements: []msgrules.Replacement{{Phrase: "grow", With: []string{strings.Repeat("x", MaxTextLength+1)}}}}
+	m.Text = msgrules.Replace(r, m.Text, func(int) int { return 0 })
+	err := msgrules.Check(r, a, m, now, v.last[session])
+	if err == nil && m.Post {
+		v.last[session] = now
+	}
+	return m.Text, err
+}
+
+func TestNonceRetryBeforeCooldownAndContent(t *testing.T) {
+	h := newHub(t, "general")
+	v := &cooldownVoice{last: map[uint32]time.Time{}}
+	h.SetVoice(v, "")
+	bob := joinAs(t, h, mumble.Identity{Session: 2, Name: "bob", Registered: true, UserID: 20})
+	do(bob, `{"type":"send","channel":1,"text":"first","nonce":"n1"}`)
+	first := next(t, bob)
+	if first["type"] != "message" {
+		t.Fatalf("first: %v", first)
+	}
+	for _, content := range []string{`"text":"retry"`, `"poll":{"question":""}`, `"text":"","upload":"missing"`} {
+		do(bob, `{"type":"send","channel":1,"nonce":"n1",%s}`, content)
+		m := next(t, bob)
+		if m["type"] != "message" || m["nonce"] != "n1" || m["message"].(map[string]any)["id"] != first["message"].(map[string]any)["id"] {
+			t.Fatalf("retry: %v", m)
+		}
+	}
+	do(bob, `{"type":"send","channel":1,"text":"second","nonce":"n2"}`)
+	if m := next(t, bob); m["type"] != "error" || !strings.Contains(m["message"].(string), "5 seconds") {
+		t.Fatalf("cooldown: %v", m)
+	}
+	if hist, err := h.store.History(1, 0, 10); err != nil || len(hist) != 1 {
+		t.Fatalf("history: %v %v", hist, err)
+	}
+}
+
+func TestInvalidContentDoesNotConsumeCooldown(t *testing.T) {
+	for _, content := range []string{`"text":""`, `"text":"grow"`, `"text":"hi","reply":999`, `"text":"hi","upload":"missing"`, `"text":"hi","upload":"used"`, `"sticker":999`, `"poll":{"question":""}`} {
+		t.Run(content, func(t *testing.T) {
+			h := newHub(t, "general")
+			v := &cooldownVoice{last: map[uint32]time.Time{}, allowUploads: true}
+			up, err := h.store.AddUpload(store.Upload{Key: "used", Name: "a.png", Type: "image/png", Size: 1, Author: "bob"}, clock)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := h.store.AddMessage(store.NewMessage{ChannelID: 1, Author: "bob", Text: "original", At: clock, Uploads: []store.Attachment{{ID: up.ID}}}); err != nil {
+				t.Fatal(err)
+			}
+			h.SetVoice(v, "")
+			bob := joinAs(t, h, mumble.Identity{Session: 2, Name: "bob", Registered: true, UserID: 20})
+			do(bob, `{"type":"send","channel":1,%s}`, content)
+			if m := next(t, bob); m["type"] != "error" {
+				t.Fatalf("invalid: %v", m)
+			}
+			do(bob, `{"type":"send","channel":1,"text":"valid","nonce":"ok"}`)
+			if m := next(t, bob); m["type"] != "message" {
+				t.Fatalf("valid after invalid: %v", m)
+			}
+		})
+	}
+}
+
+func TestNonceRetryAfterPrivateAccessRevoked(t *testing.T) {
+	h, v, secret := privateHub(t)
+	v.members[2] = true
+	bob := joinAs(t, h, mumble.Identity{Session: 2, Name: "bob", Registered: true, UserID: 20})
+	do(bob, `{"type":"send","channel":%d,"text":"private","nonce":"n1"}`, secret)
+	if m := next(t, bob); m["type"] != "message" {
+		t.Fatalf("first: %v", m)
+	}
+	v.mu.Lock()
+	v.members[2] = false
+	v.mu.Unlock()
+	do(bob, `{"type":"send","channel":%d,"text":"private","nonce":"n1"}`, secret)
+	if m := next(t, bob); m["type"] != "error" || m["message"] != "you may not use this channel's chat" {
+		t.Fatalf("revoked: %v", m)
+	}
+}
+
+func TestCooldownAndSlowModeRefusalsDoNotConsumeOtherLimit(t *testing.T) {
+	h := newHub(t, "general", "slow")
+	now := clock
+	h.now = func() time.Time { return now }
+	v := &cooldownVoice{last: map[uint32]time.Time{}, now: func() time.Time { return now }}
+	h.SetVoice(v, "")
+	if err := h.store.SetSlowMode(2, 60); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.reloadChannels(); err != nil {
+		t.Fatal(err)
+	}
+	bob := joinAs(t, h, mumble.Identity{Session: 2, Name: "bob", Registered: true, UserID: 20})
+	send := func(channel int64) map[string]any {
+		t.Helper()
+		do(bob, `{"type":"send","channel":%d,"text":"hi"}`, channel)
+		return next(t, bob)
+	}
+	if m := send(1); m["type"] != "message" {
+		t.Fatalf("first A: %v", m)
+	}
+	if m := send(2); m["type"] != "error" || !strings.Contains(m["message"].(string), "5 seconds") {
+		t.Fatalf("cooldown B: %v", m)
+	}
+	now = now.Add(msgrules.Interval)
+	if m := send(2); m["type"] != "message" {
+		t.Fatalf("B after cooldown: %v", m)
+	}
+	now = now.Add(msgrules.Interval)
+	if m := send(2); m["about"] != "slow-mode" {
+		t.Fatalf("slow B: %v", m)
+	}
+	if m := send(1); m["type"] != "message" {
+		t.Fatalf("A after slow refusal: %v", m)
+	}
+	for channel, want := range map[int64]int{1: 2, 2: 1} {
+		if hist, err := h.store.History(channel, 0, 10); err != nil || len(hist) != want {
+			t.Fatalf("channel %d history: %v %v", channel, hist, err)
+		}
 	}
 }

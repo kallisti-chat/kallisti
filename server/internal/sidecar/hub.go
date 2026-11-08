@@ -717,15 +717,6 @@ func (c *Conn) Handle(raw []byte) {
 		c.setAnswering(req.Nonce)
 		defer c.setAnswering("")
 	}
-	// A poll's text goes through the rules as any text.
-	if req.Type == "send" && req.Poll != nil {
-		p, why := newPoll(*req.Poll, c.hub.now(), func(e string) (string, string) { return c.hub.usableEmoji(e, true) })
-		if why != "" {
-			c.sendError(why)
-			return
-		}
-		req.poll, req.Text = &p, pollText(p)
-	}
 	c.mu.Lock()
 	id, ready := c.identity, c.ready
 	c.mu.Unlock()
@@ -737,7 +728,7 @@ func (c *Conn) Handle(raw []byte) {
 		c.overLimit(*id, req)
 		return
 	}
-	if c.readOnly(*id, req) || c.refused(*id, &req) {
+	if c.readOnly(*id, req) || (req.Type != "send" && c.refused(*id, &req)) {
 		return
 	}
 	if req.Type == "upload-token" {
@@ -1101,6 +1092,18 @@ func (c *Conn) post(id mumble.Identity, req request, ch chat) {
 	if stored() {
 		return
 	}
+	// A poll's text goes through the rules as any text.
+	if req.Poll != nil {
+		p, why := newPoll(*req.Poll, c.hub.now(), func(e string) (string, string) { return c.hub.usableEmoji(e, true) })
+		if why != "" {
+			c.sendError(why)
+			return
+		}
+		req.poll, req.Text = &p, pollText(p)
+	}
+	if c.refused(id, &req) {
+		return
+	}
 	typed := req.composerText() // what goes back to the composer (slow mode)
 	if req.poll != nil {
 		switch {
@@ -1146,7 +1149,16 @@ func (c *Conn) post(id mumble.Identity, req request, ch chat) {
 	if n.Uploads, ok = c.attachments(id, req.Uploads); !ok {
 		return
 	}
-	if c.slowMode(id, ch, typed) {
+	// Check both limits before recording the slow-mode turn. The slow-mode
+	// lock holds that turn while account cooldown accounting can refuse it.
+	if c.postLimits(id, ch, typed, func() error {
+		if c.hub.voice == nil {
+			return nil
+		}
+		// Content is already valid; do not replace its words a second time.
+		_, err := c.hub.voice.CheckMessage(id.Session, msgrules.Message{Post: true})
+		return err
+	}) {
 		return
 	}
 	m, err := c.hub.store.AddMessage(n)
@@ -1227,7 +1239,8 @@ func webhookLabel(name string, webhook bool) string {
 }
 
 // attachments are a send's uploads for the store: the sender's own, each
-// once (the store refuses used ones), at most store.MaxUploads (else an error goes to the sender).
+// once and unused (also checked transactionally by the store), at most
+// store.MaxUploads (else an error goes to the sender).
 func (c *Conn) attachments(id mumble.Identity, uploads []wireAttachment) ([]store.Attachment, bool) {
 	if len(uploads) > store.MaxUploads {
 		c.sendError(fmt.Sprintf("at most %d files per message", store.MaxUploads))
@@ -1236,7 +1249,7 @@ func (c *Conn) attachments(id mumble.Identity, uploads []wireAttachment) ([]stor
 	var out []store.Attachment
 	for _, a := range uploads {
 		u, err := c.hub.store.UploadByKey(a.Key)
-		if err != nil || u.Author != id.Name || slices.ContainsFunc(out, func(b store.Attachment) bool { return b.ID == u.ID }) {
+		if err != nil || u.Author != id.Name || u.Used || slices.ContainsFunc(out, func(b store.Attachment) bool { return b.ID == u.ID }) {
 			c.sendError("unknown upload")
 			return nil, false
 		}

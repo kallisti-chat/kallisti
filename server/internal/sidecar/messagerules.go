@@ -16,13 +16,14 @@ import (
 // replaces words in their texts. Without it (Murmur) there are none.
 
 // refused: the rules refuse a send, an edit or an upload; the author sees
-// why. Else req has the text to post.
+// why. Else req has the text to post. Sends are accounted in post only
+// after their content is valid.
 func (c *Conn) refused(id mumble.Identity, req *request) bool {
 	var m msgrules.Message
 	field := &req.Text
 	switch req.Type {
 	case "send":
-		m = msgrules.Message{Text: req.Text, Upload: len(req.Uploads) > 0, MentionAll: mentionAllOf(req.Text) != "", Post: true}
+		m = msgrules.Message{Text: req.Text, Upload: len(req.Uploads) > 0, MentionAll: mentionAllOf(req.Text) != ""}
 	case "edit-message":
 		m = msgrules.Message{Text: req.Text, MentionAll: mentionAllOf(req.Text) != ""}
 	case "upload-token":

@@ -106,7 +106,7 @@ func TestMessageRulesOnSendEditAndUpload(t *testing.T) {
 	}
 	refused(guest, `{"type":"send","channel":`+ch+`,"text":"hi @everyone"}`, "Guests cannot mention @everyone or @here: log in or make an account")
 	refused(guest, `{"type":"send","channel":`+ch+`,"text":"a caption","upload":"key"}`, "Guests cannot upload files: log in or make an account")
-	if got := v.lastChecked(); got != (msgrules.Message{Text: "a caption", Upload: true, Post: true}) {
+	if got := v.lastChecked(); got != (msgrules.Message{Text: "a caption", Upload: true}) {
 		t.Fatalf("send: %+v", got)
 	}
 

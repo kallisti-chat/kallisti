@@ -25,3 +25,9 @@ Evidence: Reproduced with stateful rate accounting matching production.
 - server/internal/sidecar/hub.go:740,1087
 - server/internal/mumbled/messagerules.go:66
 - Related: send-after-reconnect.md
+
+## Result (2026-11-08)
+
+Authorized stored-nonce retries now return before content validation and new-post accounting. Invalid content does not use either posting limit, and a refusal by one limit does not use the other.
+
+Verification: Regression tests cover immediate retries, distinct nonces, revoked private access, invalid content and used uploads, and two-channel limit accounting. Full Go race tests and go vet passed. Independent 6.1-sol and Astra reviews approved the change.

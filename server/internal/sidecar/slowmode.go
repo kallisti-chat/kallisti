@@ -45,10 +45,14 @@ func slowText(wait time.Duration) string {
 // slowTurn takes the user's turn to post in a text channel, or tells how
 // long it waits (and until when). Posts count also while slow mode is
 // off: one turned on holds back who just posted (as the composer does).
-// A thread has its channel's slow mode, and turns of its own.
-func (h *Hub) slowTurn(id mumble.Identity, ch chat) (time.Duration, time.Time) {
-	if h.voice == nil || h.mayModerate(id, ch) {
-		return 0, time.Time{}
+// A thread has its channel's slow mode, and turns of its own. If accept is
+// set, it must also accept the post before the turn is recorded.
+func (h *Hub) slowTurn(id mumble.Identity, ch chat, accept func() error) (time.Duration, time.Time, error) {
+	if accept == nil {
+		accept = func() error { return nil }
+	}
+	if h.voice == nil || ch.direct || ch.isVoice || h.mayModerate(id, ch) {
+		return 0, time.Time{}, accept()
 	}
 	every := time.Duration(h.slowModeOf(cmp.Or(ch.parent, ch.id))) * time.Second
 	key := slowKey{channel: ch.id, registered: id.Registered, id: id.Session}
@@ -60,7 +64,10 @@ func (h *Hub) slowTurn(id mumble.Identity, ch chat) (time.Duration, time.Time) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if wait := slowLeft(p.last[key], every, now); wait > 0 {
-		return wait, p.last[key].Add(every)
+		return wait, p.last[key].Add(every), nil
+	}
+	if err := accept(); err != nil {
+		return 0, time.Time{}, err
 	}
 	if p.last == nil {
 		p.last = map[slowKey]time.Time{}
@@ -71,7 +78,7 @@ func (h *Hub) slowTurn(id mumble.Identity, ch chat) (time.Duration, time.Time) {
 		}
 	}
 	p.last[key] = now
-	return 0, time.Time{}
+	return 0, time.Time{}, nil
 }
 
 func (h *Hub) slowModeOf(channel int64) int64 {
@@ -88,10 +95,18 @@ func (h *Hub) slowModeOf(channel int64) int64 {
 // slowMode refuses a post that comes too soon (see post); its text comes
 // back for the composer.
 func (c *Conn) slowMode(id mumble.Identity, ch chat, text string) bool {
-	if ch.direct || ch.isVoice {
-		return false
+	return c.postLimits(id, ch, text, nil)
+}
+
+// postLimits checks slow mode and the optional account limit together:
+// neither records a post if the other refuses it. accept must not reenter
+// slow mode, as slowTurn calls it with the slow-post lock held.
+func (c *Conn) postLimits(id mumble.Identity, ch chat, text string, accept func() error) bool {
+	wait, until, err := c.hub.slowTurn(id, ch, accept)
+	if err != nil {
+		c.send(map[string]any{"type": "error", "message": err.Error(), "about": "refused", "channel": ch.id, "text": text})
+		return true
 	}
-	wait, until := c.hub.slowTurn(id, ch)
 	if wait > 0 {
 		c.send(map[string]any{"type": "error", "message": slowText(wait), "about": "slow-mode", "channel": ch.id, "until": until.UnixMilli(), "text": text})
 	}
@@ -107,7 +122,7 @@ func (h *Hub) MumbleTextAllowed(session, channel uint32) error {
 		return nil
 	}
 	u, _ := h.voice.MumbleClient(session)
-	if wait, _ := h.slowTurn(mumble.Identity{Session: session, Registered: u.Registered, UserID: u.UserID}, chat{id: text.ID}); wait > 0 {
+	if wait, _, _ := h.slowTurn(mumble.Identity{Session: session, Registered: u.Registered, UserID: u.UserID}, chat{id: text.ID}, nil); wait > 0 {
 		return errors.New(slowText(wait))
 	}
 	return nil
