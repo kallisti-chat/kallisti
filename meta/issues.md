@@ -34,7 +34,6 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop login: clear secrets when the server changes](issues/login-server-credential-reset.md)
-  - [ ] [Federation login: revoke pending handoffs with authentication](issues/fedi-handoff-revocation.md)
   - [ ] [Message HTML: prevent styles from covering the application](issues/message-html-layout-styles.md)
   - [ ] [Audio: isolate ownership of the shared DeepFilterNet node](issues/deepfilternet-capture-ownership.md)
   - [ ] [Voice: refresh routing after implicit self-undeafen](issues/self-unmute-deaf-routing.md)

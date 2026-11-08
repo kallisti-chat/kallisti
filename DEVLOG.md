@@ -2814,3 +2814,7 @@ boundaries; there is no general file-splitting or framework rewrite.
 ## 2026-11-08: Channel deletion: reconcile moved users and audio listeners
 
 Channel deletion now applies the same access cleanup as a normal move. Tests prove that a moved user loses forbidden audio subscriptions, while visibility ordering, suppression, and callbacks stay correct. Full Go race tests and vet passed; 6.1-sol and Astra reviews found no blocker.
+
+## 2026-11-08: Federation login: revoke pending handoffs with authentication
+
+Pending federation handoffs can no longer outlive unlink, password change, or logout-all. Identity rechecks and a small shared lock keep redemption and revocation consistent. HTTP regressions and full Go race tests/vet passed; 6.1-sol and Astra reviews found no blocker.

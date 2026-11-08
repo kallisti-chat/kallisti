@@ -424,23 +424,23 @@ func (a *Service) revoke(match func(accountID int64, session string) bool) {
 	}
 }
 
-// endLogins ends what lives on of the account's logins but the session
-// keep ("": none) after its sessions ended: connections, the stream key,
-// Mumble app logins.
-func (a *Service) endLogins(acc store.Account, keep string) {
+// endLogins ends the account's sessions with end, then what lives on of
+// its logins but the session keep ("": none). The store change and handoff
+// revocation are serialized with handoff redemption; hooks run unlocked.
+func (a *Service) endLogins(acc store.Account, keep string, end func() error) error {
+	if err := a.revokeHandoffs(acc.ID, end); err != nil {
+		return err
+	}
 	a.revoke(func(id int64, session string) bool { return id == acc.ID && (keep == "" || session != keep) })
 	a.endStreamKey(acc)
 	a.endPasswordLogins(acc)
+	return nil
 }
 
 // DeleteAccount deletes an account (an admin removes its registration):
 // its sessions go with it, and its logins end. Its messages stay.
 func (a *Service) DeleteAccount(acc store.Account) error {
-	if err := a.Store.DeleteAccount(acc.ID); err != nil {
-		return err
-	}
-	a.endLogins(acc, "")
-	return nil
+	return a.endLogins(acc, "", func() error { return a.Store.DeleteAccount(acc.ID) })
 }
 
 func (a *Service) endPasswordLogins(acc store.Account) {
@@ -738,11 +738,10 @@ func (a *Service) logoutAll(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
-	if err := a.Store.DeleteSessionsExcept(acc.ID, ""); err != nil {
+	if err := a.endLogins(acc, "", func() error { return a.Store.DeleteSessionsExcept(acc.ID, "") }); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot log out"})
 		return
 	}
-	a.endLogins(acc, "")
 	a.clearCookie(w, r, CookieName)
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -796,7 +795,9 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 	// the session and the old password are still current.
 	keep := a.SessionKey(r)
 	if err == nil {
-		err = a.Store.ChangePassword(acc.ID, keep, acc.PasswordHash, hash, a.Now())
+		err = a.endLogins(acc, keep, func() error {
+			return a.Store.ChangePassword(acc.ID, keep, acc.PasswordHash, hash, a.Now())
+		})
 	}
 	if errors.Is(err, store.ErrNotFound) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "the password or session changed meanwhile"})
@@ -806,7 +807,6 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot change the password"})
 		return
 	}
-	a.endLogins(acc, keep)
 	if acc.Temporary && a.OnPermanent != nil {
 		a.OnPermanent(acc.Name)
 	}

@@ -26,3 +26,11 @@ Evidence: Reproduced for unlink, password change, and logout-all.
 
 - server/internal/auth/fedi.go:144,706,763,803
 - server/internal/auth/auth.go:427,734,797
+
+## Result (2026-11-08)
+
+Pending handoffs are bound to the authenticating identity and current account password hash. Successful unlink and login revocation invalidate them. A shared mutex serializes the store revocation and handoff redemption through session creation; external hooks run unlocked.
+
+Verification: HTTP regressions for unlink, password change, and logout-all, each with/without consent, were red and now pass. Valid redemption, unlink/relink, identity replacement, replay, expiry, failed password change, and single-session logout are covered. `go test -race ./...` and `go vet ./...` passed. Independent reviews: 6.1-sol and Astra; no blockers.
+
+Scope: OAuth flows that have not yet created a handoff are unchanged.
