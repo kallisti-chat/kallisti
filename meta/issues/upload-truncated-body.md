@@ -23,3 +23,9 @@ Evidence: A local raw HTTP probe declared 1,000 bytes, sent 100, and received HT
 ## Notes
 
 - server/internal/files/files.go:179-205,247-250
+
+## Result (2026-11-08)
+
+Content sniffing now preserves non-EOF read errors, including errors returned with exactly 512 bytes. Known-length uploads are checked before database insertion. Failed requests remove the file and release the quota reservation.
+
+Verification: The raw loopback regression declared 1,000 bytes and sent 100; it failed before the fix and now rejects the upload without a row or file. Tests also cover longer interruptions, same-call/separate read errors, known/unknown lengths, chunked success, small/large bodies, empty-body policy, size limits, and quota cleanup. Full Go race tests and vet passed. Independent reviews: 6.1-sol and Astra; no blockers.

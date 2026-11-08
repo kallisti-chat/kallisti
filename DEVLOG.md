@@ -2846,3 +2846,7 @@ A SelfMute-only unmute now invalidates receiver caches when it implicitly clears
 ## 2026-11-08: Channels: remove descendants before their parents
 
 Channel removal now sorts sibling IDs before recursion, so all descendants precede their parents. Regression tests cover non-depth IDs, move/removal broadcasts, and the existing access cleanup. Full Go race tests and vet passed; 6.1-sol and Astra approved the fix.
+
+## 2026-11-08: Uploads: reject interrupted request bodies
+
+Upload sniffing now retains read errors and validates known body lengths before storing an upload row. Tests reproduce short and longer interruptions over local HTTP and confirm file/row/quota cleanup, successful chunked bodies, and size limits. Full Go race tests and vet passed; 6.1-sol and Astra approved the fix.

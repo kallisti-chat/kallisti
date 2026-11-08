@@ -35,7 +35,6 @@
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
   - [ ] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
-  - [ ] [Uploads: reject interrupted request bodies](issues/upload-truncated-body.md)
   - [ ] [Threads: delete large histories without exceeding SQLite limits](issues/thread-delete-sql-limit.md)
   - [ ] [Messages: preserve literal emoji references when editing](issues/personal-emoji-edit-roundtrip.md)
   - [ ] [Search: distinguish DM and channel targets with the same name](issues/search-target-kind.md)

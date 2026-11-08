@@ -176,6 +176,10 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 		slog.Error("save upload", "err", err)
 		jsonError(w, "cannot store file", http.StatusInternalServerError)
 		return
+	case r.ContentLength >= 0 && size != r.ContentLength:
+		os.Remove(dst)
+		jsonError(w, "incomplete file body", http.StatusBadRequest)
+		return
 	case size == 0:
 		os.Remove(dst)
 		jsonError(w, "empty file", http.StatusBadRequest)
@@ -244,10 +248,13 @@ func (h *Handler) save(dst string, body io.Reader) (int64, []byte, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	head := make([]byte, 512)
-	n, _ := io.ReadFull(body, head)
-	head = head[:n]
-	rest, err := io.Copy(f, io.MultiReader(bytes.NewReader(head), io.LimitReader(body, h.MaxBytes+1-int64(n))))
+	// A short EOF is normal, but other errors (even with 512 bytes) must
+	// survive sniffing. ReadFull would hide an error with a full buffer.
+	head, err := io.ReadAll(io.LimitReader(body, 512))
+	var rest int64
+	if err == nil {
+		rest, err = io.Copy(f, io.MultiReader(bytes.NewReader(head), io.LimitReader(body, h.MaxBytes+1-int64(len(head)))))
+	}
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
