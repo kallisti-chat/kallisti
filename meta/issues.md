@@ -37,7 +37,6 @@
   - [ ] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
   - [ ] [Threads: delete large histories without exceeding SQLite limits](issues/thread-delete-sql-limit.md)
   - [ ] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
-  - [ ] [Connections: bound the initial Mumble handshake](issues/initial-connection-deadline.md)
   - [ ] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)
   - [ ] [Chat time-outs: disable all write paths and retain drafts](issues/timeout-composer-send-guard.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)

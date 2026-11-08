@@ -181,6 +181,53 @@ describe("a server session", () => {
     expect(made).toHaveLength(1);
   });
 
+  it("ends an initial handshake that never syncs after 15 seconds", async () => {
+    const { session, made } = setup();
+    await session.start(credentials);
+    await settle();
+    await vi.advanceTimersByTimeAsync(14_999);
+    expect(made[0]!.closeRequests).toBe(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(made[0]!.closeRequests).toBe(1);
+    session.dispose();
+  });
+
+  it("does not close a synced initial connection at its old deadline", async () => {
+    const { session, made } = setup();
+    await session.start(credentials);
+    await settle(); // The handshake timer is active before sync cancels it.
+    made[0]!.sync();
+    await settle();
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(made[0]!.closeRequests).toBe(0);
+    session.dispose();
+  });
+
+  it.each(["leave", "drop", "dispose"] as const)("cancels the initial deadline on %s", async (action) => {
+    const { session, made } = setup();
+    await session.start(credentials);
+    await settle(); // Cancel an existing timer, not a not-yet-run effect.
+    session[action]();
+    const before = made[0]!.closeRequests;
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(made[0]!.closeRequests).toBe(before);
+    session.dispose();
+  });
+
+  it("an old initial deadline cannot close a newer handshake", async () => {
+    const { session, made } = setup();
+    await session.start(credentials);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await session.start({ username: "bob" });
+    made[1]!.sync();
+    await settle();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(made[1]!.closeRequests).toBe(0);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(made[1]!.closeRequests).toBe(0);
+    session.dispose();
+  });
+
   it("gives up on an attempt that gets nowhere in 15 s", async () => {
     const { session, made } = setup();
     await session.start(credentials);

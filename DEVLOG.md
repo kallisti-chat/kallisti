@@ -2866,3 +2866,7 @@ Search no longer loses target kind. Same-name DMs, text channels, and voice chan
 ## 2026-11-08: Build: run emoji-data generation on Windows and spaced paths
 
 Emoji data generation now has a dedicated CLI. It cannot silently skip output because of spaces or Windows path spelling, and write failures stop the build. Subprocess tests and a fresh generated-asset build passed. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.
+
+## 2026-11-08: Connections: bound the initial Mumble handshake
+
+Initial Mumble handshakes now have the same 15-second limit as reconnects. A stale deadline cannot close a newer connection. Fake-timer regressions cover sync, cancellation, replacement, and reconnects. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

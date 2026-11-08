@@ -42,7 +42,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [x] [Build: run emoji-data generation on Windows and spaced paths](emoji-data-cli-path.md)
 - [x] [Several servers: scope blocks and user audio preferences](server-scoped-user-preferences.md)
 - [ ] [Notifications: keep clicked links until the target client is ready](notification-click-ingress.md)
-- [ ] [Connections: bound the initial Mumble handshake](initial-connection-deadline.md)
+- [x] [Connections: bound the initial Mumble handshake](initial-connection-deadline.md)
 - [ ] [Messages: retain edit drafts until the server accepts them](rejected-message-edit-draft.md)
 - [ ] [Chat time-outs: disable all write paths and retain drafts](timeout-composer-send-guard.md)
 - [ ] [Desktop macOS: declare camera privacy permissions](macos-camera-permissions.md)

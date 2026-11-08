@@ -145,10 +145,6 @@ export const createServerSession = <C extends SessionConnection>(deps: SessionDe
       if (mine !== generation || !lost) return;
       const next = connectTo(target, credentials);
       attempt = next;
-      // A connection that never gets anywhere: give up on it, try again.
-      setTimeout(() => {
-        if (attempt === next && next.state.status !== "synced") next.close();
-      }, ATTEMPT_TIMEOUT_MS);
     } catch {
       if (mine === generation) schedule();
     } finally {
@@ -167,6 +163,18 @@ export const createServerSession = <C extends SessionConnection>(deps: SessionDe
   };
 
   const disposeEffects = $effect.root(() => {
+    // Initial and reconnect handshakes have the same deadline. Watch only
+    // identity, closure and first sync, not intermediate protocol traffic.
+    for (const current of [() => connection, () => attempt]) {
+      $effect(() => {
+        const next = current();
+        if (!next || next.closed || next.wasSynced) return;
+        const deadline = setTimeout(() => {
+          if (current() === next && !next.closed && !next.wasSynced) next.close();
+        }, ATTEMPT_TIMEOUT_MS);
+        return () => clearTimeout(deadline);
+      });
+    }
     $effect(() => {
       if (!lost) return void (lostAt = null);
       untrack(() => {
