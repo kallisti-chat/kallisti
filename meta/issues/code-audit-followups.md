@@ -2,7 +2,8 @@
 
 ## Summary
 
-Track all 23 findings reported in the read-only audit of `53536341`.
+Track the 23 findings reported in the read-only audit of `53536341`, plus two
+related findings from the fix reviews.
 Evidence is recorded per issue; source findings still need regression tests.
 The three proposed refactors belong to the channel-move, notification-ingress,
 and server-scoped preference issues below, not a broad rewrite.
@@ -48,6 +49,8 @@ and server-scoped preference issues below, not a broad rewrite.
 - [ ] [Desktop voice: keep TCP fallback after a UDP receive error](native-udp-error-fallback.md)
 - [ ] [Desktop bridge: cancel blocked upstream writes when the client leaves](native-upstream-write-cancellation.md)
 - [ ] [Federation signup: offer a name when the remote handle is unusable locally](fedi-signup-invalid-local-name.md)
+- [ ] [QR login: ignore completion after a server change](qr-login-stale-server-completion.md)
+- [ ] [Channels: remove descendants before their parents](channel-subtree-removal-order.md)
 
 ## Notes
 
