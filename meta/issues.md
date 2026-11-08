@@ -50,5 +50,4 @@
   - [ ] [Desktop voice: keep TCP fallback after a UDP receive error](issues/native-udp-error-fallback.md)
   - [ ] [Desktop bridge: cancel blocked upstream writes when the client leaves](issues/native-upstream-write-cancellation.md)
   - [ ] [Federation signup: offer a name when the remote handle is unusable locally](issues/fedi-signup-invalid-local-name.md)
-  - [ ] [QR login: ignore completion after a server change](issues/qr-login-stale-server-completion.md)
   - [ ] [Channels: remove descendants before their parents](issues/channel-subtree-removal-order.md)

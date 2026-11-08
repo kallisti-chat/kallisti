@@ -35,3 +35,9 @@ change QR callbacks.
 - `apps/web/src/components/Login.svelte`: `qrDone`, `shown`, `current`, and
   `connectAs`.
 - Related completed fix: [Server credential reset](login-server-credential-reset.md).
+
+## Result (2026-11-08)
+
+QR completion captures the API and server selection before the account lookup. A stale lookup cannot apply account state, save a username, or start a connection.
+
+Verification: Component regressions failed before the fix and now pass for same-API address/kind changes, API replacement, and current-server success exactly once. Tests use fake APIs and no camera. Full workspace tests/type checks and the web build passed. Independent reviews: 6.1-sol and Astra; no blockers.

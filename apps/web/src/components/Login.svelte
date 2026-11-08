@@ -141,8 +141,9 @@
   const qrDone = async (name: string) => {
     qrShown = false;
     const used = api;
+    const at = shown();
     const account = (await used.me()) ?? { name, temporary: false };
-    if (used !== api) return; // another server chosen meanwhile
+    if (!current(used, at)) return;
     onAccountChange(account);
     connectAs(account.name, true);
   };

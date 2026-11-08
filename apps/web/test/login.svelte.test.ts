@@ -7,6 +7,10 @@ import { solveInWorker, type Challenge, type Proof } from "../src/lib/captcha";
 
 vi.mock("../src/lib/captcha", () => ({ solveInWorker: vi.fn() }));
 
+// jsdom has no modal dialogs.
+HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+HTMLDialogElement.prototype.close = function () { this.open = false; };
+
 type Kind = "kallisti" | "mumble";
 const mounted: ReturnType<typeof mount>[] = [];
 afterEach(async () => {
@@ -107,6 +111,56 @@ const enterSecrets = async (kind: Kind) => {
   input("username", "alice");
   input("current-password", "A-account-secret");
 };
+
+describe("QR login completion server boundary", () => {
+  const startCompletion = async () => {
+    const first = fakeApi("a.example");
+    const lookup = Promise.withResolvers<Account | null>();
+    const me = vi.spyOn(first.api, "me").mockReturnValue(lookup.promise);
+    vi.spyOn(first.api, "qrStart").mockResolvedValue({
+      kind: "request", code: "a".repeat(64), owner: "owner-a", expires: Date.now() + 60_000,
+    });
+    vi.spyOn(first.api, "qrWait").mockResolvedValue({ state: "done", name: "qr-alice" });
+    const screen = show("kallisti", first);
+    vi.useFakeTimers();
+    try {
+      click("Log in with a QR code");
+      await vi.advanceTimersByTimeAsync(1500);
+      flushSync();
+      expect(me).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(screen.onAccountChange).not.toHaveBeenCalled();
+    expect(screen.onConnect).not.toHaveBeenCalled();
+    return { screen, lookup };
+  };
+
+  it.each(["same-api address", "same-api kind", "changed-api"])("ignores A's delayed account after a selection change (%s)", async (boundary) => {
+    localStorage.setItem("username", "remembered");
+    const { screen, lookup } = await startCompletion();
+    if (boundary === "changed-api") screen.replaceApi(fakeApi("a.example").api);
+    else screen.setServer(boundary === "same-api address" ? "b.example" : "a.example", "mumble");
+    lookup.resolve({ name: "a-account", temporary: false });
+    await settle();
+    expect(screen.onAccountChange).not.toHaveBeenCalled();
+    expect(screen.onConnect).not.toHaveBeenCalled();
+    expect(localStorage.getItem("username")).toBe("remembered");
+  });
+
+  it("applies the current server's account and connects once", async () => {
+    const { screen, lookup } = await startCompletion();
+    screen.refresh(); // Replacing desktop props alone does not change the selection.
+    const account = { name: "a-account", temporary: false, password: true };
+    lookup.resolve(account);
+    await settle();
+    expect(screen.onAccountChange).toHaveBeenCalledExactlyOnceWith(account);
+    expect(screen.onConnect).toHaveBeenCalledExactlyOnceWith({
+      username: "a-account", password: "", account: true, server: "a.example",
+    });
+    expect(localStorage.getItem("username")).toBe("a-account");
+  });
+});
 
 describe("desktop login server boundary", () => {
   it.each<[Kind, Kind, string]>([

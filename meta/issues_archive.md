@@ -370,3 +370,4 @@
 - [x] [Message HTML: prevent styles from covering the application](issues/message-html-layout-styles.md)
 - [x] [Audio: isolate ownership of the shared DeepFilterNet node](issues/deepfilternet-capture-ownership.md)
 - [x] [Streams: preserve both decoded audio channels](issues/stream-stereo-playback.md)
+- [x] [QR login: ignore completion after a server change](issues/qr-login-stale-server-completion.md)
