@@ -2830,3 +2830,7 @@ Message HTML no longer retains layout-control styles. The text-only allowlist ac
 ## 2026-11-08: Audio: isolate ownership of the shared DeepFilterNet node
 
 Capture cleanup now releases only its own DeepFilterNet connection and handlers. Another server's active capture keeps its audio path and failure callbacks; the shared allocation stays cached. Fake-media regressions, full workspace tests/type checks, and the web build passed. 6.1-sol and Astra approved the fix.
+
+## 2026-11-08: Streams: preserve both decoded audio channels
+
+Stream playback now copies both decoded stereo channels instead of discarding the right channel. Mono playback and existing timing/gain rules stay unchanged. The right-only stereo regression, full workspace tests/type checks, and web build passed. 6.1-sol and Astra approved the fix.

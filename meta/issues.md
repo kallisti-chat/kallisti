@@ -34,7 +34,6 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Voice: refresh routing after implicit self-undeafen](issues/self-unmute-deaf-routing.md)
-  - [ ] [Streams: preserve both decoded audio channels](issues/stream-stereo-playback.md)
   - [ ] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
   - [ ] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
   - [ ] [Uploads: reject interrupted request bodies](issues/upload-truncated-body.md)

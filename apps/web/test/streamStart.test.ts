@@ -252,6 +252,24 @@ describe("watching with sound", () => {
   };
   const frame = () => [new Float32Array(960)];
 
+  it.each([1, 2])("plays all %i decoded audio planes, including right-only stereo", async (channels) => {
+    ctx.state = "running";
+    const { client } = await watchWithSound();
+    const copyToChannel = vi.fn();
+    const createBuffer = vi.spyOn(ctx, "createBuffer").mockReturnValue({ copyToChannel });
+    const planes = channels === 1 ? [new Float32Array(960).fill(0.5)] : [new Float32Array(960), new Float32Array(960).fill(0.5)];
+    try {
+      sound.out!(planes, 1_000_000);
+      expect(createBuffer).toHaveBeenCalledExactlyOnceWith(channels, 960, 48_000);
+      expect(copyToChannel).toHaveBeenCalledTimes(channels);
+      planes.forEach((plane, channel) => expect(copyToChannel).toHaveBeenNthCalledWith(channel + 1, plane, channel));
+      expect(started).toHaveLength(1);
+    } finally {
+      client.close();
+      createBuffer.mockRestore();
+    }
+  });
+
   it("drops stream sound while the audio context does not run (it would pile up and play as one burst)", async () => {
     const send = await watchWithSound();
     send(1_000_000);

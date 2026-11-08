@@ -369,3 +369,4 @@
 - [x] [Desktop login: clear secrets when the server changes](issues/login-server-credential-reset.md)
 - [x] [Message HTML: prevent styles from covering the application](issues/message-html-layout-styles.md)
 - [x] [Audio: isolate ownership of the shared DeepFilterNet node](issues/deepfilternet-capture-ownership.md)
+- [x] [Streams: preserve both decoded audio channels](issues/stream-stereo-playback.md)
