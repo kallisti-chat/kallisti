@@ -2910,3 +2910,13 @@ Retained edit snapshots until correlated server results, including attachment-re
 ## 2026-11-08: Notifications: keep clicked links until the target client is ready
 
 Moved notification ingress to App and reused the server-link path. Added fake-worker tests for pre-mount delivery, target validation, owner changes, and listener cleanup. Workspace checks passed; independent reviews approved the change. No live browser notification test was run.
+
+## 2026-11-08: Plugins: design for a small UI for bots
+
+Design only, nothing built. The music bot gotamusique is controlled by `!commands`; the aim is a panel in the web client so people need not learn them, and a manifest so any bot can describe such a panel. See meta/research/plugin-system.md and plugin-manifest.md, issues in meta/issues/plugins*.md.
+
+- Declarative panel first: the plugin serves a JSON manifest, Kallisti draws it with its own components. No foreign code in the page and no policy change. A sandboxed iframe (needs `frame-src 'self'`) only if a plugin needs more; a script bundle in the page is rejected (`script-src 'self'`).
+- The panel talks to the plugin through our server, `/api/plugins/<id>/`. Not `/api/v1/`: the login provider owns it. The server adds the secret and the user name, so no secret reaches a browser. `netguard.Public` is not used: the bot is on loopback and the admin sets the URL.
+- Access is in Kallisti's configuration, never in the manifest, so a plugin cannot widen its own reach. Roles are per Mumble session, so `staff` needs the built-in server and a lookup (open).
+- The manifest's command list also feeds `!` completion in the composer.
+- The first step is a chat-only prototype (buttons send `!commands`), which needs no server change.

@@ -1,5 +1,12 @@
 # Open issues
 
+- [ ] [Plugins: a small UI for bots and tools](issues/plugins.md) (design in research/plugin-system.md; nothing built yet)
+  - [ ] [Plugins: the chat-only prototype](issues/plugins-prototype.md)
+  - [ ] [Plugins: the proxy, the configuration and the user name](issues/plugins-proxy.md)
+  - [ ] [Plugins: the manifest and the declarative panel](issues/plugins-renderer.md)
+  - [ ] [Plugins: `!` completion in the composer](issues/plugins-completion.md)
+  - [ ] [Plugins: access for staff only](issues/plugins-staff.md)
+  - [ ] [Plugins: the sandboxed page (only if needed)](issues/plugins-iframe.md)
 - [ ] [Desktop app (Tauri)](issues/desktop-app-tauri.md)
   - [ ] [Desktop: overlay of who is talking](issues/desktop-overlay.md)
   - [ ] [Activity status: game and music](issues/activity-status.md)
