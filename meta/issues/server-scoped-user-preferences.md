@@ -26,3 +26,9 @@ Evidence: Source-confirmed name-only global storage and consumers.
 - apps/web/src/lib/settings.svelte.ts:21-29,78-86
 - apps/web/src/components/Client.svelte:560,863,2035
 - apps/web/src/components/ChatPane.svelte:355,1766
+
+## Result (2026-11-08)
+
+Client now binds one block/audio policy to the public Kallisti origin or real Mumble endpoint. Quotes, groups, mentions, search, pins, push payloads, and playback share that policy. Versioned storage keeps servers separate. Legacy name-only keys remain untouched but inactive because their server is unknown; users must set those preferences again.
+
+Verification: Nine headless tests cover independent same-name users, real transport scope, reactivity, persistence, storage events, migration, and consumer policy. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

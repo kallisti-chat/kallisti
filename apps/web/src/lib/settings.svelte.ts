@@ -1,13 +1,12 @@
 import { parseCollapsedGroups, toggleGroup } from "./memberGroups";
 import { deviceListOf, parseDeviceLists, setDeviceList, type ChannelList } from "./channelList";
-import { isBlocked, parseBlocked, toggleBlocked } from "./blocked";
+import { bindUserPreferences, parseUserPreferences, type UserPreferences } from "./userPreferences";
 import { collapsedIn, parseCollapsed, toggleCollapsed } from "./categories";
 import { parseChannelPrefs, setChannelPref, type ChannelPref, type ChannelPrefs } from "./channelPrefs";
 import { directPrefsOf, parseDirectPrefs, setDirectPrefs, type DirectPrefs } from "./directList";
 import { persisted } from "./persisted.svelte";
 import { parseSettings, type Settings } from "./settings";
 import { parseShare } from "./stream/stageSize";
-import { parseUserAudio, updateUserAudio, type UserAudio } from "./userAudio";
 
 const voiceSettings = persisted("voiceSettings", parseSettings);
 
@@ -16,16 +15,6 @@ export const settings = {
     return voiceSettings.value;
   },
   update: (patch: Partial<Settings>) => voiceSettings.set({ ...voiceSettings.value, ...patch }),
-};
-
-const userAudioStore = persisted("userAudio", parseUserAudio);
-
-export const userAudio = {
-  get value() {
-    return userAudioStore.value;
-  },
-  update: (name: string, patch: Partial<UserAudio>) =>
-    userAudioStore.set(updateUserAudio(userAudioStore.value, name, patch)),
 };
 
 // The key from when only mutes were kept (parseChannelPrefs reads both).
@@ -75,14 +64,13 @@ export const directPrefs = {
   },
 };
 
-const blockedStore = persisted("blockedUsers", parseBlocked);
+const preferenceStore = persisted("serverUserPreferences", (raw) => ({ version: 1, servers: parseUserPreferences(raw) }));
 
-export const blockedUsers = {
-  get list() {
-    return blockedStore.value;
-  },
-  has: (name: string | null) => isBlocked(blockedStore.value, name),
-  toggle: (name: string) => blockedStore.set(toggleBlocked(blockedStore.value, name)),
+export const userPreferences = {
+  forServer: (scope: string) => bindUserPreferences({
+    get value() { return preferenceStore.value.servers; },
+    set: (servers: UserPreferences) => preferenceStore.set({ version: 1, servers }),
+  }, scope),
 };
 
 // The stream view's height (see stream/stageSize.ts; null: the default).

@@ -1,3 +1,4 @@
+import { preferenceScope } from "./userPreferences";
 import { channelListRequest, type ChannelList } from "./channelList";
 import { t } from "./i18n.svelte";
 import { micInfoRequest, type MicInfo } from "./voice/micInfo";
@@ -556,6 +557,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       }),
     // The server's HTTP origin (uploads and files).
     httpBase: base,
+    preferenceScope: preferenceScope(url, site),
     // Uploads files one after another and returns their keys, to attach
     // with sendConfirmed; onFile: before each.
     uploadFiles: async (files: readonly File[], onFile?: (index: number) => void): Promise<string[]> => {

@@ -39,7 +39,6 @@
   - [ ] [Messages: preserve literal emoji references when editing](issues/personal-emoji-edit-roundtrip.md)
   - [ ] [Search: distinguish DM and channel targets with the same name](issues/search-target-kind.md)
   - [ ] [Build: run emoji-data generation on Windows and spaced paths](issues/emoji-data-cli-path.md)
-  - [ ] [Several servers: scope blocks and user audio preferences](issues/server-scoped-user-preferences.md)
   - [ ] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
   - [ ] [Connections: bound the initial Mumble handshake](issues/initial-connection-deadline.md)
   - [ ] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)

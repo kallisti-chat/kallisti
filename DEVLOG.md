@@ -2850,3 +2850,7 @@ Channel removal now sorts sibling IDs before recursion, so all descendants prece
 ## 2026-11-08: Uploads: reject interrupted request bodies
 
 Upload sniffing now retains read errors and validates known body lengths before storing an upload row. Tests reproduce short and longer interruptions over local HTTP and confirm file/row/quota cleanup, successful chunked bodies, and size limits. Full Go race tests and vet passed; 6.1-sol and Astra approved the fix.
+
+## 2026-11-08: Several servers: scope blocks and user audio preferences
+
+Blocks, local mute, and per-user volume now belong to one server. Child views use the Client-bound policy. Ambiguous legacy settings stay stored but do not apply until users set scoped values. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

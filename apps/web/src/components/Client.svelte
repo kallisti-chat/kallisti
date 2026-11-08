@@ -107,7 +107,7 @@
   import { chatSeen, notificationBody, notifier, shouldNotify } from "../lib/notify";
   import { createNotifyLeader } from "../lib/notifyLeader";
   import { isMentionAll, mentionNames, pingsMe, replyPing } from "../lib/mentions";
-  import { blockedUsers, channelLists, channelPrefs, collapsedCategories, directPrefs, settings, userAudio } from "../lib/settings.svelte";
+  import { userPreferences, channelLists, channelPrefs, collapsedCategories, directPrefs, settings } from "../lib/settings.svelte";
   import { textGroups, textOrder } from "../lib/categories";
   import { befriendable, type FriendRow } from "../lib/friends";
   import { collapsedMemberGroups } from "../lib/settings.svelte";
@@ -119,7 +119,7 @@
   import { previewKey, previewsToAsk } from "../lib/linkPreview";
   import { fileLinksToAsk, linkKey } from "../lib/fileLinks";
   import { shouldSendTyping, stoppedTyping, typed, typingNames, typingText, type Typers } from "../lib/typing";
-  import { gainOf, userAudioFor } from "../lib/userAudio";
+  import { gainOf } from "../lib/userAudio";
   import { loadSelfState, micWanted, saveSelfState, soundHint } from "../lib/voice";
   import { documentPage, restartOnJoin, watchOutputDevices } from "../lib/voice/restart";
   import { keepVoiceRunning } from "../lib/voice/background";
@@ -274,6 +274,8 @@
     return () => demand?.release(audioOwner);
   });
 
+  const preferences = $derived(userPreferences.forServer(connection.preferenceScope));
+  const blocked = (name: string | null) => preferences.has(name);
   const server = $derived(connection.state);
   // A side panel that takes no input: lost, or not the one shown on a
   // phone (the chat takes care of lost itself: its menu leads to the rail).
@@ -557,7 +559,7 @@
   };
   // Per-user volume and local mute, by user name. Playback drops a
   // speaker's voice until this set it.
-  const audioOf = (name: string) => userAudioFor(userAudio.value, name);
+  const audioOf = (name: string) => preferences.audioOf(name);
   $effect(() => {
     for (const u of users) connection.playback?.setUserGain(u.session, gainOf(audioOf(u.name)));
   });
@@ -863,7 +865,7 @@
   const pushPrefsKey = $derived(
     JSON.stringify({
       ...pushLists(channelPrefs.value, connection.httpBase, Object.keys(text.directs).map(Number)),
-      blocked: [...blockedUsers.list].sort(),
+      blocked: [...preferences.list].sort(),
     }),
   );
   const pushPrefs = $derived(JSON.parse(pushPrefsKey) as PushPrefs);
@@ -994,7 +996,7 @@
     }),
   );
   const typingIn = (id: number | null) =>
-    id === null ? [] : typingNames(typers, id, typingNow, me?.name ?? "").filter((n) => !blockedUsers.has(n));
+    id === null ? [] : typingNames(typers, id, typingNow, me?.name ?? "").filter((n) => !blocked(n));
   const typingHere = $derived(typingIn(chatId));
   const typingThread = $derived(typingIn(threadId));
   const anyoneTyping = $derived(typingHere.length + typingThread.length > 0);
@@ -1022,7 +1024,7 @@
     () => connection,
     () => (phone && threadId !== null ? [threadId] : [chatId, threadId]),
     () => me?.name ?? "",
-    blockedUsers.has,
+    blocked,
     () => pageVisible && active,
   );
   // The own channel list (see lib/channelList): the account's, else this
@@ -1084,7 +1086,7 @@
       if (ev.type !== "message" || !me) return;
       const m = ev.message;
       const own = m.author.toLowerCase() === me.name.toLowerCase();
-      if (own || blockedUsers.has(m.author)) return;
+      if (own || blocked(m.author)) return;
       const peer = text.directs[m.channel];
       if (peer) {
         if (isMuted(prefIn(m.channel), Date.now())) return;
@@ -1107,7 +1109,7 @@
     const counts = server.privateCounts;
     untrack(() => {
       for (const [peer, n] of Object.entries(counts)) {
-        if (n <= (privateSeen[peer] ?? 0) || blockedUsers.has(peer)) continue;
+        if (n <= (privateSeen[peer] ?? 0) || blocked(peer)) continue;
         const last = privateMessagesWith(server, peer).at(-1);
         const user = Object.values(server.users).find((u) => u.name === peer);
         if (last)
@@ -1347,7 +1349,7 @@
 
   // Unread direct messages per sender name, marked read while open.
   let readCounts = $state<Record<string, number>>({});
-  const unread = $derived(Object.fromEntries(Object.entries(unreadCounts(server.privateCounts, readCounts)).filter(([name]) => !blockedUsers.has(name))));
+  const unread = $derived(Object.fromEntries(Object.entries(unreadCounts(server.privateCounts, readCounts)).filter(([name]) => !blocked(name))));
   // The tab title and the rail's mark: mentions and direct messages not
   // read (see lib/title).
   const badge = $derived(railBadge(mentions, unread, unreadText));
@@ -1399,6 +1401,7 @@
 
   // What both chat panes (the open chat and an open thread) share.
   const chatCommon = $derived({
+    blocked,
     webhookPictures: text.webhookPictures,
     drafts,
     pendingFiles,
@@ -2032,9 +2035,9 @@
     audio={audioOf(menuUser.name)}
     x={menu.x}
     y={menu.y}
-    onAudio={(patch) => userAudio.update(menuUser.name, patch)}
-    blocked={blockedUsers.has(menuUser.name)}
-    onBlock={() => blockedUsers.toggle(menuUser.name)}
+    onAudio={(patch) => preferences.updateAudio(menuUser.name, patch)}
+    blocked={blocked(menuUser.name)}
+    onBlock={() => preferences.toggle(menuUser.name)}
     onMessage={readOnly ? undefined : () => show({ kind: "dm", session: menuUser.session, name: menuUser.name, userId: menuUser.userId })}
     friend={friends && befriendable(menuUser.userId, text.members) ? { is: friends.has(menuUser.userId), onToggle: () => friends.toggle(menuUser.userId!, menuUser.name) } : undefined}
     onSettings={() => openSettingsAt()}
@@ -2084,8 +2087,8 @@
     x={menu.x}
     y={menu.y}
     onAudio={() => {}}
-    blocked={blockedUsers.has(p.name)}
-    onBlock={() => blockedUsers.toggle(p.name)}
+    blocked={blocked(p.name)}
+    onBlock={() => preferences.toggle(p.name)}
     onMessage={me?.userId != null && !readOnly ? () => openDirect(p) : undefined}
     friend={friends && befriendable(p.id, text.members) ? { is: friends.has(p.id), onToggle: () => friends.toggle(p.id, p.name) } : undefined}
     onSettings={() => {}}
@@ -2475,7 +2478,7 @@
     <SearchPanel
       inert={noInput("members")}
       text={text.search ? searchQuery : null}
-      messages={(text.search?.messages ?? []).filter((m) => !blockedUsers.has(m.author))}
+      messages={preferences.visible(text.search?.messages ?? [])}
       where={whereOf}
       canOpen={(m) => text.channels.some((c) => c.id === m.channel || c.id === text.threads[m.channel]?.channel) || m.channel in text.directs}
       onOpen={(m) => openMessage({ chat: m.channel, message: m.id })}
@@ -2492,7 +2495,7 @@
       label={t("client.pinnedMessages")}
       none={t("client.noPins")}
       closeLabel={t("client.closePinned")}
-      messages={(text.pins[chatId] ?? []).filter((m) => !blockedUsers.has(m.author))}
+      messages={preferences.visible(text.pins[chatId] ?? [])}
       where={whereOf}
       canOpen={() => true}
       onOpen={(m) => {

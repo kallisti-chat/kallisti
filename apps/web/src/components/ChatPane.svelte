@@ -21,7 +21,7 @@
   import { emojiUses, recentEmoji, skinTone, usedEmoji } from "../lib/emojiPrefs.svelte";
   import { customEmojiFor, customEntries, jumboEmoji, knownEmoji, refsAsNames } from "../lib/customEmoji";
   import { composerEmoji, emojiActions, fromRefs, personalEntries, sameEmoji, toRefs } from "../lib/personalEmoji";
-  import { blockedUsers, settings } from "../lib/settings.svelte";
+  import { settings } from "../lib/settings.svelte";
   import AudioPlayer from "./AudioPlayer.svelte";
   import VideoPlayer from "./VideoPlayer.svelte";
   import { opensLightbox } from "../lib/lightbox";
@@ -81,6 +81,7 @@
   import type { Key } from "../i18n/en";
 
   let {
+    blocked,
     title,
     topic = "",
     kind,
@@ -161,6 +162,7 @@
     phone = false,
     details,
   }: {
+    blocked: (name: string | null) => boolean;
     title: string;
     // Shown after the title, like a Discord channel topic (plain text).
     topic?: string;
@@ -352,7 +354,7 @@
     unreadBar(messages, unreadAfter, mine, (at) => formatTimestamp(at, now, i18n.locale, settings.value.timeFormat, true)),
   );
   const lineAt = $derived(unread && (unread.loaded || !more) ? unread.first : null);
-  const items = $derived(chatItems(messages, blockedUsers.has, lineAt));
+  const items = $derived(chatItems(messages, blocked, lineAt));
   const target = $derived(kind === "dm" ? `@${title}` : kind === "text" ? `#${title}` : title);
 
   $effect(() => {
@@ -1763,7 +1765,7 @@
   {#if "reply" in m && m.reply}
     {@const quote = m.reply}
     <button type="button" class="quote" onclick={() => quote.author && (seeking = quote.id)}>
-      {#if blockedUsers.has(quote.author)}<em>{t("chat.quoteBlocked")}</em>
+      {#if blocked(quote.author)}<em>{t("chat.quoteBlocked")}</em>
       {:else if quote.author}<strong>{quote.author}</strong> <span class="ellipsis">{previewText(quote.text)}</span>
       {:else}<em>{t("chat.quoteDeleted")}</em>{/if}
     </button>
