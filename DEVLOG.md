@@ -2802,3 +2802,11 @@ the notification context returned to suspended. All 1,404 web tests, Svelte
 checks and the build passed. Independent source and measurement reviews
 approved keeping the changes, with the cross-block comparison limit above.
 The periodic collection-heavy bursts remain unexplained. No deployment.
+
+## 2026-11-08: Code audit follow-ups
+
+The read-only audit of `53536341` found 23 reported defects or source findings.
+They are tracked in [Code audit follow-ups](meta/issues/code-audit-followups.md).
+The first fixes cover deletion-induced access changes, credential form reset,
+and pending federation handoff revocation. Refactors stay inside those policy
+boundaries; there is no general file-splitting or framework rewrite.
