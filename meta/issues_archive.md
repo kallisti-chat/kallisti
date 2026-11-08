@@ -385,3 +385,4 @@
 - [x] [Threads: delete large histories without exceeding SQLite limits](issues/thread-delete-sql-limit.md)
 - [x] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
 - [x] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
+- [x] [Chat time-outs: disable all write paths and retain drafts](issues/timeout-composer-send-guard.md)

@@ -2898,3 +2898,7 @@ Queued bounded sidecar recovery at overflow. The no-further-event regression, fu
 ## 2026-11-08: Messages: resolve nonce retries before new-post cooldowns
 
 Resolved authorized message retries before new-post checks. Added production-rule regressions for cooldown, access, invalid content, and cross-limit accounting. Full Go race tests and go vet passed; independent reviews approved the change.
+
+## 2026-11-08: Chat time-outs: disable all write paths and retain drafts
+
+Applied one composer write policy to all entry paths without discarding unsent state. Regression tests include expiry, queued files, replies, stickers, polls, and edits. Workspace tests, typechecks, and build passed; independent reviews approved the change.

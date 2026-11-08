@@ -10,7 +10,7 @@
   // server stored it (or fails with why: the form stays).
   // nonce: the same for each try of this form (a retry after no answer
   // cannot post the poll twice).
-  let { onSubmit, onClose }: { onSubmit: (poll: PollBody, nonce: string) => Promise<void>; onClose: () => void } = $props();
+  let { onSubmit, onClose, cannotWrite = null }: { cannotWrite?: string | null; onSubmit: (poll: PollBody, nonce: string) => Promise<void>; onClose: () => void } = $props();
   const nonce = crypto.randomUUID();
 
   let dialog: HTMLDialogElement | undefined = $state();
@@ -29,6 +29,7 @@
   };
   const submit = async (event: SubmitEvent) => {
     event.preventDefault();
+    if (cannotWrite) return void (error = cannotWrite);
     if (problem || sending) return void (error = problem ?? "");
     sending = true;
     error = "";
@@ -110,7 +111,7 @@
     {/if}
     <footer>
       <button type="button" class="secondary" disabled={sending} onclick={() => dialog?.close()}>{t("common.cancel")}</button>
-      <button type="submit" class="primary" disabled={!!problem || sending}>{sending ? t("chat.pollPosting") : t("chat.pollPost")}</button>
+      <button type="submit" class="primary" disabled={!!cannotWrite || !!problem || sending}>{sending ? t("chat.pollPosting") : t("chat.pollPost")}</button>
     </footer>
   </form>
 </dialog>

@@ -44,7 +44,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [ ] [Notifications: keep clicked links until the target client is ready](notification-click-ingress.md)
 - [x] [Connections: bound the initial Mumble handshake](initial-connection-deadline.md)
 - [ ] [Messages: retain edit drafts until the server accepts them](rejected-message-edit-draft.md)
-- [ ] [Chat time-outs: disable all write paths and retain drafts](timeout-composer-send-guard.md)
+- [x] [Chat time-outs: disable all write paths and retain drafts](timeout-composer-send-guard.md)
 - [ ] [Desktop macOS: declare camera privacy permissions](macos-camera-permissions.md)
 - [x] [Desktop voice: keep TCP fallback after a UDP receive error](native-udp-error-fallback.md)
 - [x] [Desktop bridge: cancel blocked upstream writes when the client leaves](native-upstream-write-cancellation.md)

@@ -35,5 +35,4 @@
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
   - [ ] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)
-  - [ ] [Chat time-outs: disable all write paths and retain drafts](issues/timeout-composer-send-guard.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)

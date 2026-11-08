@@ -504,6 +504,7 @@
   const focusOnMount = (el: HTMLElement) => el.focus();
   const togglePendingSpoiler = (i: number) => setPending(pending.map((p, j) => (j === i ? { ...p, spoiler: !p.spoiler } : p)));
   const sendFiles = (files: ArrayLike<File> | null | undefined) => {
+    if (writeBlocked) return;
     const picked = Array.from(files ?? []);
     if (!picked.length) return;
     if (!canAttach(!!onUpload, uploading || !!sendStatus?.sending)) {
@@ -563,7 +564,7 @@
     showPending([]);
   });
   const onPaste = (event: ClipboardEvent) => {
-    if (!onUpload) return;
+    if (!onUpload || writeBlocked) return;
     const files = pastedFiles(event.clipboardData);
     if (files.length) {
       event.preventDefault();
@@ -586,8 +587,10 @@
   });
   $effect(() => holdTalk.release);
 
+  const writeBlocked = $derived(!!cannotWrite || !onSend || lost);
   const submit = (event: SubmitEvent) => {
     event.preventDefault();
+    if (writeBlocked) return;
     const text = draft.trim();
     if (slowWait > 0 && (text || pending.length)) return void notify(t("chat.slowModeWait", { time: waitText }));
     if (pending.length && onUpload) {
@@ -724,7 +727,7 @@
     editInput?.focus();
   };
   const saveEdit = () => {
-    if (!editing) return;
+    if (!editing || writeBlocked) return;
     const text = withRefs(editing.text.trim());
     const { id, canDelete } = editing;
     const end = editOutcome({ old: editing.old, text, files: editing.files.map((f) => f.url), removed: editing.removed });
@@ -735,7 +738,7 @@
     messageInput?.focus();
   };
   const toggleRemoved = (url: string) => {
-    if (editing) editing.removed = editing.removed.includes(url) ? editing.removed.filter((u) => u !== url) : [...editing.removed, url];
+    if (editing && !writeBlocked) editing.removed = editing.removed.includes(url) ? editing.removed.filter((u) => u !== url) : [...editing.removed, url];
   };
   // Replies and reactions: stored chats we may write in. picking: the
   // message whose emoji picker is open (focus moves into it and back).
@@ -766,7 +769,7 @@
   const stickerById = $derived(new Map(stickers.map((s) => [s.id, s])));
   const sendSticker = (s: Sticker) => {
     draftSticker = null;
-    if (!onSticker) return;
+    if (!onSticker || writeBlocked) return;
     if (slowWait > 0) return void notify(t("chat.slowModeWait", { time: waitText }));
     const reply = replying?.id;
     onSticker(s.id, reply, replying ? !replying.ping : undefined).then(
@@ -1514,7 +1517,7 @@
           <button type="button" aria-label={t("chat.cancelReply")} onclick={() => (replying = null)}>×</button>
         </div>
       {/if}
-      <div class="composer" class:disabled={!onSend || cannotWrite}>
+      <div class="composer" class:disabled={writeBlocked}>
         <button
           type="button"
           class="attach"
@@ -1523,7 +1526,7 @@
           title={uploading ? t("chat.uploading") : onUpload ? uploadTitle(uploadMax, maxUploads) : t("chat.uploadsWhere")}
           aria-label={pollsHere ? t("chat.uploadOrPoll") : t("chat.uploadFile")}
           aria-expanded={pollsHere ? plusMenu : undefined}
-          disabled={!pollsHere && !canAttach(!!onUpload, uploading)}
+          disabled={writeBlocked || (!pollsHere && !canAttach(!!onUpload, uploading))}
           onclick={() => (pollsHere ? (plusMenu = !plusMenu) : filePicker?.click())}
         >
           {#if uploading}<span class="spinner"></span>{:else}<Icon name="plus" size={18} />{/if}
@@ -1542,10 +1545,10 @@
               if (to && !plusMenuEl?.contains(to) && to !== plusButton) plusMenu = false;
             }}
           >
-            <button type="button" disabled={!canAttach(!!onUpload, uploading)} onclick={() => (closePlusMenu(), filePicker?.click())}>
+            <button type="button" disabled={writeBlocked || !canAttach(!!onUpload, uploading)} onclick={() => (closePlusMenu(), filePicker?.click())}>
               <Icon name="plus" size={16} /> {t("chat.uploadFile")}
             </button>
-            <button type="button" onclick={() => (closePlusMenu(), (pollForm = true))}>📊 {t("chat.createPoll")}</button>
+            <button type="button" disabled={writeBlocked} onclick={() => (closePlusMenu(), (pollForm = true))}>📊 {t("chat.createPoll")}</button>
           </div>
         {/if}
         <input
@@ -1571,12 +1574,13 @@
           onpaste={onPaste}
           oninput={(e) => {
             box.update();
-            if (e.currentTarget.value.trim()) onTyping?.();
+            if (!writeBlocked && e.currentTarget.value.trim()) onTyping?.();
           }}
           onclick={box.update}
           onkeyup={box.onkeyup}
           onblur={box.onblur}
           onkeydown={(e) => {
+            if (writeBlocked) return;
             if (box.onkeydown(e)) return;
             // Enter picks a word in an input method (229: Safari, after
             // compositionend).
@@ -1597,7 +1601,7 @@
           {...box.aria}
           bind:value={draft}
           placeholder={cannotWrite ?? (pending.length ? t("chat.captionPlaceholder") : onSend ? t("chat.messagePlaceholder", { target }) : t("chat.userLeft", { name: title }))}
-          disabled={!onSend || !!cannotWrite}
+          disabled={writeBlocked}
           aria-label={t("chat.messageBox")}
         ></textarea>
         {#if slowWait > 0}
@@ -1607,6 +1611,7 @@
           <button
             type="button"
             class="emoji-button"
+            disabled={writeBlocked}
             aria-label={t("chat.addEmoji")}
             title={t("chat.emoji")}
             onclick={(e) => (draftEmoji = e.currentTarget.getBoundingClientRect())}><Emoji text="🙂" /></button
@@ -1615,6 +1620,7 @@
             <button
               type="button"
               class="emoji-button sticker-button"
+              disabled={writeBlocked}
               aria-label={t("chat.sendSticker")}
               title={t("chat.stickers")}
               onclick={(e) => (draftSticker = e.currentTarget.getBoundingClientRect())}><Icon name="sticker" size={24} /></button
@@ -1623,7 +1629,7 @@
           <!-- Touch screens: a send button (Enter is the only other way).
                The press keeps the keyboard open. -->
           {#if draft.trim() || pending.length}
-            <button type="submit" class="send-button" aria-label={t("common.send")} title={t("common.send")} onpointerdown={(e) => e.preventDefault()}>
+            <button type="submit" disabled={writeBlocked} class="send-button" aria-label={t("common.send")} title={t("common.send")} onpointerdown={(e) => e.preventDefault()}>
               <Icon name="send" size={20} />
             </button>
           {/if}
@@ -1699,7 +1705,10 @@
   />
 {/if}
 {#if pollForm && onPoll}
-  <PollForm onSubmit={onPoll} onClose={() => ((pollForm = false), messageInput?.focus())} />
+  <PollForm cannotWrite={writeBlocked ? (cannotWrite ?? t("client.notConnected")) : null} onSubmit={async (poll, nonce) => {
+    if (writeBlocked) throw new Error(cannotWrite ?? t("client.notConnected"));
+    await onPoll(poll, nonce);
+  }} onClose={() => ((pollForm = false), messageInput?.focus())} />
 {/if}
 </div>
 {#if notice.n}
@@ -1775,6 +1784,7 @@
       <textarea
         rows="1"
         bind:this={editInput}
+        disabled={writeBlocked}
         bind:value={editing.text}
         use:autosize={editing.text}
         aria-label={t("chat.editMessage")}
@@ -1796,7 +1806,7 @@
             {@const gone = editing.removed.includes(f.url)}
             <li class:gone>
               <span class="ellipsis">{f.name}</span>
-              <button type="button" onclick={() => toggleRemoved(f.url)} aria-label={gone ? t("chat.keepFile", { name: f.name }) : t("chat.removeFile", { name: f.name })}>{gone ? t("chat.undoRemove") : "×"}</button>
+              <button type="button" disabled={writeBlocked} onclick={() => toggleRemoved(f.url)} aria-label={gone ? t("chat.keepFile", { name: f.name }) : t("chat.removeFile", { name: f.name })}>{gone ? t("chat.undoRemove") : "×"}</button>
             </li>
           {/each}
         </ul>

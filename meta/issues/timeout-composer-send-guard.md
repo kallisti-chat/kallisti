@@ -24,3 +24,9 @@ Evidence: Source finding; textarea and submit guards disagree.
 
 - apps/web/src/components/ChatPane.svelte:587,1515,1623
 - server/internal/sidecar/moderation.go:74
+
+## Result (2026-11-08)
+
+The composer now uses one writeBlocked policy for send, keyboard, file, sticker, poll, and edit paths. A blocked action keeps the draft, reply, queued files, and open poll form; writes resume after the time-out ends.
+
+Verification: Component regressions cover the entry paths and retained state. The timeout-only snapshot passed 41 tests and typecheck; final workspace tests, typechecks, and web build passed. Independent 6.1-sol and Astra reviews approved the change.
