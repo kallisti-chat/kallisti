@@ -2878,3 +2878,7 @@ A fatal UDP receive error now requests TCP voice fallback even when the user is 
 ## 2026-11-08: Desktop bridge: cancel blocked upstream writes when the client leaves
 
 Native upstream writes now have a 10-second whole-operation limit. A stalled peer cannot retain the relay indefinitely, and a failed partial write ends it without another frame write. Large-frame and close-reason tests pass. Offline Rust tests passed (51 unit tests, one ignored; 13 integration tests, with real-Murmur tests gated off). Independent 6.1-sol and Astra reviews approved the fix.
+
+## 2026-11-08: Desktop macOS: declare camera privacy permissions
+
+Configured macOS bundle files now declare camera usage and the camera entitlement. Static tests and plist lint passed; 6.1-sol and Astra approved the configuration. Signed-app permission behavior remains unverified, so this issue stays open. No device or GUI was opened.
