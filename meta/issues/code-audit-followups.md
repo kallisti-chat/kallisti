@@ -48,7 +48,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [ ] [Desktop macOS: declare camera privacy permissions](macos-camera-permissions.md)
 - [x] [Desktop voice: keep TCP fallback after a UDP receive error](native-udp-error-fallback.md)
 - [x] [Desktop bridge: cancel blocked upstream writes when the client leaves](native-upstream-write-cancellation.md)
-- [ ] [Federation signup: offer a name when the remote handle is unusable locally](fedi-signup-invalid-local-name.md)
+- [x] [Federation signup: offer a name when the remote handle is unusable locally](fedi-signup-invalid-local-name.md)
 - [x] [QR login: ignore completion after a server change](qr-login-stale-server-completion.md)
 - [x] [Channels: remove descendants before their parents](channel-subtree-removal-order.md)
 

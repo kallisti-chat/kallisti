@@ -2882,3 +2882,7 @@ Native upstream writes now have a 10-second whole-operation limit. A stalled pee
 ## 2026-11-08: Desktop macOS: declare camera privacy permissions
 
 Configured macOS bundle files now declare camera usage and the camera entitlement. Static tests and plist lint passed; 6.1-sol and Astra approved the configuration. Signed-app permission behavior remains unverified, so this issue stays open. No device or GUI was opened.
+
+## 2026-11-08: Federation signup: offer a name when the remote handle is unusable locally
+
+Federation signup now offers local-name selection when an automatic remote name is reserved or too long. It keeps the verified identity and all name checks. HTTP/component regressions and full web/Go checks passed; 6.1-sol and Astra approved the fix.

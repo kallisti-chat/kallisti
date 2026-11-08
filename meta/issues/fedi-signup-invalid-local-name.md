@@ -26,3 +26,9 @@ Evidence: Source finding; signup response and client recovery disagree.
 - server/internal/auth/auth.go:560
 - server/internal/names/names.go:47
 - apps/web/src/components/Login.svelte:278-298,355-366
+
+## Result (2026-11-08)
+
+An unusable automatic remote name now returns the existing recoverable 409 name-selection outcome. Explicit invalid local choices and unrelated bad requests remain 400. The verified remote signup stays pending until a valid local choice succeeds.
+
+Verification: Reserved/overlong HTTP regressions failed before the fix and now pass through invalid local choice, valid recovery, identity preservation, and one-time proof consumption. Component tests cover name selection, ordinary signup, conflicts, and unrelated errors without restarting authentication. Full workspace tests/type checks, web build, full Go race tests and vet passed. Independent 6.1-sol and Astra reviews approved the fix.

@@ -381,3 +381,4 @@
 - [x] [Connections: bound the initial Mumble handshake](issues/initial-connection-deadline.md)
 - [x] [Desktop voice: keep TCP fallback after a UDP receive error](issues/native-udp-error-fallback.md)
 - [x] [Desktop bridge: cancel blocked upstream writes when the client leaves](issues/native-upstream-write-cancellation.md)
+- [x] [Federation signup: offer a name when the remote handle is unusable locally](issues/fedi-signup-invalid-local-name.md)

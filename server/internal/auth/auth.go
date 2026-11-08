@@ -548,19 +548,19 @@ func (a *Service) guest(w http.ResponseWriter, r *http.Request) {
 
 // checkName answers the request if a new account may not have the name.
 func (a *Service) checkName(w http.ResponseWriter, raw string) (string, bool) {
-	return a.checkNameBy(w, raw, names.Check)
+	return a.checkNameBy(w, raw, names.Check, http.StatusBadRequest)
 }
 
-// checkRemoteName: the same for an account from another server (see
-// names.CheckRemote).
+// checkRemoteName: an automatic name from another server. An unusable
+// name is a recoverable conflict: keep the remote proof and ask for a local name.
 func (a *Service) checkRemoteName(w http.ResponseWriter, raw string) (string, bool) {
-	return a.checkNameBy(w, raw, names.CheckRemote)
+	return a.checkNameBy(w, raw, names.CheckRemote, http.StatusConflict)
 }
 
-func (a *Service) checkNameBy(w http.ResponseWriter, raw string, check func(string) string) (string, bool) {
+func (a *Service) checkNameBy(w http.ResponseWriter, raw string, check func(string) string, invalidStatus int) (string, bool) {
 	name := norm.NFC.String(strings.TrimSpace(raw))
 	if msg := check(name); msg != "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
+		writeJSON(w, invalidStatus, map[string]string{"error": msg})
 		return "", false
 	}
 	_, err := a.Store.AccountByName(name)

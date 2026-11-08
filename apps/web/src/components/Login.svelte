@@ -294,7 +294,7 @@
     location.assign(`${parsed.origin}/?join=${encodeURIComponent(location.href)}`);
   };
   // A new account from another server: named as at home (name@home), made
-  // at once; only a taken name asks for one (the server suggests it).
+  // at once; a taken or unusable remote name asks for a local one.
   let signup = $state<{ name: string; handle: string; host: string; remote: string } | null | undefined>(undefined);
   let chooseName = $state(false);
   $effect(() => {
@@ -321,7 +321,7 @@
     } catch (err) {
       apiError = err instanceof Error ? err.message : String(err);
       if (inviteRequired(err)) inviteOnly = true;
-      // Its remote name is taken here: the name step (other errors show).
+      // The automatic remote name is taken or unusable here: choose a local name.
       if (!chooseName && err instanceof Error && "status" in err && err.status === 409) {
         chooseName = true;
         apiError = null;
