@@ -86,6 +86,12 @@ func (s *Server) moveLocked(u *User, channel, actor uint32) {
 	}
 	s.sendMoveLocked(u, from, out)
 	s.broadcastRemovedLocked(removed)
+	s.reconcileMoveAccessLocked(u)
+}
+
+// reconcileMoveAccessLocked updates location-dependent access after a move
+// and its channel-removal messages have been sent. The state already moved u.
+func (s *Server) reconcileMoveAccessLocked(u *User) {
 	s.broadcastUnlistenLocked(u, s.state.dropListener(u))
 	s.flushPermissionsLocked(u) // @in, @out and @sub depend on the channel
 	s.syncViewLocked(u)         // and so may what it sees

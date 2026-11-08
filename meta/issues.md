@@ -33,7 +33,6 @@
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
-  - [ ] [Channel deletion: reconcile moved users and audio listeners](issues/channel-deletion-access-cleanup.md)
   - [ ] [Desktop login: clear secrets when the server changes](issues/login-server-credential-reset.md)
   - [ ] [Federation login: revoke pending handoffs with authentication](issues/fedi-handoff-revocation.md)
   - [ ] [Message HTML: prevent styles from covering the application](issues/message-html-layout-styles.md)

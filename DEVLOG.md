@@ -2810,3 +2810,7 @@ They are tracked in [Code audit follow-ups](meta/issues/code-audit-followups.md)
 The first fixes cover deletion-induced access changes, credential form reset,
 and pending federation handoff revocation. Refactors stay inside those policy
 boundaries; there is no general file-splitting or framework rewrite.
+
+## 2026-11-08: Channel deletion: reconcile moved users and audio listeners
+
+Channel deletion now applies the same access cleanup as a normal move. Tests prove that a moved user loses forbidden audio subscriptions, while visibility ordering, suppression, and callbacks stay correct. Full Go race tests and vet passed; 6.1-sol and Astra reviews found no blocker.

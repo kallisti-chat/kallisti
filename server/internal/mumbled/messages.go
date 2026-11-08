@@ -607,7 +607,8 @@ func (s *Server) removeChannelLocked(id, actor uint32) []uint32 {
 	if err != nil {
 		return nil
 	}
-	for _, session := range slices.Sorted(maps.Keys(moved)) {
+	sessions := slices.Sorted(maps.Keys(moved))
+	for _, session := range sessions {
 		u := s.state.Users[session]
 		s.refreshLocked(u)
 		m := &pb.UserState{Session: proto.Uint32(session), ChannelId: proto.Uint32(moved[session]), Suppress: proto.Bool(u.Suppress)}
@@ -617,6 +618,9 @@ func (s *Server) removeChannelLocked(id, actor uint32) []uint32 {
 		s.sendMoveLocked(u, from[session], m)
 	}
 	s.broadcastRemovedLocked(removed)
+	for _, session := range sessions {
+		s.reconcileMoveAccessLocked(s.state.Users[session])
+	}
 	return removed
 }
 

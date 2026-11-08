@@ -364,3 +364,4 @@
 - [x] [IRC bridge flood protection](issues/irc-bridge-flood-protection.md)
 - [x] [YouTube link previews through oEmbed](issues/youtube-oembed-previews.md)
 - [x] [Stop unused audio work and measure idle CPU](issues/idle-audio-cpu.md)
+- [x] [Channel deletion: reconcile moved users and audio listeners](issues/channel-deletion-access-cleanup.md)
