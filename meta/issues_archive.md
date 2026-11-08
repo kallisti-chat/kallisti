@@ -380,3 +380,4 @@
 - [x] [Build: run emoji-data generation on Windows and spaced paths](issues/emoji-data-cli-path.md)
 - [x] [Connections: bound the initial Mumble handshake](issues/initial-connection-deadline.md)
 - [x] [Desktop voice: keep TCP fallback after a UDP receive error](issues/native-udp-error-fallback.md)
+- [x] [Desktop bridge: cancel blocked upstream writes when the client leaves](issues/native-upstream-write-cancellation.md)

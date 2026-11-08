@@ -23,3 +23,9 @@ Evidence: Source finding; native stalled-write behavior was not exercised.
 ## Notes
 
 - apps/desktop/src-tauri/src/bridge.rs:374-401,495-503
+
+## Result (2026-11-08)
+
+Complete binary, text, and close writes have a 10-second limit. Failure ends the relay without further writes after a partial frame. Serialization and normal close-reason forwarding remain intact.
+
+Verification: Stalled-write regressions failed before the fix and now pass for local close/EOF and close writes. Tests preserve bidirectional 256 KiB frames, assembly, and server close reasons. A valid upstream slower than the whole-write limit can now be disconnected. Offline Rust tests passed (51 unit tests, one ignored; 13 integration tests, with real-Murmur tests gated off). Independent 6.1-sol and Astra reviews approved the fix.

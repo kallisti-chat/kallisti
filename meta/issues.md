@@ -40,5 +40,4 @@
   - [ ] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)
   - [ ] [Chat time-outs: disable all write paths and retain drafts](issues/timeout-composer-send-guard.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)
-  - [ ] [Desktop bridge: cancel blocked upstream writes when the client leaves](issues/native-upstream-write-cancellation.md)
   - [ ] [Federation signup: offer a name when the remote handle is unusable locally](issues/fedi-signup-invalid-local-name.md)

@@ -248,26 +248,45 @@ impl UpRead {
 
 impl UpWrite {
     async fn mumble(&mut self, bytes: Vec<u8>) -> std::io::Result<()> {
-        match self {
-            UpWrite::Tls(w) => w.write_all(&bytes).await,
-            UpWrite::Ws(w) => w.send(Message::Binary(bytes.into())).await.map_err(std::io::Error::other),
-        }
+        bounded_write(async {
+            match self {
+                UpWrite::Tls(w) => w.write_all(&bytes).await,
+                UpWrite::Ws(w) => w.send(Message::Binary(bytes.into())).await.map_err(std::io::Error::other),
+            }
+        })
+        .await
     }
 
     /// Kallisti's own API; a Mumble server has none.
     async fn text(&mut self, text: tokio_tungstenite::tungstenite::Utf8Bytes) -> std::io::Result<()> {
-        match self {
-            UpWrite::Tls(_) => Ok(()),
-            UpWrite::Ws(w) => w.send(Message::Text(text)).await.map_err(std::io::Error::other),
-        }
+        bounded_write(async {
+            match self {
+                UpWrite::Tls(_) => Ok(()),
+                UpWrite::Ws(w) => w.send(Message::Text(text)).await.map_err(std::io::Error::other),
+            }
+        })
+        .await
     }
 
     async fn close(&mut self) -> std::io::Result<()> {
-        match self {
-            UpWrite::Tls(w) => w.shutdown().await,
-            UpWrite::Ws(w) => w.close().await.map_err(std::io::Error::other),
-        }
+        bounded_write(async {
+            match self {
+                UpWrite::Tls(w) => w.shutdown().await,
+                UpWrite::Ws(w) => w.close().await.map_err(std::io::Error::other),
+            }
+        })
+        .await
     }
+}
+
+// A peer that stops reading must not hold a relay (or its write lock)
+// forever. On timeout the relay exits; never reuse a partially written frame.
+const WRITE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+async fn bounded_write(work: impl std::future::Future<Output = std::io::Result<()>>) -> std::io::Result<()> {
+    tokio::time::timeout(WRITE_TIMEOUT, work)
+        .await
+        .map_err(|_| std::io::Error::new(ErrorKind::TimedOut, "upstream write timed out"))?
 }
 
 async fn open_upstream(
@@ -522,7 +541,11 @@ async fn relay_with_udp<S: Io, U: Datagram>(
     tokio::pin!(to_client);
     tokio::select! {
         r = to_server => {
-            let _ = tokio::time::timeout(std::time::Duration::from_secs(2), &mut to_client).await;
+            // A failed write may have sent only part of a frame. Drop the
+            // relay now; the other direction must not write after it.
+            if r.is_ok() {
+                let _ = tokio::time::timeout(std::time::Duration::from_secs(2), &mut to_client).await;
+            }
             r
         }
         r = &mut to_client => r,
@@ -867,3 +890,7 @@ mod tests {
 #[cfg(test)]
 #[path = "bridge_udp_tests.rs"]
 mod udp_error_tests;
+
+#[cfg(test)]
+#[path = "bridge_write_tests.rs"]
+mod write_tests;
