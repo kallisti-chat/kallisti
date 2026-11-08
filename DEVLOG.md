@@ -2854,3 +2854,7 @@ Upload sniffing now retains read errors and validates known body lengths before 
 ## 2026-11-08: Several servers: scope blocks and user audio preferences
 
 Blocks, local mute, and per-user volume now belong to one server. Child views use the Client-bound policy. Ambiguous legacy settings stay stored but do not apply until users set scoped values. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.
+
+## 2026-11-08: Messages: preserve literal emoji references when editing
+
+Personal emoji edit conversion now uses the same code/URL exclusions as sending. Unchanged edits preserve literal references. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

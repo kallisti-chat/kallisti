@@ -51,8 +51,10 @@ export const toRefs = (text: string, mine: readonly PersonalEmoji[], server: Nam
 
 // What we edit: references that ":name:" would send again, as ":name:".
 export const fromRefs = (text: string, mine: readonly PersonalEmoji[], server: Names) =>
-  text.replace(new RegExp(PERSONAL_REF, "g"), (all, name: string, id: string) =>
-    !server.has(name) && mine.some((m) => m.name === name && m.id === Number(id)) ? `:${name}:` : all,
+  outsideCode(text, (part) =>
+    part.replace(new RegExp(PERSONAL_REF, "g"), (all, name: string, id: string) =>
+      !server.has(name) && mine.some((m) => m.name === name && m.id === Number(id)) ? `:${name}:` : all,
+    ),
   );
 
 // A picked emoji for the message box: one of ours as ":name:" when that

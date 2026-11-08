@@ -22,3 +22,9 @@ Evidence: An unchanged edit converted literal `<:blob:7>` inside code to `:blob:
 ## Notes
 
 - apps/web/src/lib/personalEmoji.ts:31-56
+
+## Result (2026-11-08)
+
+Both edit conversion directions now share the same code and URL exclusions. Literal references remain unchanged while normal personal aliases still round-trip.
+
+Verification: Four literal regressions failed before the fix and now pass for inline code, fenced code, and HTTP/HTTPS URLs. Normal aliases and server-name collisions also pass. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

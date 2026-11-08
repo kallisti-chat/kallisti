@@ -127,6 +127,17 @@ describe("typing personal emoji", () => {
   it("show as :name: again when edited, if that gives the same emoji", () => {
     expect(fromRefs("<:blob:7> <:blob:12> <:party:8> <:x_y:3>", mine, server)).toBe(":blob: <:blob:12> <:party:8> <:x_y:3>");
   });
+  it.each([
+    "`<:blob:7>`",
+    "```\n<:blob:7>\n```",
+    "https://example.org/<:blob:7>",
+    "http://example.org/?emoji=<:blob:7>",
+  ])("preserves literal references when an unchanged edit contains %s", (literal) => {
+    const original = `before <:blob:7> ${literal} after <:blob:12> <:party:8>`;
+    const editable = fromRefs(original, mine, server);
+    expect(editable).toBe(`before :blob: ${literal} after <:blob:12> <:party:8>`);
+    expect(toRefs(editable, mine, server)).toBe(original);
+  });
   it("go into the message box as :name: when that is unambiguous", () => {
     expect(composerEmoji("<:blob:7>", mine, server)).toBe(":blob:");
     expect(composerEmoji("<:party:8>", mine, server)).toBe("<:party:8>");

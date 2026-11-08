@@ -375,3 +375,4 @@
 - [x] [Channels: remove descendants before their parents](issues/channel-subtree-removal-order.md)
 - [x] [Uploads: reject interrupted request bodies](issues/upload-truncated-body.md)
 - [x] [Several servers: scope blocks and user audio preferences](issues/server-scoped-user-preferences.md)
+- [x] [Messages: preserve literal emoji references when editing](issues/personal-emoji-edit-roundtrip.md)
