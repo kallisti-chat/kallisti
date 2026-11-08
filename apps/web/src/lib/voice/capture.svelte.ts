@@ -182,6 +182,20 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
   const loadRnnoise = () =>
     (rnnoise ??= fetch(rnnoiseUrl).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.statusText)))));
 
+  // A stopped capture can still be connected when another capture takes
+  // the shared handlers. Release only our destination and our handlers.
+  const dfnHandlers = {
+    overload: () => noiseFailed("strongest", t("client.noiseTooSlow")),
+    error: (why: string) => noiseFailed("strongest", why),
+  };
+  const releaseDfn = () => {
+    if (!dfn || !node) return;
+    dfn.node.disconnect(node);
+    if (dfn.handlers === dfnHandlers) dfn.handlers = null;
+    dfn = null;
+    if (running === "strongest") running = null;
+  };
+
   // Runs the chosen filter: RNNoise in our worklet, DeepFilterNet3 before
   // it (the shared node, see sharedDfn). A change while one loads wins;
   // a failure counts for the filter that was loading.
@@ -189,10 +203,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
     if (!node) return; // the node applies it when it is made
     const want = filter();
     if (want !== "strongest" && dfn) {
-      dfn.node.disconnect();
-      dfn.handlers = null;
-      dfn = null;
-      if (running === "strongest") running = null;
+      releaseDfn();
       route();
     }
     if (want !== "strong") node.port.postMessage({ denoise: null });
@@ -203,10 +214,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
       } else if (want === "strongest" && !dfn) {
         const shared = await sharedDfn(ctx);
         if (closed || filter() !== "strongest" || dfn) return;
-        shared.handlers = {
-          overload: () => noiseFailed("strongest", t("client.noiseTooSlow")),
-          error: (why) => noiseFailed("strongest", why),
-        };
+        shared.handlers = dfnHandlers;
         shared.node.connect(node);
         dfn = shared;
         route();
@@ -403,10 +411,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
       if (kept) stream = handed = null;
       stopStream();
       dropHanded();
-      if (dfn) {
-        dfn.node.disconnect(); // kept for the next capture (see sharedDfn)
-        dfn.handlers = null;
-      }
+      releaseDfn(); // the shared node is kept for the next capture
       // A disconnected processor can keep running: stop it as well.
       void nodePromise?.then((n) => {
         n.port.postMessage({ stop: true });

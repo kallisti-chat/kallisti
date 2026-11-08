@@ -24,3 +24,9 @@ Evidence: Reproduced with fake media and two captures on one AudioContext.
 ## Notes
 
 - apps/web/src/lib/voice/capture.svelte.ts:191,203,350,399
+
+## Result (2026-11-08)
+
+Each capture now disconnects only its own destination and clears shared handlers only while it owns them. The cached DeepFilterNet node is retained.
+
+Verification: Fake-media regressions failed before the fix and now pass for stopped A/active B, close and filter changes, overload/error delivery, fallback, restart, and cache reuse. Full workspace tests/type checks and the web build passed. Independent reviews: 6.1-sol and Astra; no blockers.

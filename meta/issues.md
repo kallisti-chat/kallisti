@@ -33,7 +33,6 @@
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
-  - [ ] [Audio: isolate ownership of the shared DeepFilterNet node](issues/deepfilternet-capture-ownership.md)
   - [ ] [Voice: refresh routing after implicit self-undeafen](issues/self-unmute-deaf-routing.md)
   - [ ] [Streams: preserve both decoded audio channels](issues/stream-stereo-playback.md)
   - [ ] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)

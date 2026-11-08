@@ -12,8 +12,21 @@ vi.mock("../src/lib/voice/codec", () => ({
   },
 }));
 
+const createDfn = vi.hoisted(() => vi.fn());
+vi.mock("@workadventure/noise-suppression/deepfilternet", () => ({
+  createDeepFilterNetAudioWorklet: createDfn,
+}));
+
 // Just enough of the browser's media APIs for start().
-const fakeNode = () => ({ connect: vi.fn((n: unknown) => n), disconnect: vi.fn(), port: { postMessage: vi.fn() } });
+const fakeNode = () => {
+  const destinations = new Set<unknown>();
+  return {
+    destinations,
+    connect: vi.fn((n: unknown) => { destinations.add(n); return n; }),
+    disconnect: vi.fn((n?: unknown) => { if (n) destinations.delete(n); else destinations.clear(); }),
+    port: { postMessage: vi.fn() },
+  };
+};
 
 const setup = () => {
   const tracks: { stop: ReturnType<typeof vi.fn>; readyState: string }[] = [];
@@ -189,5 +202,110 @@ describe("capture handover", () => {
     await capture.start();
     expect(capture.close()).toBeNull();
     expect(tracks[0]!.stop).toHaveBeenCalled();
+  });
+});
+
+const setupDfn = () => {
+  const media = setup();
+  const dfn = { ...fakeNode(), port: { addEventListener: vi.fn() } };
+  const dispose = vi.fn();
+  createDfn.mockReset().mockResolvedValue({ node: dfn, ready: Promise.resolve(), dispose });
+  const bytes = new ArrayBuffer(8);
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, arrayBuffer: async () => bytes })));
+  const overload = () => createDfn.mock.calls[0]![1].onOverload();
+  const error = () => dfn.port.addEventListener.mock.calls[0]![1]({ data: { type: "error", message: "DFN failed" } });
+  const start = async (capture: ReturnType<typeof createCapture>) => {
+    capture.setNoiseSuppression("strongest");
+    await capture.start();
+    await vi.waitFor(() => expect(capture.running).toBe("strongest"));
+    return vi.mocked(AudioWorkletNode).mock.results.at(-1)!.value as ReturnType<typeof fakeNode>;
+  };
+  return { ...media, dfn, dispose, bytes, overload, error, start };
+};
+
+describe("capture DeepFilterNet ownership", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  for (const action of ["close", "change filter"] as const) {
+    const stoppedAndActive = async () => {
+      const env = setupDfn();
+      const a = env.capture;
+      const aNode = await env.start(a);
+      a.stop();
+      const b = env.make();
+      const bNode = await env.start(b);
+      if (action === "close") a.close();
+      else a.setNoiseSuppression("strong");
+      return { ...env, a, aNode, b, bNode };
+    };
+
+    it(`keeps B connected when stopped A calls ${action}`, async () => {
+      const { dfn, dispose, aNode, bNode, b } = await stoppedAndActive();
+      expect(dfn.destinations.has(bNode)).toBe(true);
+      expect(dfn.destinations.has(aNode)).toBe(false);
+      expect(b.running).toBe("strongest");
+      expect(createDfn).toHaveBeenCalledTimes(1);
+      expect(dispose).not.toHaveBeenCalled();
+      b.close();
+    });
+
+    for (const event of ["overload", "error"] as const) {
+      it(`delivers ${event} to active B after stopped A calls ${action}`, async () => {
+        const env = await stoppedAndActive();
+        env[event]();
+        expect(env.b.noiseError).not.toBeNull();
+        expect(env.a.noiseError).toBeNull();
+        if (event === "error") expect(env.b.noiseError).toContain("DFN failed");
+        await vi.waitFor(() => expect(env.bNode.port.postMessage).toHaveBeenCalledWith({ denoise: env.bytes }));
+        expect(env.dfn.destinations.has(env.bNode)).toBe(false);
+        const source = vi.mocked(env.ctx.createMediaStreamSource).mock.results.at(-1)!.value as unknown as ReturnType<typeof fakeNode>;
+        expect(source.destinations.has(env.bNode)).toBe(true);
+        expect(env.dispose).not.toHaveBeenCalled();
+        env.b.close();
+      });
+    }
+  }
+
+  it("reuses the cached node across stop, restart and close without disposing it", async () => {
+    const { capture, start, dfn, dispose, tracks, make, overload, error } = setupDfn();
+    const node = await start(capture);
+    capture.stop();
+    expect(tracks[0]!.stop).toHaveBeenCalledOnce();
+    expect(node.port.postMessage).toHaveBeenLastCalledWith({ active: false });
+    await capture.start();
+    expect(capture.running).toBe("strongest");
+    expect(dfn.destinations.has(node)).toBe(true);
+    expect(vi.mocked(AudioWorkletNode)).toHaveBeenCalledTimes(1);
+    capture.close();
+    expect(dfn.disconnect).toHaveBeenCalledWith(node);
+    expect(dfn.destinations.size).toBe(0);
+    overload();
+    error();
+    expect(capture.noiseError).toBeNull();
+    const next = make();
+    await start(next);
+    expect(createDfn).toHaveBeenCalledTimes(1);
+    expect(dispose).not.toHaveBeenCalled();
+    next.close();
+  });
+
+  it("falls back when DeepFilterNet fails to start and retries a fresh node", async () => {
+    const { capture, dfn, dispose, bytes } = setupDfn();
+    createDfn.mockImplementationOnce(async () => ({
+      node: dfn,
+      ready: Promise.reject(new Error("DFN not ready")),
+      dispose,
+    }));
+    capture.setNoiseSuppression("strongest");
+    await capture.start();
+    await vi.waitFor(() => expect(capture.noiseError).toContain("DFN not ready"));
+    const node = vi.mocked(AudioWorkletNode).mock.results[0]!.value as ReturnType<typeof fakeNode>;
+    await vi.waitFor(() => expect(node.port.postMessage).toHaveBeenCalledWith({ denoise: bytes }));
+    expect(dfn.destinations.size).toBe(0);
+    capture.setNoiseSuppression("strongest");
+    await vi.waitFor(() => expect(capture.running).toBe("strongest"));
+    expect(createDfn).toHaveBeenCalledTimes(2);
+    expect(dispose).not.toHaveBeenCalled();
+    capture.close();
   });
 });

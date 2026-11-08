@@ -30,7 +30,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [x] [Desktop login: clear secrets when the server changes](login-server-credential-reset.md)
 - [x] [Federation login: revoke pending handoffs with authentication](fedi-handoff-revocation.md)
 - [x] [Message HTML: prevent styles from covering the application](message-html-layout-styles.md)
-- [ ] [Audio: isolate ownership of the shared DeepFilterNet node](deepfilternet-capture-ownership.md)
+- [x] [Audio: isolate ownership of the shared DeepFilterNet node](deepfilternet-capture-ownership.md)
 - [ ] [Voice: refresh routing after implicit self-undeafen](self-unmute-deaf-routing.md)
 - [ ] [Streams: preserve both decoded audio channels](stream-stereo-playback.md)
 - [ ] [Sidecar: recover from outbox overflow without another event](sidecar-outbox-resync.md)

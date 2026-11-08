@@ -2826,3 +2826,7 @@ Login secrets and policy now belong to a server selection. A delayed signup cann
 ## 2026-11-08: Message HTML: prevent styles from covering the application
 
 Message HTML no longer retains layout-control styles. The text-only allowlist accounts for browser decoration longhands, and styles with unresolved substitutions are rejected before CSSOM serialization. Tests and headless Chrome cover safe formatting and overlay cases. Full web checks/build passed; 6.1-sol and Astra approved the final correction.
+
+## 2026-11-08: Audio: isolate ownership of the shared DeepFilterNet node
+
+Capture cleanup now releases only its own DeepFilterNet connection and handlers. Another server's active capture keeps its audio path and failure callbacks; the shared allocation stays cached. Fake-media regressions, full workspace tests/type checks, and the web build passed. 6.1-sol and Astra approved the fix.
