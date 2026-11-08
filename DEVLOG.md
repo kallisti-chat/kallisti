@@ -2818,3 +2818,7 @@ Channel deletion now applies the same access cleanup as a normal move. Tests pro
 ## 2026-11-08: Federation login: revoke pending handoffs with authentication
 
 Pending federation handoffs can no longer outlive unlink, password change, or logout-all. Identity rechecks and a small shared lock keep redemption and revocation consistent. HTTP regressions and full Go race tests/vet passed; 6.1-sol and Astra reviews found no blocker.
+
+## 2026-11-08: Desktop login: clear secrets when the server changes
+
+Login secrets and policy now belong to a server selection. A delayed signup cannot read another server's invitation or send after the selection changes; stale challenge work cannot alter the new form. Component regressions, full web tests/type checks, and the production build passed. Reviewed by 6.1-sol and Astra.

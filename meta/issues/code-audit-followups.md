@@ -26,7 +26,7 @@ and server-scoped preference issues below, not a broad rewrite.
 ## Findings
 
 - [x] [Channel deletion: reconcile moved users and audio listeners](channel-deletion-access-cleanup.md)
-- [ ] [Desktop login: clear secrets when the server changes](login-server-credential-reset.md)
+- [x] [Desktop login: clear secrets when the server changes](login-server-credential-reset.md)
 - [x] [Federation login: revoke pending handoffs with authentication](fedi-handoff-revocation.md)
 - [ ] [Message HTML: prevent styles from covering the application](message-html-layout-styles.md)
 - [ ] [Audio: isolate ownership of the shared DeepFilterNet node](deepfilternet-capture-ownership.md)

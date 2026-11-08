@@ -86,13 +86,6 @@
     const kept = takeKeptAccountInvite();
     return registrationToken(location.href, origin) ?? registrationToken(kept, origin) ?? "";
   }));
-  // It belongs to its server: another one (desktop: Change) starts empty.
-  let inviteBase = untrack(() => api.base);
-  $effect.pre(() => {
-    if (api.base === inviteBase) return;
-    inviteBase = api.base;
-    accountInvite = "";
-  });
   let inviteOnly = $state(false);
   const inviteToken = () => {
     if (!accountInvite.trim()) return undefined;
@@ -131,13 +124,15 @@
   // The server's browser check, where it has one: by itself, a second or
   // two (a failure is an error; submitting again retries).
   const prove = async () => {
-    const challenge = await api.challenge();
-    if (!challenge) return undefined;
+    const used = api;
+    const at = shown();
+    const challenge = await used.challenge();
+    if (!current(used, at) || !challenge) return undefined;
     checking = true;
     try {
       return await solveInWorker(challenge);
     } finally {
-      checking = false;
+      if (current(used, at)) checking = false;
     }
   };
 
@@ -162,28 +157,37 @@
     const name = username.trim();
     if (!name) return;
     if (mumbleOnly) return connectAs(name, false, password);
+    const used = api;
+    const at = shown();
+    const pw = password;
     busy = true;
     apiError = null;
     try {
       // A guest gets a temporary account where the server has them (its
       // name is kept, and it can keep the account with a password).
-      const used = api;
-      const at = shown();
       if (mode === "guest") {
         // A browser that cannot do the check joins as a classic guest (as
         // Mumble clients do).
         const proof = await prove().catch(() => null);
+        if (!current(used, at)) return;
         const guest = proof === null ? null : await used.guest(name, proof);
         if (!current(used, at)) return;
         if (!guest) return connectAs(name, false);
         onAccountChange(guest);
         return connectAs(guest.name, true);
       }
-      const result =
-        mode === "login" ? await used.login(name, password) : { name: await used.create(name, password, await prove(), inviteToken()), mumble: false };
+      let result: { name: string; mumble: boolean };
+      if (mode === "login") result = await used.login(name, pw);
+      else {
+        // Read secrets before waiting: the visible form may belong to
+        // another server by the time its browser check finishes.
+        const token = inviteToken();
+        const proof = await prove();
+        if (!current(used, at)) return;
+        result = { name: await used.create(name, pw, proof, token), mumble: false };
+      }
       if (!current(used, at)) return;
       if (mode === "create") clearInvite();
-      const pw = password;
       password = "";
       // A Mumble registration (SuperUser, for example) logs in to Mumble with
       // its password.
@@ -194,10 +198,11 @@
       onAccountChange(account);
       connectAs(result.name, true);
     } catch (err) {
+      if (!current(used, at)) return;
       apiError = err instanceof Error ? err.message : String(err);
       if (inviteRequired(err)) inviteOnly = true; // the field shows
     } finally {
-      busy = false;
+      if (current(used, at)) busy = false;
     }
   };
 
@@ -221,6 +226,30 @@
       showIcons(document, api.base, info.logo);
       document.title = info.name ?? "Kallisti";
     });
+  });
+
+  // Credentials and policy belong to one server selection, not to the
+  // mounted component. Include the address step so choosing the same
+  // server again also starts clean. Keep the remembered/edited username.
+  let formApi = untrack(() => api);
+  let formServer = untrack(shown);
+  $effect.pre(() => {
+    const at = shown();
+    if (api === formApi && at === formServer) return;
+    formApi = api;
+    formServer = at;
+    password = "";
+    serverPassword = "";
+    accountInvite = "";
+    inviteOnly = false;
+    mode = untrack(() => modeForError(error));
+    apiError = null;
+    busy = false;
+    checking = false;
+    qrShown = false;
+    askServerPassword = false;
+    serverName = null;
+    logo = null;
   });
 
   // Fediverse logins: the server's switch; the instance from last time.
