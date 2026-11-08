@@ -2862,3 +2862,7 @@ Personal emoji edit conversion now uses the same code/URL exclusions as sending.
 ## 2026-11-08: Search: distinguish DM and channel targets with the same name
 
 Search no longer loses target kind. Same-name DMs, text channels, and voice channels stay distinct; voice suggestions use in:voice:. Bare names keep the existing priority. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.
+
+## 2026-11-08: Build: run emoji-data generation on Windows and spaced paths
+
+Emoji data generation now has a dedicated CLI. It cannot silently skip output because of spaces or Windows path spelling, and write failures stop the build. Subprocess tests and a fresh generated-asset build passed. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

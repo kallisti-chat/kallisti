@@ -2,9 +2,7 @@
 // the Twemoji version we ship (see twemoji.mjs), in order, compact:
 // { groups: [{name, icon}], emoji: [[emoji, name, keywords, group, skins?]] }.
 // Runs before builds; the picker loads it only when it opens.
-import { mkdirSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { join } from "node:path";
+// Pure data conversion; emojidata-cli.mjs writes the build asset.
 
 export const MAX_VERSION = 17; // Twemoji 17
 
@@ -39,12 +37,3 @@ export const compact = (data, shortcodes, maxVersion = MAX_VERSION) => {
     });
   return { groups: GROUPS.map(({ name, icon }) => ({ name, icon })), emoji };
 };
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const require = createRequire(import.meta.url);
-  const data = require("emojibase-data/en/data.json");
-  const shortcodes = require("emojibase-data/en/shortcodes/github.json");
-  const publicDir = join(import.meta.dirname, "..", "public");
-  mkdirSync(publicDir, { recursive: true });
-  writeFileSync(join(publicDir, "emoji-data.json"), JSON.stringify(compact(data, shortcodes)));
-}

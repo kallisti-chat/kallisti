@@ -39,7 +39,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [ ] [Threads: delete large histories without exceeding SQLite limits](thread-delete-sql-limit.md)
 - [x] [Messages: preserve literal emoji references when editing](personal-emoji-edit-roundtrip.md)
 - [x] [Search: distinguish DM and channel targets with the same name](search-target-kind.md)
-- [ ] [Build: run emoji-data generation on Windows and spaced paths](emoji-data-cli-path.md)
+- [x] [Build: run emoji-data generation on Windows and spaced paths](emoji-data-cli-path.md)
 - [x] [Several servers: scope blocks and user audio preferences](server-scoped-user-preferences.md)
 - [ ] [Notifications: keep clicked links until the target client is ready](notification-click-ingress.md)
 - [ ] [Connections: bound the initial Mumble handshake](initial-connection-deadline.md)
