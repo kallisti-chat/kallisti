@@ -55,6 +55,7 @@ zbus = "5"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 rcgen = "0.14"
 
 # iOS: the web view fills the screen (see ios.rs). The version wry uses.

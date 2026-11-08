@@ -379,3 +379,4 @@
 - [x] [Search: distinguish DM and channel targets with the same name](issues/search-target-kind.md)
 - [x] [Build: run emoji-data generation on Windows and spaced paths](issues/emoji-data-cli-path.md)
 - [x] [Connections: bound the initial Mumble handshake](issues/initial-connection-deadline.md)
+- [x] [Desktop voice: keep TCP fallback after a UDP receive error](issues/native-udp-error-fallback.md)

@@ -46,7 +46,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [ ] [Messages: retain edit drafts until the server accepts them](rejected-message-edit-draft.md)
 - [ ] [Chat time-outs: disable all write paths and retain drafts](timeout-composer-send-guard.md)
 - [ ] [Desktop macOS: declare camera privacy permissions](macos-camera-permissions.md)
-- [ ] [Desktop voice: keep TCP fallback after a UDP receive error](native-udp-error-fallback.md)
+- [x] [Desktop voice: keep TCP fallback after a UDP receive error](native-udp-error-fallback.md)
 - [ ] [Desktop bridge: cancel blocked upstream writes when the client leaves](native-upstream-write-cancellation.md)
 - [ ] [Federation signup: offer a name when the remote handle is unusable locally](fedi-signup-invalid-local-name.md)
 - [x] [QR login: ignore completion after a server change](qr-login-stale-server-completion.md)

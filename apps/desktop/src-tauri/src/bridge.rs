@@ -9,7 +9,6 @@
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use crate::frames::{self, CryptSetup, Splitter, CRYPT_SETUP, UDP_TUNNEL, VERSION};
 use crate::pins::{self, Check, PinStore};
@@ -19,6 +18,7 @@ use futures_util::{SinkExt, StreamExt};
 use rand::RngCore;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream, UdpSocket};
+use tokio::time::Instant;
 use tokio_tungstenite::tungstenite::{
     client::IntoClientRequest,
     handshake::server::{ErrorResponse, Request, Response},
@@ -359,11 +359,34 @@ async fn relay(
     // Mumble servers echo voice to the loopback target: the empty packet
     // that announces UDP goes to Kallisti servers only (they drop it).
     let announce = upstream.cert.is_none();
-    let Upstream { read: mut up_read, write: up_write, udp: udp_peer, .. } = upstream;
+    let Upstream { read: up_read, write: up_write, udp: udp_peer, .. } = upstream;
     let udp = match udp_peer {
         Some(peer) => udp_socket(peer).await.ok(),
         None => None,
     };
+    relay_with_udp(ws, early, (up_read, up_write, announce), udp).await
+}
+
+trait Datagram {
+    async fn recv(&self, buf: &mut [u8]) -> std::io::Result<usize>;
+    async fn send(&self, packet: &[u8]) -> std::io::Result<usize>;
+}
+
+impl Datagram for UdpSocket {
+    async fn recv(&self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.recv(buf).await
+    }
+    async fn send(&self, packet: &[u8]) -> std::io::Result<usize> {
+        self.send(packet).await
+    }
+}
+
+async fn relay_with_udp<S: Io, U: Datagram>(
+    ws: tokio_tungstenite::WebSocketStream<S>,
+    early: Vec<Message>,
+    (mut up_read, up_write, announce): (UpRead, UpWrite, bool),
+    udp: Option<U>,
+) -> std::io::Result<()> {
     let voice = Mutex::new(UdpVoice::default());
     let up_write = tokio::sync::Mutex::new(up_write);
     let (ws_write, ws_read) = ws.split();
@@ -386,7 +409,7 @@ async fn relay(
             let mut tcp = Vec::with_capacity(data.len());
             for frame in splitter.feed(&data).map_err(std::io::Error::other)? {
                 let via_udp = udp.as_ref().filter(|_| frame.typ == UDP_TUNNEL);
-                let packet = via_udp.and_then(|_| voice.lock().unwrap().outgoing(Instant::now(), frame.body()));
+                let packet = via_udp.and_then(|_| voice.lock().unwrap().outgoing(Instant::now().into_std(), frame.body()));
                 match (via_udp, packet) {
                     (Some(socket), Some(packet)) => {
                         let _ = socket.send(&packet).await;
@@ -454,7 +477,7 @@ async fn relay(
         loop {
             tokio::select! {
                 _ = pings.tick() => {
-                    let to_tcp = voice.lock().unwrap().check(Instant::now());
+                    let to_tcp = voice.lock().unwrap().check(Instant::now().into_std());
                     if let Some(frame) = to_tcp {
                         up_write.lock().await.mumble(frame).await?;
                     }
@@ -466,9 +489,13 @@ async fn relay(
                         // ICMP replies (port unreachable): no UDP for now.
                         Err(e) if matches!(e.kind(), ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset) => continue,
                         // Anything else: give up on UDP, keep the TCP session.
-                        Err(_) => return std::future::pending().await,
+                        Err(_) => {
+                            let frame = voice.lock().unwrap().receive_failed();
+                            up_write.lock().await.mumble(frame).await?;
+                            return std::future::pending().await;
+                        }
                     };
-                    let incoming = voice.lock().unwrap().incoming(Instant::now(), &buf[..n]);
+                    let incoming = voice.lock().unwrap().incoming(Instant::now().into_std(), &buf[..n]);
                     match incoming {
                         Incoming::Audio(plain) => {
                             let frame = frames::make_frame(UDP_TUNNEL, &plain);
@@ -478,7 +505,7 @@ async fn relay(
                         }
                         Incoming::Resync(request) => up_write.lock().await.mumble(request).await?,
                         Incoming::Pong if announce => {
-                            let packet = voice.lock().unwrap().announce(Instant::now());
+                            let packet = voice.lock().unwrap().announce(Instant::now().into_std());
                             if let Some(packet) = packet {
                                 let _ = socket.send(&packet).await;
                             }
@@ -529,7 +556,7 @@ async fn udp_socket(peer: SocketAddr) -> std::io::Result<UdpSocket> {
     Ok(socket)
 }
 
-async fn send_ping(udp: &Option<UdpSocket>, voice: &Mutex<UdpVoice>) {
+async fn send_ping(udp: &Option<impl Datagram>, voice: &Mutex<UdpVoice>) {
     let Some(socket) = udp else { return };
     let ping = voice.lock().unwrap().ping();
     if let Some(ping) = ping {
@@ -836,3 +863,7 @@ mod tests {
         assert!(parse_target("secret=s3cret&kallisti=wss%3A%2F%2Fchat.example%2Fws&udp=0", "s3cret").is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "bridge_udp_tests.rs"]
+mod udp_error_tests;

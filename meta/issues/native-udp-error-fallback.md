@@ -24,3 +24,9 @@ Evidence: Source finding; native network-error behavior was not exercised.
 
 - apps/desktop/src-tauri/src/bridge.rs:450-469
 - apps/desktop/src-tauri/src/udp.rs:106
+
+## Result (2026-11-08)
+
+Fatal UDP receive errors disable outgoing UDP and immediately request tunneled TCP voice. The TCP session stays open; expected ICMP errors keep the UDP recovery path.
+
+Verification: Injected receive-only failure regressions failed before the fix and now pass before/after UDP activation, alongside expected ICMP recovery and continued TCP traffic. Offline Rust tests passed (51 unit tests, one ignored; 13 integration tests, with real-Murmur tests gated off). Independent 6.1-sol and Astra reviews approved the fix.

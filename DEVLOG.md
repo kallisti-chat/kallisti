@@ -2870,3 +2870,7 @@ Emoji data generation now has a dedicated CLI. It cannot silently skip output be
 ## 2026-11-08: Connections: bound the initial Mumble handshake
 
 Initial Mumble handshakes now have the same 15-second limit as reconnects. A stale deadline cannot close a newer connection. Fake-timer regressions cover sync, cancellation, replacement, and reconnects. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.
+
+## 2026-11-08: Desktop voice: keep TCP fallback after a UDP receive error
+
+A fatal UDP receive error now requests TCP voice fallback even when the user is not speaking. Expected ICMP errors retain their recovery path. Offline Rust tests passed (51 unit tests, one ignored; 13 integration tests, with real-Murmur tests gated off). Independent 6.1-sol and Astra reviews approved the fix.

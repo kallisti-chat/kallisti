@@ -116,6 +116,15 @@ impl UdpVoice {
         stopped.then(|| make_frame(UDP_TUNNEL, &ping_body(self.legacy, 0)))
     }
 
+    /// The receive socket is gone. Stop sending UDP and tell even a
+    /// receive-only server session to tunnel voice over TCP immediately.
+    pub fn receive_failed(&mut self) -> Vec<u8> {
+        self.last_pong = None;
+        self.was_usable = false;
+        self.heard = false;
+        make_frame(UDP_TUNNEL, &ping_body(self.legacy, 0))
+    }
+
     /// Call after a pong. While UDP works but no voice came over it, a
     /// packet for the server: it sends voice over UDP only to clients that
     /// sent voice over UDP, so a listener would hear over TCP. Voice
