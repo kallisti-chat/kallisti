@@ -12,9 +12,16 @@ export const isChannelLink = (a: Element) => a.getAttribute("href") === "#" && /
 
 // Nothing remote may load: the page may load pictures and media from other
 // servers (several servers in one client), so its CSP no longer stops it.
-// Styles that could name an address (url(), image-set(), CSS escapes,
-// @import) go whole, and style elements altogether.
-const REMOTE_STYLE = /\\|@|(url|image|image-set|cross-fade|src)\(/i;
+// Styles that could load a resource go whole. Dynamic substitutions can
+// conceal a disallowed size until rendering, so they go too.
+const UNSAFE_STYLE = /\\|@|(url|image|image-set|cross-fade|src|var|env|attr|if)\(/i;
+// Text formatting only: messages must not position, resize, or stack content
+// over the app. Check parsed property names, not a list of dangerous CSS.
+const TEXT_STYLES = new Set([
+  "color", "background-color", "font-family", "font-weight", "font-style", "text-decoration",
+  // Browsers expand the shorthand; jsdom can retain it as one property.
+  "text-decoration-line", "text-decoration-style", "text-decoration-color", "text-decoration-thickness",
+]);
 // HTML only (no SVG, MathML: their attributes load resources too), and no
 // attribute naming url() at all (SVG mask, fill, filter ... in any form).
 const CONFIG = { USE_PROFILES: { html: true }, FORBID_TAGS: ["style"] };
@@ -32,7 +39,15 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   for (const name of REMOTE_ATTRS) node.removeAttribute(name);
   if (node.tagName !== "A") node.removeAttribute("href");
   if (!(node.tagName === "IMG" && node.getAttribute("src")?.startsWith("data:image/"))) node.removeAttribute("src");
-  if (REMOTE_STYLE.test(node.getAttribute("style") ?? "")) node.removeAttribute("style");
+  const style = node.getAttribute("style");
+  if (style) {
+    const parsed = (node as HTMLElement).style;
+    const thickness = parsed.getPropertyValue("text-decoration-thickness");
+    const customThickness = thickness && !/^(auto|from-font|initial)$/.test(thickness);
+    if (UNSAFE_STYLE.test(style) || Array.from(parsed).some((name) => !TEXT_STYLES.has(name)) || customThickness || !parsed.length) node.removeAttribute("style");
+    // Do not keep raw declarations the CSS parser ignored.
+    else node.setAttribute("style", parsed.cssText);
+  }
   for (const { name, value } of [...node.attributes]) if (!TEXT_ATTRS.has(name) && NAMES_URL.test(value)) node.removeAttribute(name);
 });
 

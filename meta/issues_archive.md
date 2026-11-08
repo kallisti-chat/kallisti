@@ -367,3 +367,4 @@
 - [x] [Channel deletion: reconcile moved users and audio listeners](issues/channel-deletion-access-cleanup.md)
 - [x] [Federation login: revoke pending handoffs with authentication](issues/fedi-handoff-revocation.md)
 - [x] [Desktop login: clear secrets when the server changes](issues/login-server-credential-reset.md)
+- [x] [Message HTML: prevent styles from covering the application](issues/message-html-layout-styles.md)

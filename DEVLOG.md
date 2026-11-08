@@ -2822,3 +2822,7 @@ Pending federation handoffs can no longer outlive unlink, password change, or lo
 ## 2026-11-08: Desktop login: clear secrets when the server changes
 
 Login secrets and policy now belong to a server selection. A delayed signup cannot read another server's invitation or send after the selection changes; stale challenge work cannot alter the new form. Component regressions, full web tests/type checks, and the production build passed. Reviewed by 6.1-sol and Astra.
+
+## 2026-11-08: Message HTML: prevent styles from covering the application
+
+Message HTML no longer retains layout-control styles. The text-only allowlist accounts for browser decoration longhands, and styles with unresolved substitutions are rejected before CSSOM serialization. Tests and headless Chrome cover safe formatting and overlay cases. Full web checks/build passed; 6.1-sol and Astra approved the final correction.

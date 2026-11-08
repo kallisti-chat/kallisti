@@ -24,3 +24,11 @@ Evidence: A sanitizer probe retained fixed positioning; full browser layout was 
 
 - apps/web/src/lib/sanitize.ts:17-35
 - Related but separate: message-forms.md
+
+## Result (2026-11-08)
+
+Inline styles are limited to text colors, font family/weight/style, and decoration with default thickness. Positioning, sizing, stacking, and unresolved substitutions are rejected. Retained styles are serialized from CSSOM, not raw input. Existing resource and link restrictions remain.
+
+Verification: layout probes were red before the correction. Sanitizer/custom/personal emoji tests (67) passed, as did full workspace tests/type checks and the production web build. Headless Chrome 150 preserved safe color/underline and rejected 24 plain/emoji attack cases, including large decoration shorthands, variable/environment/attribute fallbacks, and CSS if() substitution. Browser checks exposed the shorthand-longhand difference absent in jsdom. Independent 6.1-sol and Astra follow-up reviews found no remaining blockers.
+
+The separate message-forms issue remains open.
