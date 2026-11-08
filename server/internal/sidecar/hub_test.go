@@ -417,17 +417,20 @@ func TestResyncAfterOverflow(t *testing.T) {
 		h.broadcast(map[string]any{"type": "message"})
 	}
 	// Lost messages are counted per session, for the connection stats.
-	if got := h.Overflows(); got[1] != 5 || len(got) != 1 {
+	if got := h.Overflows(); got[1] != 6 || len(got) != 1 {
 		t.Fatalf("overflows %v", got)
 	}
-	// Drain the full outbox; the next message must be a resync.
+	// Drain without another application event: recovery must already be queued.
+	found := false
 	for i := 0; i < outboxSize; i++ {
-		next(t, slow)
+		if next(t, slow)["type"] == "resync" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("no resync after overflow and drain without another event")
 	}
 	h.broadcast(map[string]any{"type": "message"})
-	if m := next(t, slow); m["type"] != "resync" {
-		t.Fatalf("got %v, want resync", m)
-	}
 	if m := next(t, slow); m["type"] != "message" {
 		t.Fatalf("got %v after resync", m)
 	}

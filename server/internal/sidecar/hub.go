@@ -1354,7 +1354,7 @@ func (c *Conn) setAnswering(nonce string) {
 
 // send never blocks: a client that does not read its outbox loses messages
 // instead of holding up everyone else. It gets a "resync" (reload what you
-// show) as soon as there is room again.
+// show) queued at overflow, without waiting for another application event.
 func (c *Conn) send(v any) {
 	if m, ok := v.(map[string]any); ok && m["type"] == "error" {
 		c.mu.Lock()
@@ -1377,11 +1377,10 @@ func (c *Conn) send(v any) {
 		return
 	}
 	if c.lagged {
-		if len(c.out) > cap(c.out)-2 { // room for the resync and this message
+		if len(c.out) == cap(c.out) {
 			c.dropped++
 			return
 		}
-		c.out <- resync
 		c.lagged = false
 	}
 	select {
@@ -1389,6 +1388,14 @@ func (c *Conn) send(v any) {
 	default:
 		c.lagged = true
 		c.dropped++
+		// Make room for recovery. Receivers can drain concurrently, but
+		// all producers hold mu, so the marker always fits.
+		select {
+		case <-c.out:
+			c.dropped++
+		default:
+		}
+		c.out <- resync
 		slog.Warn("sidecar outbox full, client will resync")
 	}
 }

@@ -25,3 +25,9 @@ Evidence: Reproduced by overflowing and draining the outbox with no subsequent e
 - server/internal/sidecar/hub.go:1379
 - server/internal/bridge/bridge.go:468
 - Earlier completed work: text-channels-robustness.md
+
+## Result (2026-11-08)
+
+Outbox overflow now makes room for a resync marker at once. Recovery does not depend on a later application event, and the queue remains bounded.
+
+Verification: The regression drains an overflowed queue without another event and finds the resync. Full Go race tests and go vet passed. Independent 6.1-sol and Astra reviews approved the change.

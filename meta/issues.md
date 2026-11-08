@@ -33,7 +33,6 @@
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
-  - [ ] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
   - [ ] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
   - [ ] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
   - [ ] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)

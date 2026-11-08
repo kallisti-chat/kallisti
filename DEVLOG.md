@@ -2890,3 +2890,7 @@ Federation signup now offers local-name selection when an automatic remote name 
 ## 2026-11-08: Threads: delete large histories without exceeding SQLite limits
 
 Large thread histories now delete with a fixed number of SQL parameters. Only attachment keys are loaded, and cleanup remains transactional. The 32,767-message and forced-rollback regressions, full Go race tests, and vet passed. 6.1-sol approved the fix.
+
+## 2026-11-08: Sidecar: recover from outbox overflow without another event
+
+Queued bounded sidecar recovery at overflow. The no-further-event regression, full Go race tests, and go vet passed; independent reviews approved the change.

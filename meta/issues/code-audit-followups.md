@@ -33,7 +33,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [x] [Audio: isolate ownership of the shared DeepFilterNet node](deepfilternet-capture-ownership.md)
 - [x] [Voice: refresh routing after implicit self-undeafen](self-unmute-deaf-routing.md)
 - [x] [Streams: preserve both decoded audio channels](stream-stereo-playback.md)
-- [ ] [Sidecar: recover from outbox overflow without another event](sidecar-outbox-resync.md)
+- [x] [Sidecar: recover from outbox overflow without another event](sidecar-outbox-resync.md)
 - [ ] [Messages: resolve nonce retries before new-post cooldowns](message-nonce-cooldown-retry.md)
 - [x] [Uploads: reject interrupted request bodies](upload-truncated-body.md)
 - [x] [Threads: delete large histories without exceeding SQLite limits](thread-delete-sql-limit.md)
