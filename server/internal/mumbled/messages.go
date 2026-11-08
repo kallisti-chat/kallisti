@@ -324,8 +324,9 @@ func (s *Server) userStateLocked(c *client, m *pb.UserState) (after func()) {
 	}
 	routing := false // a change of who hears whom
 	if m.SelfMute != nil || m.SelfDeaf != nil {
-		routing = routing || m.SelfDeaf != nil
+		wasDeaf := u.SelfDeaf
 		u.SelfMute, u.SelfDeaf = selfState(u.SelfMute, u.SelfDeaf, m)
+		routing = routing || wasDeaf != u.SelfDeaf
 		out.SelfMute, out.SelfDeaf = proto.Bool(u.SelfMute), proto.Bool(u.SelfDeaf)
 		changed = true
 	}

@@ -33,7 +33,6 @@
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
-  - [ ] [Voice: refresh routing after implicit self-undeafen](issues/self-unmute-deaf-routing.md)
   - [ ] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
   - [ ] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
   - [ ] [Uploads: reject interrupted request bodies](issues/upload-truncated-body.md)

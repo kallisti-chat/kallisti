@@ -2838,3 +2838,7 @@ Stream playback now copies both decoded stereo channels instead of discarding th
 ## 2026-11-08: QR login: ignore completion after a server change
 
 QR completion now checks the API and desktop server selection after its account lookup. An old server's response cannot apply an account or start a connection on the new selection. Fake-API component regressions, full workspace tests/type checks, and the web build passed. 6.1-sol and Astra approved the fix.
+
+## 2026-11-08: Voice: refresh routing after implicit self-undeafen
+
+A SelfMute-only unmute now invalidates receiver caches when it implicitly clears SelfDeaf. Primed-cache tests verify actual audio across normal and targeted routes, plus explicit state combinations. Full Go race tests and vet passed; 6.1-sol and Astra approved the fix.
