@@ -490,7 +490,25 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       if (ws.readyState === WebSocket.OPEN) ws.send(markUnreadRequest(channel, message));
     },
     editMessage: (message: number, text: string, remove: readonly string[] = []) => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(editMessageRequest(message, text, remove));
+      // Only this request's result/refusal confirms the edit, never a broadcast.
+      const requestId = crypto.randomUUID();
+      return new Promise<void>((resolve, reject) => {
+        if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
+        const done = (error?: string) => {
+          clearTimeout(timeout);
+          confirming.delete(check);
+          if (error === undefined) resolve();
+          else reject(new Error(error));
+        };
+        const check = (ev: ServerEvent | null) => {
+          if (!ev) done(t("client.notConnected"));
+          else if (ev.type === "edit-result" && ev.requestId === requestId && ev.message === message) done();
+          else if (ev.type === "error" && ev.requestId === requestId && ev.editMessage === message) done(ev.message);
+        };
+        const timeout = setTimeout(() => done(t("client.noAnswer")), SEND_ANSWER_MS);
+        confirming.add(check);
+        ws.send(editMessageRequest(message, text, remove, requestId));
+      });
     },
     // Our microphone, for the admins' view of connections (see lib/voice/micInfo).
     sendMicInfo: (mic: MicInfo) => {

@@ -258,6 +258,7 @@ export type ServerEvent =
   // nonce: on our own message, the one we sent it with (see sendAnswer).
   | { type: "message"; message: TextMessage; nonce?: string }
   | { type: "message-edited"; message: TextMessage }
+  | { type: "edit-result"; requestId: string; message: number }
   // A message was pinned or unpinned (its pinned field says which).
   | { type: "message-pinned"; message: TextMessage }
   // A channel's pinned messages, the newest pin first.
@@ -283,6 +284,8 @@ export type ServerEvent =
       slow?: { channel: number; until: number };
       returned?: { channel: number; text: string };
       nonce?: string;
+      requestId?: string;
+      editMessage?: number;
     }
   | { type: "upload-token"; token: string; tokens?: string[] } // tokens: for several files
   // A message's reactions changed (all of them).
@@ -791,6 +794,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         : null;
     case "message":
       return isMessage(v.message) ? { type: v.type, message: v.message, ...(isStr(v.nonce) ? { nonce: v.nonce } : {}) } : null;
+    case "edit-result":
+      return isStr(v.requestId) && isNum(v.message) ? { type: "edit-result", requestId: v.requestId, message: v.message } : null;
     case "message-edited":
     case "message-pinned":
       return isMessage(v.message) ? { type: v.type, message: v.message } : null;
@@ -812,7 +817,7 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       return isNum(v.channel) && isNum(v.message) ? { type: "read", channel: v.channel, message: v.message, ...(v.back === true && { back: true as const }) } : null;
     case "error": {
       if (!isStr(v.message)) return null;
-      const error = { type: "error" as const, message: v.message, ...(isStr(v.nonce) ? { nonce: v.nonce } : {}) };
+      const error = { type: "error" as const, message: v.message, ...(isStr(v.requestId) && isNum(v.editMessage) ? { requestId: v.requestId, editMessage: v.editMessage } : {}), ...(isStr(v.nonce) ? { nonce: v.nonce } : {}) };
       const returned = isNum(v.channel) && isStr(v.text) ? { returned: { channel: v.channel, text: v.text } } : {};
       if (v.about === "slow-mode" && isNum(v.channel) && isNum(v.until)) return { ...error, slow: { channel: v.channel, until: v.until }, ...returned };
       if (v.about === "refused") return { ...error, ...returned };
@@ -1146,6 +1151,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
             ...(event.slow && { slowUntil: { ...state.slowUntil, [event.slow.channel]: event.slow.until } }),
             ...(event.returned && { returned: { ...event.returned, n: (state.returned?.n ?? 0) + 1 } }),
           };
+    case "edit-result": // requester-only edit confirmation
     case "upload-token": // answered by the connection, not state
     case "typing": // short-lived: the client keeps it (lib/typing)
       return state;
@@ -1370,8 +1376,8 @@ export const markReadRequest = (channel: number, message: number) =>
 export const markUnreadRequest = (channel: number, message: number) =>
   JSON.stringify({ type: "mark-unread", channel, message });
 // remove: the keys of files to take off (as in Discord, none can be added).
-export const editMessageRequest = (message: number, text: string, remove: readonly string[] = []) =>
-  JSON.stringify(remove.length ? { type: "edit-message", message, text, remove } : { type: "edit-message", message, text });
+export const editMessageRequest = (message: number, text: string, remove: readonly string[] = [], requestId?: string) =>
+  JSON.stringify({ type: "edit-message", message, text, ...(remove.length ? { remove } : {}), ...(requestId ? { requestId } : {}) });
 export const deleteMessageRequest = (message: number) => JSON.stringify({ type: "delete-message", message });
 
 // The server's HTTP origin, from the bridge WebSocket URL.

@@ -14,3 +14,11 @@ answer or error; the client matches by id.
 
 - Go tests: the id comes back on results and errors (manage and others).
 - Web: matching by id; the order-based fallback only for old servers.
+
+## Notes
+
+- The [edit-draft fix](rejected-message-edit-draft.md) adds optional `requestId`
+  correlation for edits. Requester-only `edit-result` replies carry the message
+  ID; edit errors carry `requestId` and `editMessage`, including early refusals.
+  Broadcasts do not confirm edits. This does not complete manage-request
+  correlation; its existing order-based path is unchanged.

@@ -2902,3 +2902,7 @@ Resolved authorized message retries before new-post checks. Added production-rul
 ## 2026-11-08: Chat time-outs: disable all write paths and retain drafts
 
 Applied one composer write policy to all entry paths without discarding unsent state. Regression tests include expiry, queued files, replies, stickers, polls, and edits. Workspace tests, typechecks, and build passed; independent reviews approved the change.
+
+## 2026-11-08: Messages: retain edit drafts until the server accepts them
+
+Retained edit snapshots until correlated server results, including attachment-removal choices. Added edit-only request IDs without changing manage-request behavior. Component and protocol regressions, workspace checks, and Go race tests/vet passed; independent reviews approved the change.

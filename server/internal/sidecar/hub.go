@@ -386,6 +386,10 @@ type Conn struct {
 	// The nonce of the send being handled: every error it answers with
 	// carries it, so the client fails only that send (see Handle).
 	answering string
+	// The current edit: errors from pre-dispatch guards need the same
+	// correlation as errors from changeMessage. Results are requester-only.
+	editRequest string
+	editMessage int64
 }
 
 func (h *Hub) Connect() *Conn {
@@ -624,6 +628,7 @@ func (h *Hub) toWireFor(m store.Message, viewer *uint32) wireMessage {
 }
 
 type request struct {
+	RequestID   string           `json:"requestId"` // optional edit correlation (not a send nonce)
 	Type        string           `json:"type"`
 	Name        string           `json:"name"`       // create-channel, rename-channel; emoji-token, delete-emoji; the user-emoji requests
 	To          string           `json:"to"`         // rename-user-emoji: the new name
@@ -708,6 +713,12 @@ func (c *Conn) Handle(raw []byte) {
 	if err := json.Unmarshal(raw, &req); err != nil {
 		c.sendError("invalid request")
 		return
+	}
+	if req.Type == "edit-message" && len(req.RequestID) <= maxNonce {
+		c.mu.Lock()
+		c.editRequest, c.editMessage = req.RequestID, req.Message
+		c.mu.Unlock()
+		defer func() { c.mu.Lock(); c.editRequest, c.editMessage = "", 0; c.mu.Unlock() }()
 	}
 	if req.Upload != "" && req.Uploads == nil {
 		req.Uploads = []wireAttachment{{Key: req.Upload}}
@@ -1372,7 +1383,13 @@ func (c *Conn) send(v any) {
 	if m, ok := v.(map[string]any); ok && m["type"] == "error" {
 		c.mu.Lock()
 		nonce := c.answering
+		requestID, message := c.editRequest, c.editMessage
 		c.mu.Unlock()
+		if requestID != "" {
+			m = maps.Clone(m)
+			m["requestId"], m["editMessage"] = requestID, message
+			v = m
+		}
 		if nonce != "" {
 			m = maps.Clone(m)
 			m["nonce"] = nonce

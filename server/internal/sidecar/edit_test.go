@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/proto"
 
 	"kallisti.chat/server/internal/mumble"
@@ -394,4 +396,48 @@ func TestManyRemovalsComeAsOneEventPerChat(t *testing.T) {
 		t.Fatalf("got %v", m)
 	}
 	empty(t, mod)
+}
+
+func TestEditRequestCorrelation(t *testing.T) {
+	h := newHub(t, "general")
+	alice := joinAs(t, h, mumble.Identity{Session: 1, Name: "alice", Registered: true, UserID: 435})
+	bob := joinAs(t, h, mumble.Identity{Session: 2, Name: "bob", Registered: true, UserID: 504})
+	id := say(t, h, alice, "before")
+	next(t, bob)
+	alice.Handle(fmt.Appendf(nil, `{"type":"edit-message","message":%d,"text":"after","requestId":"edit-1"}`, id))
+	next(t, alice) // broadcast is not a confirmation
+	if got := next(t, bob); got["type"] != "message-edited" || got["requestId"] != nil || len(bob.Outbox()) != 0 {
+		t.Fatalf("edit result leaked to another reader: %v", got)
+	}
+	if got := next(t, alice); got["type"] != "edit-result" || got["requestId"] != "edit-1" || got["message"] != float64(id) {
+		t.Fatalf("uncorrelated result: %v", got)
+	}
+	for _, message := range []int64{id, -1} {
+		alice.Handle(fmt.Appendf(nil, `{"type":"edit-message","message":%d,"text":"","requestId":"edit-2"}`, message))
+		if got := next(t, alice); got["type"] != "error" || got["requestId"] != "edit-2" || got["editMessage"] != float64(message) {
+			t.Fatalf("uncorrelated error: %v", got)
+		}
+	}
+}
+
+func TestEditEarlyRefusalsKeepCorrelation(t *testing.T) {
+	h := newHub(t, "general")
+	voice := &fakeVoice{timeouts: map[uint32]time.Time{2: clock.Add(time.Minute)}}
+	h.SetVoice(voice, "")
+	bob := readyAs(t, h, 2, "bob")
+	bob.Handle([]byte(`{"type":"edit-message","message":9,"text":"proposed","requestId":"timeout"}`))
+	if got := next(t, bob); got["requestId"] != "timeout" || got["editMessage"] != 9.0 || !strings.Contains(got["message"].(string), "timed out") {
+		t.Fatalf("timeout: %v", got)
+	}
+	// A rate refusal takes place before changeMessage too.
+	bob.limit = rate.NewLimiter(0, 0)
+	bob.Handle([]byte(`{"type":"edit-message","message":9,"text":"proposed","requestId":"rate"}`))
+	if got := next(t, bob); got["requestId"] != "rate" || got["editMessage"] != 9.0 || got["about"] != "rate" {
+		t.Fatalf("rate: %v", got)
+	}
+	// A later unrelated error must not inherit the edit's correlation.
+	bob.Handle([]byte(`{"type":"history","channel":-1}`))
+	if got := next(t, bob); got["requestId"] != nil || got["editMessage"] != nil {
+		t.Fatalf("leaked edit correlation: %v", got)
+	}
 }

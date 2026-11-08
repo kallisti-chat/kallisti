@@ -226,7 +226,7 @@
     // Stored messages: who may change which (the server checks again).
     mayEdit?: (m: DisplayMessage) => boolean;
     mayDelete?: (m: DisplayMessage) => boolean;
-    onEdit?: (id: number, text: string, remove: string[]) => void; // remove: keys of files to take off
+    onEdit?: (id: number, text: string, remove: string[]) => Promise<void>; // remove: keys of files to take off
     onDelete?: (id: number) => void;
     // "bob is typing…" beside the message box; onTyping: we type.
     typing?: string;
@@ -714,7 +714,8 @@
   // Editing and deleting stored messages (stickers and polls stay as sent).
   const editable = (m: ChatMessage | DisplayMessage) => !("sticker" in m && m.sticker) && !("poll" in m && m.poll);
   // files: the message's; removed: the URLs of those to take off.
-  let editing = $state<{ id: number; text: string; old: string; files: Shown[]; removed: string[]; canDelete: boolean } | null>(null);
+  let editing = $state<{ id: number; text: string; old: string; files: Shown[]; removed: string[]; canDelete: boolean; pending?: boolean; error?: string } | null>(null);
+  const editDrafts = new Map<string, NonNullable<typeof editing>>();
   let confirming = $state<number | null>(null);
   let editInput: HTMLTextAreaElement | undefined = $state();
   let cancelButton: HTMLButtonElement | undefined = $state();
@@ -722,23 +723,42 @@
     if (!("source" in m) || !m.source) return;
     const files = ("uploads" in m && m.uploads) || [];
     const canDelete = !!(mayDelete?.(m) && onDelete);
-    editing = { id: m.source.id, text: fromRefs(m.source.text, custom.mine, custom.urls), old: m.source.text, files, removed: [], canDelete };
+    editing = editDrafts.get(`${chat}:${m.source.id}`) ?? { id: m.source.id, text: fromRefs(m.source.text, custom.mine, custom.urls), old: m.source.text, files, removed: [], canDelete };
     await tick();
     editInput?.focus();
   };
-  const saveEdit = () => {
-    if (!editing || writeBlocked) return;
-    const text = withRefs(editing.text.trim());
-    const { id, canDelete } = editing;
-    const end = editOutcome({ old: editing.old, text, files: editing.files.map((f) => f.url), removed: editing.removed });
-    editing = null;
-    // Nothing left: as in Discord, it asks to delete the message.
-    if (end.delete && canDelete) return void startConfirm(id);
-    if (end.save) onEdit?.(id, text, end.remove);
-    messageInput?.focus();
+  const saveEdit = async () => {
+    if (!editing || editing.pending || writeBlocked) return;
+    const snapshot = editing;
+    const text = withRefs(snapshot.text.trim());
+    const { id, canDelete } = snapshot;
+    const key = `${chat}:${id}`;
+    const end = editOutcome({ old: snapshot.old, text, files: snapshot.files.map((f) => f.url), removed: snapshot.removed });
+    if (!end.save) {
+      editDrafts.delete(key);
+      editing = null;
+      if (end.delete && canDelete) startConfirm(id);
+      return;
+    }
+    if (!onEdit) return;
+    editDrafts.set(key, snapshot);
+    snapshot.pending = true;
+    snapshot.error = "";
+    try {
+      await onEdit(id, text, end.remove);
+      editDrafts.delete(key);
+      if (editing === snapshot) {
+        editing = null;
+        messageInput?.focus();
+      }
+    } catch (error) {
+      snapshot.error = error instanceof Error ? error.message : String(error);
+    } finally {
+      snapshot.pending = false;
+    }
   };
   const toggleRemoved = (url: string) => {
-    if (editing && !writeBlocked) editing.removed = editing.removed.includes(url) ? editing.removed.filter((u) => u !== url) : [...editing.removed, url];
+    if (editing && !editing.pending && !writeBlocked) editing.removed = editing.removed.includes(url) ? editing.removed.filter((u) => u !== url) : [...editing.removed, url];
   };
   // Replies and reactions: stored chats we may write in. picking: the
   // message whose emoji picker is open (focus moves into it and back).
@@ -1784,7 +1804,7 @@
       <textarea
         rows="1"
         bind:this={editInput}
-        disabled={writeBlocked}
+        disabled={editing.pending || writeBlocked}
         bind:value={editing.text}
         use:autosize={editing.text}
         aria-label={t("chat.editMessage")}
@@ -1794,6 +1814,7 @@
             e.preventDefault();
             saveEdit();
           } else if (e.key === "Escape") {
+            if (editing) editDrafts.delete(`${chat}:${editing.id}`);
             editing = null;
             messageInput?.focus();
           }
@@ -1806,11 +1827,12 @@
             {@const gone = editing.removed.includes(f.url)}
             <li class:gone>
               <span class="ellipsis">{f.name}</span>
-              <button type="button" disabled={writeBlocked} onclick={() => toggleRemoved(f.url)} aria-label={gone ? t("chat.keepFile", { name: f.name }) : t("chat.removeFile", { name: f.name })}>{gone ? t("chat.undoRemove") : "×"}</button>
+              <button type="button" disabled={editing.pending || writeBlocked} onclick={() => toggleRemoved(f.url)} aria-label={gone ? t("chat.keepFile", { name: f.name }) : t("chat.removeFile", { name: f.name })}>{gone ? t("chat.undoRemove") : "×"}</button>
             </li>
           {/each}
         </ul>
       {/if}
+      {#if editing.error}<p role="alert">{editing.error}</p>{/if}
       <span class="hint">{t("chat.editHint")}</span>
     </form>
   {:else if "poll" in m && m.poll && "source" in m && m.source}

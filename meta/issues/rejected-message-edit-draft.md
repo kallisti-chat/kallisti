@@ -25,3 +25,9 @@ Evidence: Source finding; edit state is cleared before the server responds.
 - apps/web/src/components/ChatPane.svelte:716-733
 - server/internal/sidecar/edit.go:69
 - Related: request-ids.md
+
+## Result (2026-11-08)
+
+Edits keep text and attachment choices until an explicit correlated result. Requester-only edit results and errors carry request and message IDs. A rejected or pending edit stays with its message; cancellation clears the cached draft, and late replies cannot close another editor. The broader manage-request correlation issue remains open.
+
+Verification: Component and protocol regressions cover rejection, success, cancellation, inactive drafts, attachment choices, and late replies. Final workspace tests, typechecks, web build, full Go race tests, and go vet passed. Independent 6.1-sol and Astra reviews approved the change.

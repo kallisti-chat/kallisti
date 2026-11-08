@@ -386,3 +386,4 @@
 - [x] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
 - [x] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
 - [x] [Chat time-outs: disable all write paths and retain drafts](issues/timeout-composer-send-guard.md)
+- [x] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)
