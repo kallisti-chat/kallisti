@@ -32,7 +32,7 @@
   import { quoted, typedFilter, typedWord } from "../lib/suggest";
   import { createCombobox } from "../lib/combobox.svelte";
   import { matchPlaces } from "../lib/switcher";
-  import type { SearchPlace } from "../lib/search";
+  import { searchPlaceFilter, type SearchPlace } from "../lib/search";
   import Suggestions, { type Suggestion } from "./Suggestions.svelte";
   import Lightbox from "./Lightbox.svelte";
   import PollForm from "./PollForm.svelte";
@@ -1095,7 +1095,7 @@
         .map((p) => ({
           key: `${p.kind}${p.id}`,
           label: p.name,
-          insert: `in:${p.kind === "text" ? `#${p.name}` : p.kind === "dm" ? `@${quoted(p.name)}` : quoted(p.name)}`,
+          insert: searchPlaceFilter(p),
           kind: p.kind === "text" ? "channel" : p.kind === "dm" ? "user" : "voice",
         }));
     },

@@ -36,7 +36,6 @@
   - [ ] [Sidecar: recover from outbox overflow without another event](issues/sidecar-outbox-resync.md)
   - [ ] [Messages: resolve nonce retries before new-post cooldowns](issues/message-nonce-cooldown-retry.md)
   - [ ] [Threads: delete large histories without exceeding SQLite limits](issues/thread-delete-sql-limit.md)
-  - [ ] [Search: distinguish DM and channel targets with the same name](issues/search-target-kind.md)
   - [ ] [Build: run emoji-data generation on Windows and spaced paths](issues/emoji-data-cli-path.md)
   - [ ] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
   - [ ] [Connections: bound the initial Mumble handshake](issues/initial-connection-deadline.md)

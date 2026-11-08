@@ -2858,3 +2858,7 @@ Blocks, local mute, and per-user volume now belong to one server. Child views us
 ## 2026-11-08: Messages: preserve literal emoji references when editing
 
 Personal emoji edit conversion now uses the same code/URL exclusions as sending. Unchanged edits preserve literal references. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.
+
+## 2026-11-08: Search: distinguish DM and channel targets with the same name
+
+Search no longer loses target kind. Same-name DMs, text channels, and voice channels stay distinct; voice suggestions use in:voice:. Bare names keep the existing priority. Full workspace tests/type checks and the web build passed. Independent 6.1-sol and Astra reviews approved the fix.

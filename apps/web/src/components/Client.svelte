@@ -1138,9 +1138,8 @@
     if (!fresh && total > mentionTotal && !me?.selfDeaf && !dnd) playPing(prefs.outputDeviceId);
     mentionTotal = total;
   });
-  // The search as typed (the server answers with the words only), and
-  // chats by name for "in:" (text channels before voice channels before
-  // direct chats).
+  // The search as typed; retain each chat's kind for explicit filters.
+  // Bare names keep text before voice before direct chats.
   let searchQuery = $state("");
   const searchPlaces = $derived<SearchPlace[]>([
     ...text.channels.map((c) => ({ name: c.name, kind: "text" as const, id: c.id })),
@@ -1150,7 +1149,6 @@
     }),
     ...Object.entries(text.directs).map(([chat, peer]) => ({ name: peer.name, kind: "dm" as const, id: Number(chat) })),
   ]);
-  const searchChats = $derived(new Map(searchPlaces.toReversed().map((p) => [p.name.toLowerCase(), p.id]))); // the first wins
   // Text channel ids by name, for "#name" links. Derived from the list
   // itself: a new map (and new chat lines) only when the channels change.
   const textChannelList = $derived(text.channels);
@@ -2434,7 +2432,7 @@
       onSearch={text.available
         ? (q) => {
             searchQuery = q;
-            connection.search(parseSearch(q, searchChats));
+            connection.search(parseSearch(q, searchPlaces));
             openSide("search");
           }
         : undefined}
