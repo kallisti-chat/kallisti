@@ -211,12 +211,20 @@ func (s *Store) DeleteThread(id int64) ([]string, error) {
 		return nil, err
 	}
 	defer tx.Rollback()
-	ids, err := column[int64](tx, `SELECT id FROM messages WHERE channel_id = ?`, id)
+	// Select only file keys, not full message bodies or an unbounded list
+	// of message ids. All related deletes use the same channel subquery.
+	const messages = `SELECT id FROM messages WHERE channel_id = ?`
+	keys, err := column[string](tx, `SELECT key FROM uploads WHERE message_id IN (`+messages+`) ORDER BY message_id, position`, id)
 	if err != nil {
 		return nil, err
 	}
-	gone, err := deleteMessages(tx, ids)
-	if err != nil {
+	for _, table := range []string{"uploads", "polls", "poll_votes"} {
+		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE message_id IN (`+messages+`)`, id); err != nil {
+			return nil, err
+		}
+	}
+	// Reactions and search entries are removed by cascade/trigger.
+	if _, err := tx.Exec(`DELETE FROM messages WHERE channel_id = ?`, id); err != nil {
 		return nil, err
 	}
 	if err := rowChanged(tx.Exec(`DELETE FROM threads WHERE channel_id = ?`, id)); err != nil {
@@ -227,12 +235,6 @@ func (s *Store) DeleteThread(id int64) ([]string, error) {
 	for _, q := range []string{`DELETE FROM read_marks_by_user WHERE channel_id = ?`, `UPDATE channels SET name = 'deleted-thread:' || id WHERE id = ?`} {
 		if _, err := tx.Exec(q, id); err != nil {
 			return nil, err
-		}
-	}
-	var keys []string
-	for _, m := range gone {
-		for _, u := range m.Uploads {
-			keys = append(keys, u.Key)
 		}
 	}
 	return keys, tx.Commit()

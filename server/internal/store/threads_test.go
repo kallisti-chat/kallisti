@@ -262,3 +262,105 @@ func TestPostingToADeletedThread(t *testing.T) {
 		t.Fatalf("unused uploads %v", keys)
 	}
 }
+
+func TestDeleteLargeThreadHistory(t *testing.T) {
+	s, start := threadStore(t)
+	th, err := s.CreateThread(1, start.ID, "Large", "bob", nil, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One statement keeps setup fast without testing SQLite's bind limit.
+	if _, err := s.db.Exec(`WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x < 32767)
+		INSERT INTO messages(channel_id, author, text, created_at) SELECT ?, 'bob', 'history body', 0 FROM n`, th.ID); err != nil {
+		t.Fatal(err)
+	}
+	var reply int64
+	if err := s.db.QueryRow(`SELECT min(id) FROM messages WHERE channel_id = ?`, th.ID).Scan(&reply); err != nil {
+		t.Fatal(err)
+	}
+	up, err := s.AddUpload(Upload{Key: "large-file", Name: "a.png", Type: "image/png", Size: 1, Author: "bob"}, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`UPDATE uploads SET used = 1, message_id = ? WHERE key = 'large-file'`,
+		`INSERT INTO polls(message_id, question, answers, ends_at) VALUES (?, 'question', '[]', 0)`,
+		`INSERT INTO poll_votes(message_id, user_id, answer, user, created_at) VALUES (?, 20, 0, 'bob', 0)`,
+		`INSERT INTO reactions(message_id, emoji, user_id, user, created_at) VALUES (?, 'ok', 20, 'bob', 0)`,
+	} {
+		if _, err := s.db.Exec(q, reply); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.Follow(20, th.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetReadMark(20, th.ID, reply); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := s.DeleteThread(th.ID)
+	if err != nil || !slices.Equal(keys, []string{up.Key}) {
+		t.Fatalf("delete: %v %v", keys, err)
+	}
+	for _, table := range []string{"uploads", "polls", "poll_votes", "reactions", "threads", "thread_follows", "read_marks_by_user"} {
+		var n int
+		if err := s.db.QueryRow(`SELECT count(*) FROM ` + table).Scan(&n); err != nil || n != 0 {
+			t.Fatalf("%s: %d %v", table, n, err)
+		}
+	}
+	var n int
+	if err := s.db.QueryRow(`SELECT count(*) FROM messages`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("remaining messages: %d %v", n, err)
+	}
+	if _, err := s.MessageByID(start.ID); err != nil {
+		t.Fatalf("parent message: %v", err)
+	}
+}
+
+func TestDeleteThreadRollback(t *testing.T) {
+	s, start := threadStore(t)
+	th, err := s.CreateThread(1, start.ID, "Rollback", "bob", nil, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	up, err := s.AddUpload(Upload{Key: "keep-file", Name: "a.png", Type: "image/png", Size: 1, Author: "bob"}, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := s.AddMessage(NewMessage{ChannelID: th.ID, Author: "bob", Text: "keep", At: t0, Uploads: []Attachment{{ID: up.ID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Follow(20, th.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetReadMark(20, th.ID, m.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Fail at the last step, after messages, uploads, follows and marks go.
+	if _, err := s.db.Exec(`CREATE TRIGGER fail_thread_rename BEFORE UPDATE OF name ON channels
+		BEGIN SELECT RAISE(ABORT, 'forced rollback'); END`); err != nil {
+		t.Fatal(err)
+	}
+	if keys, err := s.DeleteThread(th.ID); err == nil || len(keys) != 0 {
+		t.Fatalf("failed deletion returned %v %v", keys, err)
+	}
+	if got, err := s.MessageByID(m.ID); err != nil || len(got.Uploads) != 1 || got.Uploads[0].Key != up.Key {
+		t.Fatalf("message after rollback: %+v %v", got, err)
+	}
+	if got, err := s.Thread(th.ID); err != nil || got.Replies != 1 {
+		t.Fatalf("thread after rollback: %+v %v", got, err)
+	}
+	if got, err := s.Followed(20); err != nil || !slices.Equal(got, []int64{th.ID}) {
+		t.Fatalf("follows: %v %v", got, err)
+	}
+	if got, err := s.ReadMarks(20); err != nil || len(got) != 1 {
+		t.Fatalf("marks: %v %v", got, err)
+	}
+	if _, err := s.db.Exec(`DROP TRIGGER fail_thread_rename`); err != nil {
+		t.Fatal(err)
+	}
+	if keys, err := s.DeleteThread(th.ID); err != nil || !slices.Equal(keys, []string{up.Key}) {
+		t.Fatalf("retry deletion: %v %v", keys, err)
+	}
+}

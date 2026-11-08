@@ -36,7 +36,7 @@ and server-scoped preference issues below, not a broad rewrite.
 - [ ] [Sidecar: recover from outbox overflow without another event](sidecar-outbox-resync.md)
 - [ ] [Messages: resolve nonce retries before new-post cooldowns](message-nonce-cooldown-retry.md)
 - [x] [Uploads: reject interrupted request bodies](upload-truncated-body.md)
-- [ ] [Threads: delete large histories without exceeding SQLite limits](thread-delete-sql-limit.md)
+- [x] [Threads: delete large histories without exceeding SQLite limits](thread-delete-sql-limit.md)
 - [x] [Messages: preserve literal emoji references when editing](personal-emoji-edit-roundtrip.md)
 - [x] [Search: distinguish DM and channel targets with the same name](search-target-kind.md)
 - [x] [Build: run emoji-data generation on Windows and spaced paths](emoji-data-cli-path.md)

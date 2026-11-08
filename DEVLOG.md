@@ -2886,3 +2886,7 @@ Configured macOS bundle files now declare camera usage and the camera entitlemen
 ## 2026-11-08: Federation signup: offer a name when the remote handle is unusable locally
 
 Federation signup now offers local-name selection when an automatic remote name is reserved or too long. It keeps the verified identity and all name checks. HTTP/component regressions and full web/Go checks passed; 6.1-sol and Astra approved the fix.
+
+## 2026-11-08: Threads: delete large histories without exceeding SQLite limits
+
+Large thread histories now delete with a fixed number of SQL parameters. Only attachment keys are loaded, and cleanup remains transactional. The 32,767-message and forced-rollback regressions, full Go race tests, and vet passed. 6.1-sol approved the fix.
