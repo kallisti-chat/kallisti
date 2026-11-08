@@ -263,13 +263,17 @@ func (s *State) EditChannel(id uint32, e ChannelEdit) error {
 
 // Subtree is the channel and everything below it, children first.
 func (s *State) Subtree(id uint32) []uint32 {
-	var out []uint32
+	var children []uint32
 	for _, c := range s.Channels {
 		if c.Parent == id && c.ID != 0 {
-			out = append(out, s.Subtree(c.ID)...)
+			children = append(children, c.ID)
 		}
 	}
-	slices.Sort(out) // stable order for tests and clients
+	slices.Sort(children) // order siblings without breaking children-first order
+	var out []uint32
+	for _, child := range children {
+		out = append(out, s.Subtree(child)...)
+	}
 	return append(out, id)
 }
 

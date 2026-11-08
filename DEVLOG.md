@@ -2842,3 +2842,7 @@ QR completion now checks the API and desktop server selection after its account 
 ## 2026-11-08: Voice: refresh routing after implicit self-undeafen
 
 A SelfMute-only unmute now invalidates receiver caches when it implicitly clears SelfDeaf. Primed-cache tests verify actual audio across normal and targeted routes, plus explicit state combinations. Full Go race tests and vet passed; 6.1-sol and Astra approved the fix.
+
+## 2026-11-08: Channels: remove descendants before their parents
+
+Channel removal now sorts sibling IDs before recursion, so all descendants precede their parents. Regression tests cover non-depth IDs, move/removal broadcasts, and the existing access cleanup. Full Go race tests and vet passed; 6.1-sol and Astra approved the fix.

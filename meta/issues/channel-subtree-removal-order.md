@@ -37,3 +37,9 @@ been tested; no crash or permission bypass is claimed.
 - `server/internal/mumbled/state.go`: `Subtree` and `RemoveChannel`.
 - `server/internal/mumbled/messages.go`: `removeChannelLocked`.
 - Related completed fix: [Channel-deletion access cleanup](channel-deletion-access-cleanup.md).
+
+## Result (2026-11-08)
+
+Subtree traversal now sorts direct siblings before recursion instead of sorting flattened descendants. Removal order is deterministic and keeps every child before its parent.
+
+Verification: Regressions failed before the fix and now cover three levels, sibling branches, and IDs unrelated to depth. Server tests preserve move-before-removal broadcasts, suppression, listener/link cleanup, surviving visibility, and exactly one callback per moved user. Existing deletion/access regressions, full Go race tests, and vet passed. Independent reviews: 6.1-sol and Astra; no blockers.

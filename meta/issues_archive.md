@@ -372,3 +372,4 @@
 - [x] [Streams: preserve both decoded audio channels](issues/stream-stereo-playback.md)
 - [x] [QR login: ignore completion after a server change](issues/qr-login-stale-server-completion.md)
 - [x] [Voice: refresh routing after implicit self-undeafen](issues/self-unmute-deaf-routing.md)
+- [x] [Channels: remove descendants before their parents](issues/channel-subtree-removal-order.md)
