@@ -389,3 +389,4 @@
 - [x] [Messages: retain edit drafts until the server accepts them](issues/rejected-message-edit-draft.md)
 - [x] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
 - [x] [Devtools: remove the Bun requirement](issues/remove-bun-devtools.md)
+- [x] [Translation: omit unused native Node backends](issues/browser-only-transformer-dependencies.md)

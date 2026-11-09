@@ -16,3 +16,9 @@ Browser-only Transformers.js translation pulls in onnxruntime-node and sharp. Ka
 - A regression first detects the installed Node backends and passes after removal.
 - A clean frozen web installation has neither native backend in its dependency graph.
 - Translation checks, workspace tests/typechecks, and the production web build pass without the native packages.
+
+## Result (2026-11-09)
+
+Targeted pnpm overrides remove only the native ONNX and sharp dependency edges from Transformers.js. The browser ONNX runtime remains. Removed the unused native-backend install policy and lockfile graph entries.
+
+Verification: The native-backend regressions failed before the change and all three now pass. A clean filtered frozen installation, typecheck, and browser build passed without either native package installed. Main workspace tests/typechecks and web build passed. Independent 6.1-sol review approved the change. FreeBSD and old-CPU execution were not tested.

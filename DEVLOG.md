@@ -2916,3 +2916,7 @@ Moved notification ingress to App and reused the server-link path. Added fake-wo
 The smoke and voicebot commands now run with Node and the workspace's locked `tsx` dependency. Updated setup and usage instructions. esbuild's optional platform binary works with its install script disabled.
 
 Added local WebSocket fixture tests for synced state, Origin, bot name, spaced file paths, and outbound Opus frames. Both failed before the runner change and pass on Node 24 and 26, including with Bun absent from PATH. Frozen installation, workspace tests/typechecks, and the web build passed; independent 6.1-sol review approved the change. No live services or media devices were used. FreeBSD/Westmere execution was not tested.
+
+## 2026-11-09: Translation: omit unused native Node backends
+
+Omitted unused native Node translation backends with targeted package overrides. Red-to-green resolution tests and a clean browser install/build passed without them. Workspace tests/typechecks and the web build passed; independent review approved the change. No full FreeBSD support claim.
