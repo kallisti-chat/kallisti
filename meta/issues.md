@@ -34,6 +34,5 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)
-- [ ] [Web tooling: remove the unused TypeScript compiler alias](issues/redundant-web-typescript-alias.md)
 - [ ] [Test tooling: remove unused explicit package installations](issues/test-tool-installations.md)
 - [ ] [Performance tests: honor explicit tool paths during prerequisite checks](issues/perf-tool-path-overrides.md)

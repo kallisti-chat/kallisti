@@ -72,9 +72,6 @@ importers:
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
-      '@typescript/native':
-        specifier: npm:typescript@^7.0.2
-        version: typescript@7.0.2
       emojibase-data:
         specifier: 17.0.0
         version: 17.0.0(emojibase@17.0.0)

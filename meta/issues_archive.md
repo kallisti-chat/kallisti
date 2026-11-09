@@ -390,3 +390,4 @@
 - [x] [Notifications: keep clicked links until the target client is ready](issues/notification-click-ingress.md)
 - [x] [Devtools: remove the Bun requirement](issues/remove-bun-devtools.md)
 - [x] [Translation: omit unused native Node backends](issues/browser-only-transformer-dependencies.md)
+- [x] [Web tooling: remove the unused TypeScript compiler alias](issues/redundant-web-typescript-alias.md)

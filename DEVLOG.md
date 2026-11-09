@@ -2920,3 +2920,7 @@ Added local WebSocket fixture tests for synced state, Origin, bot name, spaced f
 ## 2026-11-09: Translation: omit unused native Node backends
 
 Omitted unused native Node translation backends with targeted package overrides. Red-to-green resolution tests and a clean browser install/build passed without them. Workspace tests/typechecks and the web build passed; independent review approved the change. No full FreeBSD support claim.
+
+## 2026-11-09: Web tooling: remove the unused TypeScript compiler alias
+
+Removed the redundant web compiler alias without changing other workspaces. Red-to-green tests cover alias absence and the compiler used by svelte-check. Frozen installation, workspace tests/typechecks, and build passed; independent review approved the change.
