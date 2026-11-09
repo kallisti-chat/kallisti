@@ -2924,3 +2924,7 @@ Omitted unused native Node translation backends with targeted package overrides.
 ## 2026-11-09: Web tooling: remove the unused TypeScript compiler alias
 
 Removed the redundant web compiler alias without changing other workspaces. Red-to-green tests cover alias absence and the compiler used by svelte-check. Frozen installation, workspace tests/typechecks, and build passed; independent review approved the change.
+
+## 2026-11-09: Performance tests: honor explicit tool paths during prerequisite checks
+
+Fixed the performance harness to honor FFMPEG and SQLITE3 overrides during prerequisite checks. Added sixteen red-to-green restricted-PATH cases, including spaced paths, invalid overrides, and disabled seeding. All devtools tests and shell syntax passed; independent review approved the change. No live service or media device ran.

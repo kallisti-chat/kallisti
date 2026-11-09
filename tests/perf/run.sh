@@ -27,7 +27,10 @@ die() {
   exit 1
 }
 [ -f "$web/index.html" ] || die "no web app in $web: run pnpm --filter @kallisti/web build"
-[ "$seed" != 1 ] || command -v ffmpeg sqlite3 >/dev/null || die "the seed needs ffmpeg and sqlite3 (or SEED=0)"
+if [ "$seed" = 1 ]; then
+  command -v "${FFMPEG:-ffmpeg}" >/dev/null 2>&1 || die "the seed needs ffmpeg; executable not found: ${FFMPEG:-ffmpeg} (or SEED=0)"
+  command -v "${SQLITE3:-sqlite3}" >/dev/null 2>&1 || die "the seed needs sqlite3; executable not found: ${SQLITE3:-sqlite3} (or SEED=0)"
+fi
 
 mkdir -p "$work/bin" "$work/results"
 rm -rf "$work/kallisti.db" "$work/kallisti.db-wal" "$work/kallisti.db-shm" "$work/uploads"
