@@ -3,8 +3,8 @@
 ARG DEBIAN=trixie
 FROM docker.io/library/debian:${DEBIAN}-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      mumble xvfb xdotool x11-utils imagemagick pulseaudio pulseaudio-utils \
-      sqlite3 ca-certificates procps openssl \
+      mumble xvfb xdotool imagemagick pulseaudio pulseaudio-utils \
+      ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -m tester
 USER tester

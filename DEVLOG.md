@@ -2928,3 +2928,7 @@ Removed the redundant web compiler alias without changing other workspaces. Red-
 ## 2026-11-09: Performance tests: honor explicit tool paths during prerequisite checks
 
 Fixed the performance harness to honor FFMPEG and SQLITE3 overrides during prerequisite checks. Added sixteen red-to-green restricted-PATH cases, including spaced paths, invalid overrides, and disabled seeding. All devtools tests and shell syntax passed; independent review approved the change. No live service or media device ran.
+
+## 2026-11-09: Test tooling: remove unused explicit package installations
+
+Trimmed unused explicit test-image tools and the Rust test job package list. Both Debian image variants and all eight isolated official-client tests passed, as did YAML/shell syntax. Independent source review approved the change. Declarative removals used integration checks rather than unit TDD. The GitHub Rust job was not run; desktop packaging and required libraries are unchanged.

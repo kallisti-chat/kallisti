@@ -392,3 +392,4 @@
 - [x] [Translation: omit unused native Node backends](issues/browser-only-transformer-dependencies.md)
 - [x] [Web tooling: remove the unused TypeScript compiler alias](issues/redundant-web-typescript-alias.md)
 - [x] [Performance tests: honor explicit tool paths during prerequisite checks](issues/perf-tool-path-overrides.md)
+- [x] [Test tooling: remove unused explicit package installations](issues/test-tool-installations.md)
