@@ -1,5 +1,5 @@
 // Connects through a running server and prints the synced server state.
-// Usage: bun scripts/smoke.ts [ws://127.0.0.1:8080]
+// Usage: pnpm --filter @kallisti/devtools smoke [ws://127.0.0.1:8080]
 // ORIGIN=https://chat.example: send this Origin (servers that do not allow *).
 import WebSocket from "ws";
 import {

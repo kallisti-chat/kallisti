@@ -5,9 +5,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test",
     "typecheck": "tsc -p .",
-    "smoke": "bun scripts/smoke.ts",
-    "voicebot": "bun scripts/voicebot.ts"
+    "smoke": "node --import tsx scripts/smoke.ts",
+    "voicebot": "node --import tsx scripts/voicebot.ts"
   },
   "dependencies": {
     "ws": "^8.22.0"
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "@types/ws": "^8.18.2",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }

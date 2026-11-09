@@ -2,5 +2,6 @@ packages:
   - "packages/*"
   - "apps/*"
 allowBuilds:
+  esbuild: false # tsx uses the platform binary from esbuild's optional dependencies
   onnxruntime-node: false # transformers.js in Node (message translation runs in the browser: onnxruntime-web)
   protobufjs: false # not needed (it comes with the noise package's voice detection)

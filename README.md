@@ -203,7 +203,7 @@ visibility), or others cannot pull them.
 
 ## Development
 
-Needs Node with pnpm, Go and bun.
+Needs Node 24 with pnpm 11 and Go 1.26.2 or newer.
 
 ```sh
 pnpm install
