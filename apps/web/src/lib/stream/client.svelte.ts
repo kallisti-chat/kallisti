@@ -114,7 +114,7 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
   let sharing = $state(both(() => false));
   let preview = $state(both<MediaStream | null>(() => null));
   let quality = $state<Record<Kind, Quality>>(DEFAULT_QUALITY);
-  let limits = DEFAULT_LIMITS;
+  let limits = $state<Limits>(DEFAULT_LIMITS);
   let cameraDevice: string | null = null;
   let error = $state<string | null>(null);
   // Who watches our streams (sessions), and whether others see thumbnails.

@@ -363,7 +363,7 @@
   $effect(() => {
     if (qualityLimits) {
       capture?.setLimits(qualityLimits.maxBitrateVoice, qualityLimits.maxBitrateMusic);
-      connection.streams?.setLimits({
+      connection.streams?.setLimits?.({
         bytesPerSecond: qualityLimits.bytesPerSecond,
         maxSide: qualityLimits.maxSide,
         maxFps: qualityLimits.maxFps,

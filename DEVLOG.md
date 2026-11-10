@@ -2957,7 +2957,7 @@ tauri-plugin-barcode-scanner uses ML Kit's unbundled scanner, whose model comes 
 
 The fallback to a direct WebSocket only looked at the bridge's close reason ("cannot reach …"); a socket the web view could not open (Android's cleartext refusal) closed without one, so the app never got in. Connections now have `failedToOpen` (closed before open, and not by the client: a newer attempt or a wake closes sockets before they open, and that must not drop UDP for the rest of the run, as the review found). Checked in the emulator with a release APK built without the network security config: QR login, then connected straight.
 
-## Manual audio and video quality settings and server caps
+## 2026-11-10: Manual audio and video quality settings and server caps
 
 Users asked for fine-grained manual control over audio and video quality, instead of fixed defaults and coarse dropdowns.
 
