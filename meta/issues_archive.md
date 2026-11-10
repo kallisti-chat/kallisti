@@ -396,3 +396,4 @@
 - [x] [Voice settings: tolerate empty and duplicate device IDs](issues/voice-settings-duplicate-device-ids.md)
 - [x] [Chat: clear stale errors when sending another message](issues/stale-chat-send-error.md)
 - [x] [Performance tests: validate executable paths across POSIX shells](issues/perf-executable-check-portability.md)
+- [x] [Android release app cannot connect through the local bridge](issues/android-bridge-cleartext.md)

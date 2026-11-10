@@ -2944,3 +2944,7 @@ Clear stale chat errors at the next open-socket send attempt, for plain and conf
 ## 2026-11-10: Performance tests: validate executable paths across POSIX shells
 
 Fixed a POSIX-shell portability error in performance prerequisites: command -v alone can accept a directory or non-executable explicit path under dash. Added regular-file and execute-permission checks. The four CI failures reproduced locally under dash; all sixteen cases now pass under dash, Bash, and the Mac default shell. Full workspace JavaScript checks and independent review passed. Application code is unchanged.
+
+## 2026-11-10: Android release app: cleartext to the local bridge
+
+The release APK (v0.13.1) never connected to Kallisti servers with a UDP port: the WebView refused the bridge socket `ws://127.0.0.1:<port>` with `net::ERR_CLEARTEXT_NOT_PERMITTED` (release builds set `usesCleartextTraffic="false"`, debug builds `true`), and the close has no reason, so no fallback to a direct connection. A network security config now allows cleartext only to 127.0.0.1; a debug-only copy keeps it for all hosts (dev server). Reproduced and checked in the emulator with a locally built, debug-signed release APK: QR login to test.kallisti.chat, then #general; `ws://` and `http://` to other hosts stay blocked. No unit test: Android manifest configuration.
