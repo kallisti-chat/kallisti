@@ -102,7 +102,8 @@ export default {
   "settings.cameraNumbered": "Cámara {number}",
   "settings.cameraListHint": "La lista se llena cuando hayas activado la cámara en voz.",
   "settings.noiseSuppression": "Supresión de ruido",
-  "settings.noiseStandard": "Estándar (la del navegador)",
+    "settings.noiseOff": "Desactivado (sin reducción de ruido)",
+"settings.noiseStandard": "Estándar (la del navegador)",
   "settings.noiseStrong": "Fuerte (RNNoise)",
   "settings.noiseStrongest": "Máxima (DeepFilterNet3)",
   "settings.noiseOffMusic": "Desactivada en el modo música.",
@@ -119,7 +120,16 @@ export default {
   "settings.playbackBuffer": "Búfer de reproducción",
   "settings.playbackBufferHint":
     "Cuánto esperan las voces de los demás antes de reproducirse. Más tiempo rellena los cortes en una mala conexión, pero añade retraso. La música siempre recibe al menos 500 ms.",
-  "settings.inputMode": "Modo de entrada",
+    "settings.voiceBitrate": "Tasa de bits de voz",
+  "settings.voiceBitrateHint": "Tasa de bits usada para hablar. Una tasa mayor mejora la claridad de la voz pero usa más ancho de banda.",
+  "settings.musicBitrate": "Tasa de bits de música",
+  "settings.musicBitrateHint": "Tasa de bits en modo música (estéreo).",
+  "settings.audioChannels": "Canales de audio",
+  "settings.audioChannelsAuto": "Automático (mono para voz, estéreo para música)",
+  "settings.audioChannelsMono": "Mono",
+  "settings.audioChannelsStereo": "Estéreo",
+  "settings.audioChannelsHint": "Elige si tu micrófono transmite en mono o en estéreo.",
+"settings.inputMode": "Modo de entrada",
   "settings.voiceActivity": "Actividad de voz",
   "settings.pushToTalk": "Pulsar para hablar",
   "settings.pttKey": "Tecla de pulsar para hablar",
@@ -137,7 +147,9 @@ export default {
   "settings.echoCancellation": "Cancelación de eco",
   "settings.echoCancellationHint":
     "Necesaria con altavoces. Con auriculares puedes desactivarla: si no, en un Mac la app de escritorio y Safari cambian los auriculares Bluetooth a su modo de llamada, con peor sonido.",
-  "settings.musicMode": "Modo música",
+    "settings.autoGainControl": "Volumen automático (control de ganancia)",
+  "settings.autoGainControlHint": "Ajusta automáticamente el volumen del micrófono. Desactívalo si el volumen varía de forma inesperada.",
+"settings.musicMode": "Modo música",
   "settings.musicModeHint":
     "Para tocar música: sin supresión de ruido, cancelación de eco ni volumen automático, y con mejor sonido (estéreo si el micrófono tiene dos canales). Usa auriculares.",
   "settings.closeMic": "Cerrar el micrófono al silenciarte",
@@ -145,7 +157,11 @@ export default {
   "settings.streamPreviews": "Mostrar una vista previa de mi pantalla compartida y mi cámara",
   "settings.streamPreviewsHint": "Quienes no están mirando ven una imagen pequeña que se actualiza cada pocos segundos.",
 
-  "settings.qualityLabel": "{height}p {fps} fps",
+    "settings.streamQualityScreen": "Calidad predeterminada de pantalla compartida",
+  "settings.streamQualityScreenHint": "Resolución y tasa de fotogramas al compartir pantalla.",
+  "settings.streamQualityCamera": "Calidad predeterminada de cámara",
+  "settings.streamQualityCameraHint": "Resolución y tasa de fotogramas al transmitir con cámara.",
+"settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Pantalla de {name}",
   "settings.streamCamera": "Cámara de {name}",
   "settings.obsTitle": "Transmitir desde OBS",
@@ -153,7 +169,8 @@ export default {
   "settings.obsSteps":
     "OBS 30 o posterior puede transmitir a tu canal de voz: se muestra como una pantalla compartida. Conéctate aquí y a un canal de voz donde puedas hablar. En OBS, Ajustes → Emisión: Servicio \"WHIP\", Servidor {url}, Bearer Token: tu clave de transmisión.",
   "settings.obsOutput":
-    "Ajustes → Salida (Avanzado): vídeo H.264, intervalo de fotogramas clave de 1 o 2 s, perfil baseline o main, como máximo 1080p y 8 Mbit/s.",
+    "Ajustes → Salida (Avanzado): vídeo H.264, intervalo de fotogramas clave de 1 o 2 s, perfil baseline o main.",
+  "settings.obsLimits": "Límites del servidor: hasta {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "Sin B-frames (reenviamos el vídeo tal cual; con ellos la imagen se rompe o se vuelve rosa): con x264, escribe {option} en \"Opciones de x264\"; con NVENC, QuickSync o AMF, pon B-Frames a 0.",
   "settings.obsNewKey": "Tu clave de transmisión (solo se muestra ahora): {key}",

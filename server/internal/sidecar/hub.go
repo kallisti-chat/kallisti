@@ -164,6 +164,9 @@ type Voice interface {
 	// here (admins).
 	HomeServers(session uint32) (homes.Rules, error)
 	SetHomeServers(session uint32, r homes.Rules) (homes.Rules, error)
+	// QualityLimits, SetQualityLimits: voice and stream quality limits (admins).
+	QualityLimits() QualityLimits
+	SetQualityLimits(session uint32, q QualityLimits) (QualityLimits, error)
 }
 
 // LiveStream is a screen share or camera in a voice channel, by its id
@@ -195,6 +198,11 @@ func (h *Hub) StreamsChanged(streams []LiveStream) {
 // channel.
 func (h *Hub) StreamPreview(s LiveStream) {
 	h.sendTo(chat{voice: s.Channel, isVoice: true}, map[string]any{"type": "stream-preview", "session": s.Session, "image": s.Preview})
+}
+
+// QualityLimitsChanged broadcasts new voice and stream quality limits to everyone.
+func (h *Hub) QualityLimitsChanged(q QualityLimits) {
+	h.broadcast(map[string]any{"type": "quality-limits", "qualityLimits": q, "limits": q})
 }
 
 // Notice tells one voice session's connection something (a problem of its
@@ -675,6 +683,7 @@ type request struct {
 	Token       string           `json:"token"`       // redeem-invite
 	Rules       *msgrules.Rules  `json:"rules"`       // set-message-rules
 	Homes       *homes.Rules     `json:"homes"`       // set-home-servers
+	QualityLimits *QualityLimits `json:"qualityLimits,omitempty"` // set-quality-limits
 }
 
 // Handle answers one request from the browser.
@@ -905,6 +914,17 @@ func (c *Conn) Handle(raw []byte) {
 			c.manageError(err.Error())
 		} else {
 			c.hub.broadcast(map[string]any{"type": "server-name", "name": name})
+		}
+		return
+	case "set-quality-limits":
+		if c.hub.voice == nil {
+			c.manageError("this setting needs the built-in Mumble server")
+		} else if req.QualityLimits == nil {
+			c.manageError("missing quality limits")
+		} else if updated, err := c.hub.voice.SetQualityLimits(id.Session, *req.QualityLimits); err != nil {
+			c.manageError(err.Error())
+		} else {
+			c.hub.QualityLimitsChanged(updated)
 		}
 		return
 	case "logo-token":

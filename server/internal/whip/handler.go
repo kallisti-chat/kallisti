@@ -40,6 +40,7 @@ type Handler struct {
 	// A stream's pictures, at most (above it they are dropped), and the
 	// sessions at the same time.
 	BytesPerSecond int
+	Limits         func() (bytesPerSec, maxSide, maxFps int)
 	MaxSessions    int
 	// For the offer's body, until the peer connects, then until its first
 	// keyframe, between pictures, and for the owner's voice session after

@@ -7,14 +7,15 @@ import { fitSize } from "./protocol";
 export type Kind = "screen" | "camera";
 export const KINDS: readonly Kind[] = ["screen", "camera"];
 // height: of a landscape picture (the short side); fps: frames a second.
-export type Quality = { height: number; fps: number };
+// bitrate: optional custom bitrate in bps.
+export type Quality = { height: number; fps: number; bitrate?: number };
 // The server's limits (its "ready"): the upload of both streams together,
 // bytes a second, and the largest side of a picture.
-export type Limits = { bytesPerSecond: number; maxSide: number };
+export type Limits = { bytesPerSecond: number; maxSide: number; maxFps?: number };
 
 const HEIGHTS = [480, 720, 1080];
-const FPS = [15, 30, 60];
-export const DEFAULT_LIMITS: Limits = { bytesPerSecond: 1 << 20, maxSide: 4096 };
+const FPS = [15, 30, 60, 120];
+export const DEFAULT_LIMITS: Limits = { bytesPerSecond: 1 << 20, maxSide: 4096, maxFps: 60 };
 export const DEFAULT_QUALITY: Record<Kind, Quality> = { screen: { height: 720, fps: 30 }, camera: { height: 720, fps: 30 } };
 
 // Of the upload: a part for sound and keyframes, the rest for one stream,
@@ -27,7 +28,11 @@ const MIN_BITRATE = 100_000;
 export const parseLimits = (v: unknown): Limits => {
   const l = (v ?? {}) as Record<string, unknown>;
   const pos = (n: unknown, d: number) => (typeof n === "number" && n > 0 ? n : d);
-  return { bytesPerSecond: pos(l.bytesPerSecond, DEFAULT_LIMITS.bytesPerSecond), maxSide: pos(l.maxSide, DEFAULT_LIMITS.maxSide) };
+  return {
+    bytesPerSecond: pos(l.bytesPerSecond, DEFAULT_LIMITS.bytesPerSecond),
+    maxSide: pos(l.maxSide, DEFAULT_LIMITS.maxSide),
+    maxFps: pos(l.maxFps, DEFAULT_LIMITS.maxFps ?? 60),
+  };
 };
 
 // The encoder's settings for a source picture at a quality: the source's
@@ -36,21 +41,33 @@ export const parseLimits = (v: unknown): Limits => {
 // within the stream's part of the upload (together: the other kind runs
 // too).
 export const encoding = (source: { width: number; height: number }, q: Quality, kind: Kind, limits: Limits, together = false) => {
+  const fps = limits.maxFps ? Math.min(q.fps, limits.maxFps) : q.fps;
   const [short, long] = [Math.min(q.height, limits.maxSide), Math.min(Math.ceil((q.height * 16) / 9), limits.maxSide)];
   const portrait = source.height > source.width;
   const size = fitSize(source.width, source.height, portrait ? short : long, portrait ? long : short);
   const budget = Math.floor(limits.bytesPerSecond * 8 * HEADROOM * (together ? SHARE[kind] : 1));
-  const bitrate = Math.max(MIN_BITRATE, Math.min(budget, Math.round(size.width * size.height * q.fps * BITS_PER_PIXEL)));
-  return { ...size, framerate: q.fps, bitrate };
+  const autoBitrate = Math.max(MIN_BITRATE, Math.min(budget, Math.round(size.width * size.height * fps * BITS_PER_PIXEL)));
+  const bitrate = q.bitrate ? Math.max(MIN_BITRATE, Math.min(budget, q.bitrate)) : autoBitrate;
+  return { ...size, framerate: fps, bitrate };
 };
 
 // A stored quality: one of the choices, else the default.
 export const parseQuality = (v: unknown, kind: Kind): Quality => {
   const q = (v ?? {}) as Record<string, unknown>;
-  return HEIGHTS.includes(q.height as number) && FPS.includes(q.fps as number) ? { height: q.height as number, fps: q.fps as number } : DEFAULT_QUALITY[kind];
+  const h = typeof q.height === "number" ? q.height : DEFAULT_QUALITY[kind].height;
+  const f = typeof q.fps === "number" ? q.fps : DEFAULT_QUALITY[kind].fps;
+  const br = typeof q.bitrate === "number" && q.bitrate > 0 ? q.bitrate : undefined;
+  return {
+    height: HEIGHTS.includes(h) ? h : DEFAULT_QUALITY[kind].height,
+    fps: FPS.includes(f) ? f : DEFAULT_QUALITY[kind].fps,
+    ...(br !== undefined && { bitrate: br }),
+  };
 };
 
-export const qualityOptions = (limits: Limits) => ({ heights: HEIGHTS.filter((h) => h <= limits.maxSide), fps: FPS });
+export const qualityOptions = (limits: Limits) => ({
+  heights: HEIGHTS.filter((h) => h <= limits.maxSide),
+  fps: FPS.filter((f) => !limits.maxFps || f <= limits.maxFps),
+});
 
 export const qualityLabel = (q: Quality) => t("settings.qualityLabel", { height: q.height, fps: q.fps });
 export const streamLabel = (name: string, camera: boolean) => t(camera ? "settings.streamCamera" : "settings.streamScreen", { name });

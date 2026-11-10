@@ -102,7 +102,8 @@ export default {
   "settings.cameraNumbered": "相機 {number}",
   "settings.cameraListHint": "你在語音中開啟過相機後，這份清單才會出現項目。",
   "settings.noiseSuppression": "噪音抑制",
-  "settings.noiseStandard": "標準（瀏覽器內建）",
+    "settings.noiseOff": "關閉（無降噪）",
+"settings.noiseStandard": "標準（瀏覽器內建）",
   "settings.noiseStrong": "強（RNNoise）",
   "settings.noiseStrongest": "最強（DeepFilterNet3）",
   "settings.noiseOffMusic": "音樂模式下關閉。",
@@ -119,7 +120,16 @@ export default {
   "settings.playbackBuffer": "播放緩衝",
   "settings.playbackBufferHint":
     "其他人的聲音在播放前等待的時間。較長可在連線不佳時填補空隙，但會增加延遲。音樂至少一律為 500 ms。",
-  "settings.inputMode": "輸入模式",
+    "settings.voiceBitrate": "語音位元速率",
+  "settings.voiceBitrateHint": "用於語音的位元速率。較高的位元速率可提高聲音清晰度，但會消耗更多頻寬。",
+  "settings.musicBitrate": "音樂位元速率",
+  "settings.musicBitrateHint": "音樂模式（立體聲）使用的位元速率。",
+  "settings.audioChannels": "音訊聲道",
+  "settings.audioChannelsAuto": "自動（語音單聲道，音樂立體聲）",
+  "settings.audioChannelsMono": "單聲道",
+  "settings.audioChannelsStereo": "立體聲",
+  "settings.audioChannelsHint": "選擇麥克風以單聲道還是立體聲傳輸。",
+"settings.inputMode": "輸入模式",
   "settings.voiceActivity": "語音活動偵測",
   "settings.pushToTalk": "按鍵通話",
   "settings.pttKey": "按鍵通話按鍵",
@@ -137,7 +147,9 @@ export default {
   "settings.echoCancellation": "回音消除",
   "settings.echoCancellationHint":
     "使用喇叭時需要開啟。使用耳機麥克風時可以關閉：在 Mac 上，否則桌面應用程式和 Safari 會把藍牙耳機切換到通話模式，音質較差。",
-  "settings.musicMode": "音樂模式",
+    "settings.autoGainControl": "自動音量（增益控制）",
+  "settings.autoGainControlHint": "自動調節麥克風音量。如果音量異常波動，請關閉。",
+"settings.musicMode": "音樂模式",
   "settings.musicModeHint":
     "用於演奏音樂：不使用噪音抑制、回音消除或自動音量，音質更好（如果麥克風有兩個聲道則為立體聲）。請使用耳機麥克風。",
   "settings.closeMic": "靜音時關閉麥克風",
@@ -145,7 +157,11 @@ export default {
   "settings.streamPreviews": "顯示我的螢幕分享和相機預覽",
   "settings.streamPreviewsHint": "沒有在觀看的人會看到一張小圖片，每隔幾秒更新一次。",
 
-  "settings.qualityLabel": "{height}p {fps} fps",
+    "settings.streamQualityScreen": "螢幕共享預設品質",
+  "settings.streamQualityScreenHint": "開始螢幕共享時使用的解析度和畫面播放速率。",
+  "settings.streamQualityCamera": "攝影機預設品質",
+  "settings.streamQualityCameraHint": "開始攝影機直播時使用的解析度和畫面播放速率。",
+"settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的螢幕",
   "settings.streamCamera": "{name} 的相機",
   "settings.obsTitle": "從 OBS 直播",
@@ -153,7 +169,8 @@ export default {
   "settings.obsSteps":
     "OBS 30 或更新版本可以直播到你的語音頻道：它會像螢幕分享一樣顯示。請保持在這裡連線，並待在你可以說話的語音頻道中。在 OBS 中，設定 → 串流：服務「WHIP」，伺服器 {url}，Bearer Token：你的直播金鑰。",
   "settings.obsOutput":
-    "設定 → 輸出（進階）：H.264 視訊，關鍵影格間隔 1 或 2 秒，設定檔 baseline 或 main，最高 1080p 和 8 Mbit/s。",
+    "設定 → 輸出（進階）：H.264 視訊，關鍵影格間隔 1 或 2 秒，設定檔 baseline 或 main。",
+  "settings.obsLimits": "伺服器限制：最高 {side}p、{fps} fps、{bitrate} Mbit/s。",
   "settings.obsBFrames":
     "不要使用 B 影格（我們會直接轉送視訊；有 B 影格時畫面會破碎或變成粉紅色）：使用 x264 時，請在「x264 選項」中輸入 {option}；使用 NVENC、QuickSync 或 AMF 時，請將 B 影格設為 0。",
   "settings.obsNewKey": "你的直播金鑰（只會在此時顯示）：{key}",

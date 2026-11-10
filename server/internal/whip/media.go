@@ -145,8 +145,16 @@ type feed struct {
 	// warn tells the owner about a problem of the stream (nil: nobody);
 	// bWarned: about B-frames, once (the pictures'), also if no web app of
 	// the owner was there to show it (then the log has it).
-	warn    func(session uint32, text string)
-	bWarned bool
+	warn      func(session uint32, text string)
+	bWarned   bool
+	fpsWarned bool
+	resWarned bool
+	bwWarned  bool
+	limits    func() (bytesPerSec, maxSide, maxFps int)
+	fps       *rate.Limiter
+	maxSide   int
+	maxFps    int
+	lastBps   int
 	// done ends a preview in the making when the stream stops (a late one
 	// would land on the session's next stream).
 	done   context.Context
@@ -185,8 +193,13 @@ const soundsPerSec = 100 // as from a stream connection
 
 func newFeed(hub *stream.Hub, session uint32, audio bool, bytesPerSec int, hooks stream.IngestHooks) *feed {
 	f := &feed{hub: hub, hooks: hooks, now: time.Now, sClock: clock{rate: 48_000},
-		bytes:  rate.NewLimiter(rate.Limit(bytesPerSec), 2*bytesPerSec),
-		sounds: rate.NewLimiter(soundsPerSec, soundsPerSec/2)}
+		bytes:   rate.NewLimiter(rate.Limit(bytesPerSec), 2*bytesPerSec),
+		sounds:  rate.NewLimiter(soundsPerSec, soundsPerSec/2),
+		fps:     rate.NewLimiter(rate.Limit(60), 120),
+		maxSide: 4096,
+		maxFps:  60,
+		lastBps: bytesPerSec,
+	}
 	if audio {
 		f.audio = "opus"
 	}
@@ -240,6 +253,31 @@ func (f *feed) picture(t timed) error {
 			f.warn(session, bFramesNote)
 		}
 	}
+	if f.limits != nil {
+		bps, side, fps := f.limits()
+		if bps != f.lastBps || side != f.maxSide || fps != f.maxFps {
+			f.lastBps = bps
+			f.maxSide = side
+			f.maxFps = fps
+			f.bytes.SetLimit(rate.Limit(bps))
+			f.bytes.SetBurst(2 * bps)
+			f.fps.SetLimit(rate.Limit(fps))
+			f.fps.SetBurst(max(10, 2*fps))
+		}
+	}
+	if (t.width > f.maxSide || t.height > f.maxSide) && f.maxSide > 0 {
+		if !f.resWarned && f.warn != nil {
+			if session := f.session.Load(); session != 0 {
+				f.resWarned = true
+				slog.Info("stream from OBS resolution exceeds limit", "session", session, "width", t.width, "height", t.height, "max_side", f.maxSide)
+				f.warn(session, fmt.Sprintf("Your OBS stream resolution (%dx%d) exceeds the server limit of %dp. In OBS, Settings → Video: set Output (Scaled) Resolution to %dp or lower.", t.width, t.height, f.maxSide, f.maxSide))
+			}
+		}
+		if in != nil {
+			in.Dropped()
+		}
+		return fmt.Errorf("stream resolution %dx%d exceeds server limit (%d)", t.width, t.height, f.maxSide)
+	}
 	if f.audio != "" {
 		t.ts = uint64(f.av.picture(int64(t.ts), t.arrival))
 		f.logSync(t.arrival)
@@ -265,8 +303,31 @@ func (f *feed) picture(t timed) error {
 			return sizeError(err, f.config)
 		}
 	}
+	if !t.key && f.fps != nil && !f.fps.AllowN(f.now(), 1) {
+		if !f.fpsWarned && f.warn != nil {
+			if session := f.session.Load(); session != 0 {
+				f.fpsWarned = true
+				slog.Info("stream from OBS framerate exceeds limit", "session", session, "max_fps", f.maxFps)
+				f.warn(session, fmt.Sprintf("Your OBS stream framerate exceeds the server limit of %d fps. In OBS, Settings → Video: set Output (Scaled) FPS to %d or lower.", f.maxFps, f.maxFps))
+			}
+		}
+		if in != nil {
+			in.Dropped()
+		}
+		return nil
+	}
 	if !f.bytes.AllowN(f.now(), len(t.data)) {
-		in.Dropped()
+		if !f.bwWarned && f.warn != nil {
+			if session := f.session.Load(); session != 0 {
+				f.bwWarned = true
+				slog.Info("stream from OBS bandwidth exceeds limit", "session", session, "limit_bps", f.lastBps)
+				mbit := float64(f.lastBps*8) / 1_000_000
+				f.warn(session, fmt.Sprintf("Your OBS stream bitrate exceeds the server limit of %.1f Mbit/s. In OBS, Settings → Output: lower Video Bitrate.", mbit))
+			}
+		}
+		if in != nil {
+			in.Dropped()
+		}
 		return nil
 	}
 	in.Frame(t.key, t.ts, t.data)
