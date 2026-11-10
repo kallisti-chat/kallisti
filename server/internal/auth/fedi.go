@@ -19,7 +19,7 @@ import (
 	"kallisti.chat/server/internal/store"
 )
 
-// Fediverse logins: a remote account (Mastodon API, OAuth) logs in to the
+// Fediverse logins: a remote account (Mastodon OAuth or Misskey MiAuth) logs in to the
 // account it is linked to, makes a new account, or gets linked to the
 // logged-in account. The browser goes to the instance and comes back to
 // /api/fedi/callback; the flow is bound to that browser by a cookie that
@@ -114,6 +114,7 @@ type fediFlow struct {
 	app      fedi.App
 	verifier string
 	scope    string
+	miauth   string // native Misskey session, created here, never from the callback
 	// A link (or a reauth: a fresh login with the linked account): the
 	// account and its session (store key) that started it.
 	link    int64
@@ -308,9 +309,9 @@ func (a *Service) serveFedi(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-// fediStart registers the app on the instance (once) and answers with the
-// instance's authorize URL. A link needs the account's password, if it has
-// one: else a stolen session could add a lasting way in.
+// fediStart discovers the instance's login method and answers with its
+// authorize URL. A link needs the account's password, if it has one:
+// else a stolen session could add a lasting way in.
 func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 	if !a.allow(r) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
@@ -340,7 +341,7 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 	}
 	var inst fedi.Instance
 	var err error
-	flow := fediFlow{verifier: fedi.NewVerifier(), handoff: c.Handoff}
+	flow := fediFlow{handoff: c.Handoff}
 	if c.Purpose == "reauth" {
 		acc, ok := a.AccountFor(r)
 		if !ok {
@@ -388,12 +389,19 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "this server does not take logins from " + inst.Host})
 		return
 	}
-	if flow.app, err = a.fediApp(r.Context(), inst); err != nil {
-		slog.Info("fediverse app registration", "instance", inst.Host, "err", err)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "cannot reach " + inst.Host + ", or it does not offer logins for apps"})
-		return
+	if flow.app, err = a.fediApp(r.Context(), inst); err == nil {
+		flow.scope, flow.verifier = fedi.Scope(flow.app.Scopes, false), fedi.NewVerifier()
+	} else {
+		// Keep working OAuth providers (including compatible Misskey forks)
+		// independent of optional native discovery.
+		misskey, discoveryErr := a.Fedi.Client.IsMisskey(r.Context(), inst)
+		if discoveryErr != nil || !misskey {
+			slog.Info("fediverse app registration", "instance", inst.Host, "err", err, "discovery_err", discoveryErr)
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "cannot reach " + inst.Host + ", or it does not offer logins for apps"})
+			return
+		}
+		flow.miauth = fedi.NewMiAuthSession()
 	}
-	flow.scope = fedi.Scope(flow.app.Scopes, false)
 	authorize, ok := a.beginFlow(w, r, flow)
 	if !ok {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "too many logins right now, try again later"})
@@ -413,7 +421,7 @@ func (f *FediLogin) reauthInstance(host, input string) (fedi.Instance, error) {
 	return fedi.ParseInstance(host, f.Dev)
 }
 
-// displayHandle prefers a confirmed account-domain address. OAuth already
+// displayHandle prefers a confirmed account-domain address. Authentication already
 // established the account, so optional discovery failure keeps logins working.
 // confirmed: false when discovery failed (the instance's own address).
 func (f *FediLogin) displayHandle(ctx context.Context, inst fedi.Instance, remote fedi.Account) (handle string, confirmed bool) {
@@ -455,6 +463,12 @@ func (a *Service) beginFlow(w http.ResponseWriter, r *http.Request, flow fediFlo
 		return "", false
 	}
 	a.setFediCookie(w, r, stateCookie, state, flowLifetime)
+	if flow.miauth != "" {
+		// MiAuth returns "session", not OAuth's "state": carry our browser
+		// binding in the callback URL itself.
+		callback := withQuery(a.Fedi.redirectURI(), url.Values{"state": {state}})
+		return fedi.MiAuthURL(flow.inst, flow.miauth, a.Fedi.AppName, callback), true
+	}
 	return fedi.AuthorizeURL(flow.inst, flow.app.ClientID, a.Fedi.redirectURI(), flow.scope, state, fedi.Challenge(flow.verifier)), true
 }
 
@@ -478,10 +492,14 @@ func (a *Service) fediCallback(w http.ResponseWriter, r *http.Request) {
 		back("error", "expired")
 		return
 	}
-	if e := q.Get("error"); e != "" || q.Get("code") == "" {
+	if flow.miauth != "" && subtle.ConstantTimeCompare([]byte(q.Get("session")), []byte(flow.miauth)) != 1 {
+		back("error", "expired")
+		return
+	}
+	if e := q.Get("error"); e != "" || flow.miauth == "" && q.Get("code") == "" {
 		// An instance that does not allow "profile" for this app: once more
 		// with read:accounts.
-		if e == "invalid_scope" && flow.scope != fedi.Scope("", true) {
+		if flow.miauth == "" && e == "invalid_scope" && flow.scope != fedi.Scope("", true) {
 			flow.scope, flow.verifier = fedi.Scope("", true), fedi.NewVerifier()
 			if next, ok := a.beginFlow(w, r, flow); ok {
 				http.Redirect(w, r, next, http.StatusFound)
@@ -569,9 +587,12 @@ func (a *Service) fediCallback(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// remoteAccount trades the code for a token and reads the account. The
-// token is not kept (nor revoked: instances may delete apps without one).
+// remoteAccount completes the authorization and reads the account. The token
+// is not kept (nor revoked: instances may delete apps without one).
 func (a *Service) remoteAccount(ctx context.Context, flow fediFlow, code string) (fedi.Account, error) {
+	if flow.miauth != "" {
+		return a.Fedi.Client.MiAuthAccount(ctx, flow.inst, flow.miauth)
+	}
 	token, err := a.Fedi.Client.Token(ctx, flow.inst, flow.app, a.Fedi.redirectURI(), code, flow.verifier)
 	if err != nil {
 		return fedi.Account{}, err

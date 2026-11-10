@@ -1,5 +1,5 @@
-// Package fedifake is a small fake fediverse instance (the parts of the
-// Mastodon API that fediverse logins use), for tests and local checks.
+// Package fedifake is a small fake fediverse instance (Mastodon OAuth or
+// native Misskey MiAuth), for tests and local checks.
 // Never run it where real users can reach it: it approves every login.
 package fedifake
 
@@ -39,11 +39,14 @@ type Instance struct {
 	// SingleUseApps: as Misskey and Sharkey, an app's client id is base64
 	// of an auth session URL (<base>/auth/<id>), and one login uses it up.
 	SingleUseApps bool
+	// NativeMisskey offers MiAuth only, without Mastodon-compatible APIs.
+	NativeMisskey bool
 
 	mu       sync.Mutex
 	apps     map[string]app   // by client id
 	codes    map[string]grant // by code
 	tokens   map[string]string
+	miauth   map[string]string // MiAuth session: approved user
 	limited  map[string]bool   // tokens that cannot read the account
 	users    map[string]string // user name: id
 	requests int
@@ -81,10 +84,21 @@ func (f *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.apps == nil {
 		f.apps, f.codes, f.tokens, f.users = map[string]app{}, map[string]grant{}, map[string]string{}, map[string]string{}
 		f.limited = map[string]bool{}
+		f.miauth = map[string]string{}
 	}
 	f.mu.Unlock()
+	if f.NativeMisskey && (strings.HasPrefix(r.URL.Path, "/api/v1/") || strings.HasPrefix(r.URL.Path, "/oauth/")) {
+		http.NotFound(w, r)
+		return
+	}
 	r.ParseForm()
 	switch {
+	case f.NativeMisskey && r.URL.Path == "/api/meta" && r.Method == http.MethodPost:
+		writeJSON(w, http.StatusOK, map[string]any{"features": map[string]bool{"miauth": true}})
+	case f.NativeMisskey && strings.HasPrefix(r.URL.Path, "/api/miauth/") && strings.HasSuffix(r.URL.Path, "/check") && r.Method == http.MethodPost:
+		f.checkMiAuth(w, r)
+	case f.NativeMisskey && r.URL.Path == "/api/i" && r.Method == http.MethodPost:
+		f.verifyMiAuth(w, r)
 	case r.URL.Path == "/api/v1/instance" && r.Method == http.MethodGet:
 		version := f.Version
 		if version == "" {
@@ -181,6 +195,9 @@ func (f *Instance) Approve(authorizeURL, user string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if f.NativeMisskey {
+		return f.approveMiAuth(u, user)
+	}
 	return f.approve(u.Query(), user)
 }
 
@@ -256,6 +273,76 @@ func (f *Instance) verify(w http.ResponseWriter, r *http.Request) {
 		acc["avatar"], acc["avatar_static"] = base+"/media/avatar", base+"/media/avatar_static"
 	}
 	writeJSON(w, http.StatusOK, acc)
+}
+
+func (f *Instance) approveMiAuth(u *url.URL, user string) (string, error) {
+	session := strings.TrimPrefix(u.Path, "/miauth/")
+	q := u.Query()
+	if !strings.HasPrefix(u.Path, "/miauth/") || session == "" || strings.Contains(session, "/") || user == "" || q.Get("permission") != "read:account" {
+		return "", errors.New("invalid MiAuth request")
+	}
+	callback, err := url.Parse(q.Get("callback"))
+	if err != nil || callback.Host == "" {
+		return "", errors.New("invalid MiAuth callback")
+	}
+	f.mu.Lock()
+	f.miauth[session] = user
+	f.mu.Unlock()
+	params := callback.Query()
+	params.Set("session", session)
+	callback.RawQuery = params.Encode()
+	return callback.String(), nil
+}
+
+func (f *Instance) checkMiAuth(w http.ResponseWriter, r *http.Request) {
+	session := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/miauth/"), "/check")
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.miauth[session]
+	delete(f.miauth, session)
+	if !ok {
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": false})
+		return
+	}
+	token := random()
+	f.tokens[token] = user
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "token": token, "user": f.misskeyUser(r, user)})
+}
+
+func (f *Instance) verifyMiAuth(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Token string `json:"i"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.tokens[body.Token]
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+		return
+	}
+	writeJSON(w, http.StatusOK, f.misskeyUser(r, user))
+}
+
+// misskeyUser is called with mu held and shares IDs with the OAuth API.
+func (f *Instance) misskeyUser(r *http.Request, user string) map[string]any {
+	id, ok := f.users[user]
+	if !ok {
+		id = strconv.Itoa(100 + len(f.users))
+		f.users[user] = id
+	}
+	account := map[string]any{"id": id, "username": user, "host": nil}
+	if f.avatar != nil {
+		scheme := "https"
+		if r.TLS == nil {
+			scheme = "http"
+		}
+		account["avatarUrl"] = scheme + "://" + r.Host + "/media/avatar"
+	}
+	return account
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

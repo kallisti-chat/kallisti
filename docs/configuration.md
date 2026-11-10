@@ -70,7 +70,10 @@ brackets.
   the smaller models, and the next request gets the model.
 - `FEDI_LOGIN=0`: no "Log in with the fediverse". By default users can
   log in, create accounts and link accounts with a fediverse account
-  (Mastodon API: Mastodon, Pleroma/Akkoma, GoToSocial, ...). It needs the
+  (Mastodon API: Mastodon, Pleroma/Akkoma, GoToSocial, ...; native Misskey:
+  MiAuth). Enter the Misskey server or `@user@server` in the existing
+  fediverse account form. MiAuth requests only `read:account`, verifies
+  the account, and does not store the access token. It needs the
   server's public address: the first `ALLOWED_ORIGINS` entry (not `*`),
   where instances send the browser back to (`/api/fedi/callback`). The
   server contacts the instance users name, only on public addresses and

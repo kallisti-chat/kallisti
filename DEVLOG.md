@@ -2932,3 +2932,9 @@ Fixed the performance harness to honor FFMPEG and SQLITE3 overrides during prere
 ## 2026-11-09: Test tooling: remove unused explicit package installations
 
 Trimmed unused explicit test-image tools and the Rust test job package list. Both Debian image variants and all eight isolated official-client tests passed, as did YAML/shell syntax. Independent source review approved the change. Declarative removals used integration checks rather than unit TDD. The GitHub Rust job was not run; desktop packaging and required libraries are unchanged.
+
+## 2026-11-09: Native Misskey account linking
+
+Fediverse linking now supports native Misskey MiAuth when Mastodon app registration is unavailable. Existing OAuth providers keep their current flow. MiAuth requests only account-read permission, verifies the returned token's local account, and preserves browser/session binding and one-use callbacks for linking, login, and reauthentication.
+
+Authentication and fediverse package tests pass, including native linking, callback tampering, expiry/replay, reauthentication, and OAuth compatibility. No live Misskey account was used.
