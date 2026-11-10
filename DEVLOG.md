@@ -2936,3 +2936,7 @@ Trimmed unused explicit test-image tools and the Rust test job package list. Bot
 ## 2026-11-10: Voice settings: tolerate empty and duplicate device IDs
 
 Normalized microphone, speaker, and camera choices before keyed rendering to prevent duplicate-key panel crashes. Six component tests cover duplicates, redacted IDs, selections, and repeated category entry after device changes. Full workspace checks and build passed; independent review approved the fix. No real device was opened.
+
+## 2026-11-10: Chat: clear stale errors when sending another message
+
+Clear stale chat errors at the next open-socket send attempt, for plain and confirmed posts. New refusals remain visible and unrelated incoming messages do not hide errors. Seven connection regressions and existing edit-correlation tests pass. Full workspace checks and build passed; independent review approved the fix.

@@ -394,3 +394,4 @@
 - [x] [Performance tests: honor explicit tool paths during prerequisite checks](issues/perf-tool-path-overrides.md)
 - [x] [Test tooling: remove unused explicit package installations](issues/test-tool-installations.md)
 - [x] [Voice settings: tolerate empty and duplicate device IDs](issues/voice-settings-duplicate-device-ids.md)
+- [x] [Chat: clear stale errors when sending another message](issues/stale-chat-send-error.md)

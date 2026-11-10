@@ -542,7 +542,10 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       if (ws.readyState === WebSocket.OPEN) ws.send(deleteMessageRequest(message));
     },
     sendToTextChannel: (channel: number, message: string, reply?: number, noPing?: boolean) => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(sendRequest(channel, message, [], reply, noPing));
+      if (ws.readyState !== WebSocket.OPEN) return;
+      // A new attempt replaces the old banner; incoming messages do not.
+      text = { ...text, lastError: null };
+      ws.send(sendRequest(channel, message, [], reply, noPing));
     },
     // Sends a message (with uploaded files: their keys) with a nonce; settles
     // once the server stored it (our message came), refused it, or did not
@@ -571,6 +574,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
           if (a) done(a.error);
         };
         confirming.add(check);
+        text = { ...text, lastError: null };
         ws.send(sendRequest(channel, message, uploads, reply, noPing, nonce, sticker, poll));
       }),
     // The server's HTTP origin (uploads and files).
