@@ -2948,3 +2948,7 @@ Fixed a POSIX-shell portability error in performance prerequisites: command -v a
 ## 2026-11-10: Android release app: cleartext to the local bridge
 
 The release APK (v0.13.1) never connected to Kallisti servers with a UDP port: the WebView refused the bridge socket `ws://127.0.0.1:<port>` with `net::ERR_CLEARTEXT_NOT_PERMITTED` (release builds set `usesCleartextTraffic="false"`, debug builds `true`), and the close has no reason, so no fallback to a direct connection. A network security config now allows cleartext only to 127.0.0.1; a debug-only copy keeps it for all hosts (dev server). Reproduced and checked in the emulator with a locally built, debug-signed release APK: QR login to test.kallisti.chat, then #general; `ws://` and `http://` to other hosts stay blocked. No unit test: Android manifest configuration.
+
+## 2026-11-10: QR scanner without Google Play services
+
+tauri-plugin-barcode-scanner uses ML Kit's unbundled scanner, whose model comes from Google Play services: without them the camera opened but no code was read (the emulator logged `com.google.mlkit.dynamite.barcode not found`). The app now also depends on `com.google.mlkit:barcode-scanning` (bundled model; it needs the unbundled artifact for the API classes, so that stays). The APK grows by about 6 MB (barhopper for four ABIs). Checked in the emulator with a debug-signed release APK and the camera on an image file: a fresh install scanned a login code, logged in and connected.
