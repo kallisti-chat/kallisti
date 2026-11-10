@@ -15,6 +15,7 @@
   import type { TimeFormat } from "../lib/chat";
   import { isDesktop } from "../lib/desktop";
   import { outputDeviceSupported } from "../lib/voice/support";
+  import { deviceChoices } from "../lib/mediaDevices";
   import { noiseLabel, type NoiseMode } from "../lib/voice/noise";
   import { BUFFERS, bufferLabel, type PlaybackBuffer } from "../lib/voice/buffer";
   import { busyLabel } from "../lib/saveFeedback";
@@ -129,11 +130,11 @@
   let devices = $state<MediaDeviceInfo[]>([]);
   let recordingKey = $state(false);
   const outputSupported = outputDeviceSupported();
-  const inputs = $derived(devices.filter((d) => d.kind === "audioinput"));
-  const outputs = $derived(devices.filter((d) => d.kind === "audiooutput"));
+  const inputs = $derived(deviceChoices(devices, "audioinput"));
+  const outputs = $derived(deviceChoices(devices, "audiooutput"));
   // Cameras have no ids before the browser may use one.
   const hasCamera = $derived(devices.some((d) => d.kind === "videoinput"));
-  const cameras = $derived(devices.filter((d) => d.kind === "videoinput" && d.deviceId));
+  const cameras = $derived(deviceChoices(devices, "videoinput"));
 
   // Device labels are only visible after microphone permission was granted.
   const loadDevices = () =>
@@ -313,9 +314,7 @@
         >
           <option value="">{t("settings.deviceDefault")}</option>
           {#each inputs as d (d.deviceId)}
-            {#if d.deviceId !== "default"}
-              <option value={d.deviceId}>{d.label || t("settings.microphone")}</option>
-            {/if}
+            <option value={d.deviceId}>{d.label || t("settings.microphone")}</option>
           {/each}
         </select>
         {#if fellBack}
@@ -384,9 +383,7 @@
           >
             <option value="">{t("settings.deviceDefault")}</option>
             {#each outputs as d (d.deviceId)}
-              {#if d.deviceId !== "default"}
-                <option value={d.deviceId}>{d.label || t("settings.speakers")}</option>
-              {/if}
+              <option value={d.deviceId}>{d.label || t("settings.speakers")}</option>
             {/each}
           </select>
         </label>

@@ -2932,3 +2932,7 @@ Fixed the performance harness to honor FFMPEG and SQLITE3 overrides during prere
 ## 2026-11-09: Test tooling: remove unused explicit package installations
 
 Trimmed unused explicit test-image tools and the Rust test job package list. Both Debian image variants and all eight isolated official-client tests passed, as did YAML/shell syntax. Independent source review approved the change. Declarative removals used integration checks rather than unit TDD. The GitHub Rust job was not run; desktop packaging and required libraries are unchanged.
+
+## 2026-11-10: Voice settings: tolerate empty and duplicate device IDs
+
+Normalized microphone, speaker, and camera choices before keyed rendering to prevent duplicate-key panel crashes. Six component tests cover duplicates, redacted IDs, selections, and repeated category entry after device changes. Full workspace checks and build passed; independent review approved the fix. No real device was opened.
