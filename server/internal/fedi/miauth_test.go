@@ -104,7 +104,7 @@ func TestMiAuthAccount(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			session := fedi.NewMiAuthSession()
-			var checks, verifications atomic.Int32
+			var checks, verifications, revocations atomic.Int32
 			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodPost || r.Header.Get("Content-Type") != "application/json" || r.Header.Get("Accept") != "application/json" {
 					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
@@ -127,6 +127,16 @@ func TestMiAuthAccount(t *testing.T) {
 					}
 					w.WriteHeader(tc.status)
 					fmt.Fprint(w, tc.user)
+				case "/api/i/revoke-token":
+					revocations.Add(1)
+					if verifications.Load() != 1 || body["i"] != "account-token" || body["token"] != "account-token" {
+						t.Errorf("invalid revocation or revoked before verification")
+					}
+					if tc.name == "approved" {
+						w.WriteHeader(http.StatusNoContent)
+					} else {
+						http.Error(w, "self-revocation unsupported", http.StatusForbidden)
+					}
 				default:
 					t.Errorf("unexpected path: %s", r.URL.Path)
 					http.NotFound(w, r)
@@ -134,6 +144,9 @@ func TestMiAuthAccount(t *testing.T) {
 			}))
 			defer srv.Close()
 			a, err := testClient(srv).MiAuthAccount(context.Background(), fedi.Instance{Base: srv.URL}, session)
+			if revocations.Load() != verifications.Load() {
+				t.Fatalf("token not revoked after verification: %d/%d", revocations.Load(), verifications.Load())
+			}
 			if (err != nil) != tc.fail || checks.Load() != 1 || (tc.user != "") != (verifications.Load() == 1) {
 				t.Fatalf("account %+v, err %v, requests %d/%d", a, err, checks.Load(), verifications.Load())
 			}

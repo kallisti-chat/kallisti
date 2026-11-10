@@ -2938,3 +2938,5 @@ Trimmed unused explicit test-image tools and the Rust test job package list. Bot
 Fediverse linking now supports native Misskey MiAuth when Mastodon app registration is unavailable. Existing OAuth providers keep their current flow. MiAuth requests only account-read permission, verifies the returned token's local account, and preserves browser/session binding and one-use callbacks for linking, login, and reauthentication.
 
 Authentication and fediverse package tests pass, including native linking, callback tampering, expiry/replay, reauthentication, and OAuth compatibility. No live Misskey account was used.
+
+MiAuth now attempts token self-revocation after account verification, including failed verification. Unsupported revocation does not block login. Fediverse and authentication tests pass with successful and refused revocation.

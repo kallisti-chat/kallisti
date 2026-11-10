@@ -97,6 +97,12 @@ func (c *Client) MiAuthAccount(ctx context.Context, inst Instance, session strin
 	if !check.OK || strings.TrimSpace(check.Token) == "" || !check.User.valid() {
 		return Account{}, fmt.Errorf("%w: MiAuth was not approved or returned an unexpected account", ErrUnreachable)
 	}
+	// Best effort: older servers may not allow token self-revocation.
+	// Also clean up when account verification fails.
+	defer func() {
+		_ = c.postJSON(context.WithoutCancel(ctx), inst.Base+"/api/i/revoke-token",
+			map[string]string{"i": check.Token, "token": check.Token}, nil)
+	}()
 	var account misskeyAccount
 	if err := c.postJSON(ctx, inst.Base+"/api/i", map[string]string{"i": check.Token}, &account); err != nil {
 		return Account{}, err
