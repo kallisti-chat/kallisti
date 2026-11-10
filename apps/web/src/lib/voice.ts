@@ -25,16 +25,16 @@ export const saveSelfState = (storage: Storage, site: string, s: SelfState) =>
   safeSet(storage, selfStateKey(site), s.selfDeaf ? "deaf" : s.selfMute ? "muted" : "");
 
 // The microphone is open (the browser shows it recording) only while it is
-// used: in a voice channel, or in the voice settings (level meter). Muted it
+// used: in a voice channel, or during an explicit settings echo test. Muted it
 // stays open (nothing is sent): opening a microphone makes the browser
 // reconfigure the audio device, which interrupts the sound. closeWhenMuted
 // closes it anyway.
 export const micWanted = (s: {
   inVoice: boolean;
   selfMute: boolean;
-  settingsOpen: boolean;
+  echoTest: boolean;
   closeWhenMuted: boolean;
-}): boolean => (s.inVoice && !(s.selfMute && s.closeWhenMuted)) || s.settingsOpen;
+}): boolean => (s.inVoice && !(s.selfMute && s.closeWhenMuted)) || s.echoTest;
 
 // Browsers may wait for a gesture at startup, or after an interruption.
 // Use the same states for the hint and the click/key recovery path.
