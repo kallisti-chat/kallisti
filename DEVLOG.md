@@ -2952,3 +2952,7 @@ The release APK (v0.13.1) never connected to Kallisti servers with a UDP port: t
 ## 2026-11-10: QR scanner without Google Play services
 
 tauri-plugin-barcode-scanner uses ML Kit's unbundled scanner, whose model comes from Google Play services: without them the camera opened but no code was read (the emulator logged `com.google.mlkit.dynamite.barcode not found`). The app now also depends on `com.google.mlkit:barcode-scanning` (bundled model; it needs the unbundled artifact for the API classes, so that stays). The APK grows by about 6 MB (barhopper for four ABIs). Checked in the emulator with a debug-signed release APK and the camera on an image file: a fresh install scanned a login code, logged in and connected.
+
+## 2026-11-10: Apps: straight to the server when the bridge socket never opens
+
+The fallback to a direct WebSocket only looked at the bridge's close reason ("cannot reach …"); a socket the web view could not open (Android's cleartext refusal) closed without one, so the app never got in. Connections now have `failedToOpen` (closed before open, and not by the client: a newer attempt or a wake closes sockets before they open, and that must not drop UDP for the rest of the run, as the review found). Checked in the emulator with a release APK built without the network security config: QR login, then connected straight.

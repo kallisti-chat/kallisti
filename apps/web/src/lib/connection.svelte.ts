@@ -113,6 +113,10 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   let wasSynced = $state(false);
   // The close frame's reason (the desktop bridge explains refusals there).
   let closeReason = $state("");
+  // Closed before it opened, and not by us (see lib/desktop bridgeFailed).
+  let opened = false;
+  let closing = false;
+  let failedToOpen = $state(false);
   // Text channels from the Kallisti server (unavailable on plain Mumble).
   let text = $state.raw<TextState>(initialTextState);
   // One upload token request at a time (the UI sends one message's files
@@ -261,6 +265,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   // When something last came from the server (see checkAlive).
   let heardAt = 0;
   ws.onopen = () => {
+    opened = true;
     ws.send(handshake(credentials));
     timer = setInterval(sendPing, PING_INTERVAL_MS);
   };
@@ -307,6 +312,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     if (closed) return;
     releaseLock?.();
     closeReason = reason;
+    failedToOpen = !opened && !closing;
     clearInterval(timer);
     tokenWaiter?.reject(new Error("connection closed"));
     awaiting.forEach((w) => w.done(t("client.notConnected")));
@@ -364,6 +370,9 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     },
     get closeReason() {
       return closeReason;
+    },
+    get failedToOpen() {
+      return failedToOpen;
     },
     get wasSynced() {
       return wasSynced;
@@ -683,6 +692,9 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       if (state.session !== null) send(setSelfComment(state.session, text));
     },
     fetchComment,
-    close: () => ws.close(),
+    close: () => {
+      closing = true;
+      ws.close();
+    },
   };
 };

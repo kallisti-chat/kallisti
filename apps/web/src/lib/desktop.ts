@@ -181,5 +181,7 @@ export const kallistiSocket = (origin: string, token: string | null, voice?: { b
 };
 
 // The bridge could not reach the server (it has another trust store and
-// proxy settings than the web view): connect straight from then on.
-export const bridgeFailed = (closeReason = "") => closeReason.startsWith("cannot reach ");
+// proxy settings than the web view), or the web view could not reach the
+// bridge (its socket never opened: Android refused cleartext to it):
+// connect straight from then on.
+export const bridgeFailed = (c?: { closeReason: string; failedToOpen: boolean }) => !!c && (c.failedToOpen || c.closeReason.startsWith("cannot reach "));
