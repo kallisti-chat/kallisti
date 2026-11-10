@@ -2940,3 +2940,7 @@ Normalized microphone, speaker, and camera choices before keyed rendering to pre
 ## 2026-11-10: Chat: clear stale errors when sending another message
 
 Clear stale chat errors at the next open-socket send attempt, for plain and confirmed posts. New refusals remain visible and unrelated incoming messages do not hide errors. Seven connection regressions and existing edit-correlation tests pass. Full workspace checks and build passed; independent review approved the fix.
+
+## 2026-11-10: Performance tests: validate executable paths across POSIX shells
+
+Fixed a POSIX-shell portability error in performance prerequisites: command -v alone can accept a directory or non-executable explicit path under dash. Added regular-file and execute-permission checks. The four CI failures reproduced locally under dash; all sixteen cases now pass under dash, Bash, and the Mac default shell. Full workspace JavaScript checks and independent review passed. Application code is unchanged.

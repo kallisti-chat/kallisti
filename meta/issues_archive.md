@@ -395,3 +395,4 @@
 - [x] [Test tooling: remove unused explicit package installations](issues/test-tool-installations.md)
 - [x] [Voice settings: tolerate empty and duplicate device IDs](issues/voice-settings-duplicate-device-ids.md)
 - [x] [Chat: clear stale errors when sending another message](issues/stale-chat-send-error.md)
+- [x] [Performance tests: validate executable paths across POSIX shells](issues/perf-executable-check-portability.md)
