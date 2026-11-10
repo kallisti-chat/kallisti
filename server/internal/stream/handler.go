@@ -99,7 +99,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	bytes := rate.NewLimiter(rate.Limit(bps), max(256*1024, bps))
 	texts := rate.NewLimiter(textsPerSec, 2*textsPerSec)
 	sounds := rate.NewLimiter(soundsPerSec, soundsPerSec/2)
-	fpsLimiter := rate.NewLimiter(rate.Limit(fps), max(2, fps/10))
+	fpsLimiter := rate.NewLimiter(rate.Limit(fps), max(10, 2*fps))
 	for {
 		typ, data, err := ws.Read(ctx)
 		if err != nil {
@@ -113,7 +113,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					bytes.SetLimit(rate.Limit(bps))
 					bytes.SetBurst(max(256*1024, bps))
 					fpsLimiter.SetLimit(rate.Limit(fps))
-					fpsLimiter.SetBurst(max(2, fps/10))
+					fpsLimiter.SetBurst(max(10, 2*fps))
 					c.SendText(map[string]any{"type": "limits", "limits": map[string]any{"bytesPerSecond": bps, "maxSide": side, "maxFps": fps}})
 				}
 			}

@@ -3023,7 +3023,7 @@ Cmd+, opens settings on Mac through the existing active-client keyboard handler.
 
 Since v0.13.0 (`a9bb47d4`) `captcha.ts` imports `i18n.svelte`, and the worker imported `captcha.ts`. The worker bundle is not compiled by Svelte, so it stopped at `$state is not defined`: on a server with a CAPTCHA level, web signups and guest joins failed. The solver is now in `captchaSolver.ts` without UI imports (cortexobscura's fix from #28, taken on its own); a test bundles and runs the real worker.
 
-## Manual audio and video quality settings and server caps
+## 2026-11-10: Manual audio and video quality settings and server caps
 
 Users asked for fine-grained manual control over audio and video quality, instead of fixed defaults and coarse dropdowns.
 
