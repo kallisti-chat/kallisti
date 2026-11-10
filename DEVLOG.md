@@ -2932,3 +2932,7 @@ Fixed the performance harness to honor FFMPEG and SQLITE3 overrides during prere
 ## 2026-11-09: Test tooling: remove unused explicit package installations
 
 Trimmed unused explicit test-image tools and the Rust test job package list. Both Debian image variants and all eight isolated official-client tests passed, as did YAML/shell syntax. Independent source review approved the change. Declarative removals used integration checks rather than unit TDD. The GitHub Rust job was not run; desktop packaging and required libraries are unchanged.
+
+## 2026-11-09: Standard Mac settings shortcut
+
+Cmd+, opens settings on Mac through the existing active-client keyboard handler. Other platforms and modified combinations remain unchanged; like other navigation shortcuts, it does not open over an existing dialog.
