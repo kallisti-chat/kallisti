@@ -4,19 +4,7 @@ vi.mock("../src/lib/voice/capture.svelte", () => ({ createCapture: vi.fn() }));
 vi.mock("../src/lib/voice/playback.svelte", () => ({ createPlayback: vi.fn() }));
 vi.mock("../src/lib/stream/client.svelte", () => ({ createStreamClient: () => null, streamingSupported: () => false }));
 import { connect } from "../src/lib/connection.svelte";
-class Socket {
-  static OPEN = 1;
-  static latest: Socket;
-  readyState = 1;
-  binaryType = "";
-  sent: string[] = [];
-  onmessage?: (event: { data: string }) => void;
-  onclose?: (event: { reason: string }) => void;
-  constructor() { Socket.latest = this; }
-  send(data: string) { this.sent.push(data); }
-  close() { this.onclose?.({ reason: "" }); }
-  reply(data: object) { this.onmessage?.({ data: JSON.stringify(data) }); }
-}
+import { Socket } from "./helpers/socket";
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 it("matches edit results and early refusals by request AND message, not broadcasts or order", async () => {
   vi.stubGlobal("WebSocket", Socket);

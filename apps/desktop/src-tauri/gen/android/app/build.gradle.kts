@@ -96,6 +96,11 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+    // The QR scanner's model inside the app: the barcode scanner plugin
+    // brings ML Kit's unbundled scanner, whose model comes from Google Play
+    // services (phones without them never read a code). This adds the
+    // bundled model, which ML Kit then uses.
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.4")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")

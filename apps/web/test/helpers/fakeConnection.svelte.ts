@@ -8,6 +8,7 @@ export const fakeConnection = (url: string) => {
   let closed = $state(false);
   let wasSynced = $state(false);
   let closeReason = $state("");
+  let failedToOpen = $state(false);
   let textSettled = $state(false);
   let loaded = $state.raw<Record<number, boolean>>({});
   const historyRequests: number[] = [];
@@ -25,6 +26,9 @@ export const fakeConnection = (url: string) => {
     },
     get wasSynced() {
       return wasSynced;
+    },
+    get failedToOpen() {
+      return failedToOpen;
     },
     // text: the text side is known with the sync (else see settleText).
     sync(text = true) {
@@ -56,6 +60,11 @@ export const fakeConnection = (url: string) => {
     },
     drop(reason = "") {
       closeReason = reason;
+      closed = true;
+    },
+    // The socket closed before it opened (no reason: the browser refused it).
+    failToOpen() {
+      failedToOpen = true;
       closed = true;
     },
     get closeRequests() {
