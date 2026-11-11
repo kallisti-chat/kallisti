@@ -54,6 +54,16 @@ describe("navAction", () => {
     expect(navAction(key({ key: "ArrowUp", altKey: true, shiftKey: true }), false)).toEqual({ step: -1, unread: true });
   });
 
+  it("opens settings only with unmodified Cmd+comma on Mac", () => {
+    const comma = { key: ",", metaKey: true };
+    expect(navAction(key(comma), true)).toBe("settings");
+    expect(navAction(key(comma), false)).toBeNull();
+    for (const modifier of ["ctrlKey", "altKey", "shiftKey", "defaultPrevented", "isComposing"]) {
+      expect(navAction(key({ ...comma, [modifier]: true }), true)).toBeNull();
+    }
+    expect(navAction(key({ key: ",", ctrlKey: true }), true)).toBeNull();
+  });
+
   it("leaves keys alone that something else used, or an IME", () => {
     expect(navAction(key({ key: "ArrowUp", altKey: true, defaultPrevented: true }), false)).toBeNull();
     expect(navAction(key({ key: "k", ctrlKey: true, isComposing: true }), false)).toBeNull();

@@ -1703,6 +1703,7 @@
     e.preventDefault();
     if (action === "switcher") showSwitcher = true;
     else if (action === "shortcuts") showShortcuts = true;
+    else if (action === "settings") openSettingsAt();
     else {
       const nav = places.filter((p) => (p.kind === "text" ? shownTextIds.has(Number(p.key.slice(1))) : p.key[0] === "d"));
       const here = textId !== null ? `t${textId}` : directChatId !== null ? `d${directChatId}` : null;
