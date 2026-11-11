@@ -100,8 +100,10 @@ func TestTimeOutsEnd(t *testing.T) {
 	}
 	guest.waitForState(guest.session, muted(true))
 	guest.waitForState(guest.session, muted(false))
-	if len(s.Timeouts()) != 0 || changed.Load() != 2 {
-		t.Fatalf("timeouts %+v, changed %d", s.Timeouts(), changed.Load())
+	// The hook runs after the unmute went out (and the time-out was saved).
+	eventually(t, func() bool { return changed.Load() == 2 })
+	if len(s.Timeouts()) != 0 {
+		t.Fatalf("timeouts %+v", s.Timeouts())
 	}
 }
 

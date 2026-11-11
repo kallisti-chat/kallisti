@@ -283,6 +283,11 @@ func (b *Bridge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	upstream, err := b.opts.Dial(b.ctx, up)
 	if err != nil {
+		// Cancelled by a shutdown: as for open connections (see below).
+		if b.ctx.Err() != nil {
+			ws.Close(websocket.StatusGoingAway, "server shutting down")
+			return
+		}
 		slog.Warn("upstream connect failed", "err", err)
 		ws.Close(websocket.StatusInternalError, "upstream unavailable")
 		return

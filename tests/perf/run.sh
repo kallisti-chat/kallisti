@@ -26,10 +26,14 @@ die() {
   echo "$*" >&2
   exit 1
 }
+is_executable() (
+  # Some shells report existing non-executable paths from command -v.
+  path=$(command -v "$1") && [ -f "$path" ] && [ -x "$path" ]
+)
 [ -f "$web/index.html" ] || die "no web app in $web: run pnpm --filter @kallisti/web build"
 if [ "$seed" = 1 ]; then
-  command -v "${FFMPEG:-ffmpeg}" >/dev/null 2>&1 || die "the seed needs ffmpeg; executable not found: ${FFMPEG:-ffmpeg} (or SEED=0)"
-  command -v "${SQLITE3:-sqlite3}" >/dev/null 2>&1 || die "the seed needs sqlite3; executable not found: ${SQLITE3:-sqlite3} (or SEED=0)"
+  is_executable "${FFMPEG:-ffmpeg}" >/dev/null 2>&1 || die "the seed needs ffmpeg; executable not found: ${FFMPEG:-ffmpeg} (or SEED=0)"
+  is_executable "${SQLITE3:-sqlite3}" >/dev/null 2>&1 || die "the seed needs sqlite3; executable not found: ${SQLITE3:-sqlite3} (or SEED=0)"
 fi
 
 mkdir -p "$work/bin" "$work/results"

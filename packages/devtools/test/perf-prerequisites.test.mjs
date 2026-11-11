@@ -7,6 +7,8 @@ import { test as nodeTest } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const test = process.platform === "win32" ? nodeTest.skip : nodeTest;
+// Check another POSIX shell locally, including dash as used by Ubuntu CI.
+const shell = process.env.PERF_TEST_SHELL || "/bin/sh";
 
 const harness = fileURLToPath(new URL("../../../tests/perf/run.sh", import.meta.url));
 const stopped = "stub go: stopped before build\n";
@@ -20,7 +22,7 @@ const fixture = async (t) => {
   await mkdir(web);
   await writeFile(join(web, "index.html"), "fixture");
   for (const name of ["dirname", "mkdir", "rm"]) {
-    const executable = execFileSync("/bin/sh", ["-c", 'command -v "$1"', "sh", name], { encoding: "utf8" }).trim();
+    const executable = execFileSync(shell, ["-c", 'command -v "$1"', "sh", name], { encoding: "utf8" }).trim();
     await symlink(executable, join(bin, name));
   }
   const tool = async (path, mode = 0o755) => {
@@ -31,7 +33,7 @@ const fixture = async (t) => {
   await writeFile(join(bin, "go"), `#!/bin/sh\nprintf '${stopped}'\nexit 73\n`, { mode: 0o755 });
   return {
     bin, dir, tool, work,
-    run: (env = {}) => spawnSync("/bin/sh", [harness], {
+    run: (env = {}) => spawnSync(shell, [harness], {
       env: { PATH: bin, WEB_DIR: web, WORK: work, CHROME: join(dir, "no-browser"), ...env },
       encoding: "utf8",
       timeout: 5000,

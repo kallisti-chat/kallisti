@@ -113,6 +113,10 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   let wasSynced = $state(false);
   // The close frame's reason (the desktop bridge explains refusals there).
   let closeReason = $state("");
+  // Closed before it opened, and not by us (see lib/desktop bridgeFailed).
+  let opened = false;
+  let closing = false;
+  let failedToOpen = $state(false);
   // Text channels from the Kallisti server (unavailable on plain Mumble).
   let text = $state.raw<TextState>(initialTextState);
   // One upload token request at a time (the UI sends one message's files
@@ -261,6 +265,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   // When something last came from the server (see checkAlive).
   let heardAt = 0;
   ws.onopen = () => {
+    opened = true;
     ws.send(handshake(credentials));
     timer = setInterval(sendPing, PING_INTERVAL_MS);
   };
@@ -307,6 +312,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     if (closed) return;
     releaseLock?.();
     closeReason = reason;
+    failedToOpen = !opened && !closing;
     clearInterval(timer);
     tokenWaiter?.reject(new Error("connection closed"));
     awaiting.forEach((w) => w.done(t("client.notConnected")));
@@ -364,6 +370,9 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
     },
     get closeReason() {
       return closeReason;
+    },
+    get failedToOpen() {
+      return failedToOpen;
     },
     get wasSynced() {
       return wasSynced;
@@ -542,7 +551,10 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       if (ws.readyState === WebSocket.OPEN) ws.send(deleteMessageRequest(message));
     },
     sendToTextChannel: (channel: number, message: string, reply?: number, noPing?: boolean) => {
-      if (ws.readyState === WebSocket.OPEN) ws.send(sendRequest(channel, message, [], reply, noPing));
+      if (ws.readyState !== WebSocket.OPEN) return;
+      // A new attempt replaces the old banner; incoming messages do not.
+      text = { ...text, lastError: null };
+      ws.send(sendRequest(channel, message, [], reply, noPing));
     },
     // Sends a message (with uploaded files: their keys) with a nonce; settles
     // once the server stored it (our message came), refused it, or did not
@@ -571,6 +583,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
           if (a) done(a.error);
         };
         confirming.add(check);
+        text = { ...text, lastError: null };
         ws.send(sendRequest(channel, message, uploads, reply, noPing, nonce, sticker, poll));
       }),
     // The server's HTTP origin (uploads and files).
@@ -679,6 +692,9 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       if (state.session !== null) send(setSelfComment(state.session, text));
     },
     fetchComment,
-    close: () => ws.close(),
+    close: () => {
+      closing = true;
+      ws.close();
+    },
   };
 };

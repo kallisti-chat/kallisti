@@ -26,8 +26,14 @@ describe("voice over UDP in the apps", () => {
 
   it("goes straight once the bridge could not reach the server", () => {
     // Another trust store or proxy than the web view's: the web view may.
-    expect(bridgeFailed("cannot reach wss://chat.example/ws: invalid peer certificate")).toBe(true);
-    expect(bridgeFailed("logged out")).toBe(false);
+    expect(bridgeFailed({ closeReason: "cannot reach wss://chat.example/ws: invalid peer certificate", failedToOpen: false })).toBe(true);
+    expect(bridgeFailed({ closeReason: "logged out", failedToOpen: false })).toBe(false);
+    expect(bridgeFailed({ closeReason: "", failedToOpen: false })).toBe(false);
     expect(bridgeFailed(undefined)).toBe(false);
+  });
+
+  it("goes straight when the socket to the bridge never opened", () => {
+    // Android release builds refused ws://127.0.0.1 (cleartext): no reason.
+    expect(bridgeFailed({ closeReason: "", failedToOpen: true })).toBe(true);
   });
 });

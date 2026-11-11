@@ -292,6 +292,31 @@ describe("a server session", () => {
     session.dispose();
   });
 
+  it("tries straight when the socket to the apps' bridge never opened", async () => {
+    const made: FakeConnection[] = [];
+    let tries = 0;
+    const session = createServerSession<FakeConnection>({
+      site: () => "https://chat.example",
+      urlFor: async () => (tries++ === 0 ? { url: "ws://127.0.0.1:1/?kallisti", site: "https://chat.example" } : { url: "wss://chat.example/ws" }),
+      connect: (target) => {
+        const c = fakeConnection(target.url);
+        made.push(c);
+        return c;
+      },
+      tabStorage: () => undefined,
+    });
+    await session.start(credentials);
+    await settle();
+    made[0]!.failToOpen();
+    flushSync();
+    await settle();
+    expect(made.map((c) => c.url)).toEqual(["ws://127.0.0.1:1/?kallisti", "wss://chat.example/ws"]);
+    made[1]!.sync();
+    flushSync();
+    expect(session.connection).toBe(made[1]);
+    session.dispose();
+  });
+
   it("tries once at once when the connection is lost, then each second", async () => {
     const { session, made } = setup();
     await session.start(credentials);
