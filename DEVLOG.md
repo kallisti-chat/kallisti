@@ -2977,4 +2977,4 @@ Authentication and fediverse package tests pass, covering linking, reauthenticat
 
 ## 2026-11-11: Preserve HTTPS sessions on proxied WebSockets
 
-Traefik forwards secure WebSocket upgrades with `X-Forwarded-Proto: wss`. Recognize it alongside `https` only when proxy trust is enabled, so `/ws` reads the same host-only session cookie as the OAuth callback and account API. Regression checks cover HTTPS-to-WSS session recognition, untrusted WSS headers, and plain WS.
+Some reverse proxies forward secure WebSocket upgrades with `X-Forwarded-Proto: wss` instead of `https`. Recognize it alongside `https` only when proxy trust is enabled, so `/ws` reads the same host-only session cookie as the OAuth callback and account API. Regression checks cover HTTPS-to-WSS session recognition, untrusted WSS headers, and plain WS.

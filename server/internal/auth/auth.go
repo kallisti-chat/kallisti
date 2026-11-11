@@ -879,7 +879,7 @@ func (a *Service) clearCookie(w http.ResponseWriter, r *http.Request, base strin
 
 func (a *Service) secure(r *http.Request) bool {
 	proto := r.Header.Get("X-Forwarded-Proto")
-	// Traefik forwards secure WebSocket upgrades as "wss".
+	// Some reverse proxies forward secure WebSocket upgrades as "wss".
 	return r.TLS != nil || (a.TrustForwardedFor && (proto == "https" || proto == "wss"))
 }
 
