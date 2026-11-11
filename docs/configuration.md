@@ -71,10 +71,14 @@ brackets.
 - `FEDI_LOGIN=0`: no "Log in with the fediverse". By default users can
   log in, create accounts and link accounts with a fediverse account
   (Mastodon API: Mastodon, Pleroma/Akkoma, GoToSocial, ...; native Misskey:
-  MiAuth). Enter the Misskey server or `@user@server` in the existing
-  fediverse account form. MiAuth requests only `read:account`, verifies
-  the account, and attempts to revoke the token afterwards without storing it.
-  Older servers may not support self-revocation; this does not block login. It needs the
+  OAuth with PKCE). Enter the Misskey server or `@user@server` in the existing
+  fediverse account form. Native Misskey OAuth requests only `read:account`,
+  verifies the account, and attempts token self-revocation without storing it.
+  Older servers may not support self-revocation; this does not block login.
+  Misskey must support native OAuth (2023.9.0 or later) and be able to fetch
+  the public HTTPS client metadata page at `/api/fedi/client`. MiAuth is not
+  used. The metadata page declares the callback URL using HTML discovery.
+  It needs the
   server's public address: the first `ALLOWED_ORIGINS` entry (not `*`),
   where instances send the browser back to (`/api/fedi/callback`). The
   server contacts the instance users name, only on public addresses and

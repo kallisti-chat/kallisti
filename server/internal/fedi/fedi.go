@@ -1,6 +1,6 @@
 // Package fedi talks to fediverse instances through Mastodon OAuth
 // (Mastodon, Pleroma/Akkoma, GoToSocial, Pixelfed, Friendica, ...) and native
-// Misskey MiAuth for fediverse logins, reading only the logged-in account.
+// Misskey OAuth for fediverse logins, reading only the logged-in account.
 // Instances are named by users, so every request goes through a guarded
 // client (see NewClient).
 package fedi

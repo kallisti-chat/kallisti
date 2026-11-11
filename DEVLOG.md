@@ -2968,3 +2968,13 @@ Fediverse linking now supports native Misskey MiAuth when Mastodon app registrat
 Authentication and fediverse package tests pass, including native linking, callback tampering, expiry/replay, reauthentication, and OAuth compatibility. No live Misskey account was used.
 
 MiAuth now attempts token self-revocation after account verification, including failed verification. Unsupported revocation does not block login. Fediverse and authentication tests pass with successful and refused revocation.
+
+## 2026-11-11: Native Misskey OAuth replaces MiAuth
+
+Replaced native MiAuth with authorization-code OAuth, S256 PKCE, and public HTML client metadata at `/api/fedi/client`. Existing Mastodon-compatible providers are unchanged. Native discovery is restricted to the selected instance; callbacks validate state and the issuer when advertised. Account verification and best-effort token self-revocation remain.
+
+Authentication and fediverse package tests pass, covering linking, reauthentication, metadata, code replay, issuer/PKCE validation, and unsafe discovery endpoints. Native Misskey now requires OAuth support and access to the Kallisti server's public HTTPS metadata page.
+
+## 2026-11-11: Preserve HTTPS sessions on proxied WebSockets
+
+Traefik forwards secure WebSocket upgrades with `X-Forwarded-Proto: wss`. Recognize it alongside `https` only when proxy trust is enabled, so `/ws` reads the same host-only session cookie as the OAuth callback and account API. Regression checks cover HTTPS-to-WSS session recognition, untrusted WSS headers, and plain WS.

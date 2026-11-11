@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -19,7 +20,7 @@ import (
 	"kallisti.chat/server/internal/store"
 )
 
-// Fediverse logins: a remote account (Mastodon OAuth or Misskey MiAuth) logs in to the
+// Fediverse logins: a remote account (Mastodon or Misskey OAuth) logs in to the
 // account it is linked to, makes a new account, or gets linked to the
 // logged-in account. The browser goes to the instance and comes back to
 // /api/fedi/callback; the flow is bound to that browser by a cookie that
@@ -114,7 +115,7 @@ type fediFlow struct {
 	app      fedi.App
 	verifier string
 	scope    string
-	miauth   string // native Misskey session, created here, never from the callback
+	misskey  *fedi.MisskeyOAuth // discovery bound to this flow's instance
 	// A link (or a reauth: a fresh login with the linked account): the
 	// account and its session (store key) that started it.
 	link    int64
@@ -198,6 +199,25 @@ func (p *pending[T]) get(key string, now time.Time, take bool) (T, bool) {
 
 func (f *FediLogin) redirectURI() string { return f.Public + fediPath + "/callback" }
 
+func (f *FediLogin) clientID() string { return f.Public + fediPath + "/client" }
+
+// HTML metadata works with Misskey versions predating JSON client metadata.
+var fediClientPage = template.Must(template.New("fedi-client").Parse(`<!doctype html>
+<html><head><meta charset="utf-8"><title>{{.AppName}}</title>
+<link rel="redirect_uri" href="{{.RedirectURI}}"></head>
+<body><div class="h-app"><a class="u-url p-name" href="{{.ClientID}}">{{.AppName}}</a></div></body></html>`))
+
+func (a *Service) fediClient(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+	if err := fediClientPage.Execute(w, struct{ AppName, ClientID, RedirectURI string }{
+		a.Fedi.AppName, a.Fedi.clientID(), a.Fedi.redirectURI(),
+	}); err != nil {
+		slog.Debug("fediverse client metadata", "err", err)
+	}
+}
+
 func (f *FediLogin) allowsHome(host string) bool { return f.AllowsHome == nil || f.AllowsHome(host) }
 
 // webOrigin: s is a page's origin, exactly (HTTPS; dev: HTTP too).
@@ -276,6 +296,8 @@ func (a *Service) serveFedi(w http.ResponseWriter, r *http.Request) bool {
 	switch p := r.URL.Path; {
 	case p == fediPath && get:
 		writeJSON(w, http.StatusOK, map[string]bool{"enabled": true})
+	case p == fediPath+"/client" && get:
+		a.fediClient(w, r)
 	case p == fediPath+"/start" && post:
 		a.fediStart(w, r)
 	case p == fediPath+"/callback" && get:
@@ -394,13 +416,14 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Keep working OAuth providers (including compatible Misskey forks)
 		// independent of optional native discovery.
-		misskey, discoveryErr := a.Fedi.Client.IsMisskey(r.Context(), inst)
-		if discoveryErr != nil || !misskey {
+		var discoveryErr error
+		flow.misskey, discoveryErr = a.Fedi.Client.DiscoverMisskeyOAuth(r.Context(), inst)
+		if discoveryErr != nil || flow.misskey == nil {
 			slog.Info("fediverse app registration", "instance", inst.Host, "err", err, "discovery_err", discoveryErr)
 			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "cannot reach " + inst.Host + ", or it does not offer logins for apps"})
 			return
 		}
-		flow.miauth = fedi.NewMiAuthSession()
+		flow.verifier = fedi.NewVerifier()
 	}
 	authorize, ok := a.beginFlow(w, r, flow)
 	if !ok {
@@ -463,11 +486,8 @@ func (a *Service) beginFlow(w http.ResponseWriter, r *http.Request, flow fediFlo
 		return "", false
 	}
 	a.setFediCookie(w, r, stateCookie, state, flowLifetime)
-	if flow.miauth != "" {
-		// MiAuth returns "session", not OAuth's "state": carry our browser
-		// binding in the callback URL itself.
-		callback := withQuery(a.Fedi.redirectURI(), url.Values{"state": {state}})
-		return fedi.MiAuthURL(flow.inst, flow.miauth, a.Fedi.AppName, callback), true
+	if flow.misskey != nil {
+		return flow.misskey.AuthorizeURL(a.Fedi.clientID(), a.Fedi.redirectURI(), state, fedi.Challenge(flow.verifier)), true
 	}
 	return fedi.AuthorizeURL(flow.inst, flow.app.ClientID, a.Fedi.redirectURI(), flow.scope, state, fedi.Challenge(flow.verifier)), true
 }
@@ -492,14 +512,19 @@ func (a *Service) fediCallback(w http.ResponseWriter, r *http.Request) {
 		back("error", "expired")
 		return
 	}
-	if flow.miauth != "" && subtle.ConstantTimeCompare([]byte(q.Get("session")), []byte(flow.miauth)) != 1 {
+	if flow.misskey != nil && (flow.misskey.AuthorizationResponseISSSupported || q.Has("iss")) &&
+		(len(q["iss"]) != 1 || q.Get("iss") != flow.misskey.Issuer) {
 		back("error", "expired")
 		return
 	}
-	if e := q.Get("error"); e != "" || flow.miauth == "" && q.Get("code") == "" {
+	if flow.misskey != nil && (len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1) {
+		back("error", "expired")
+		return
+	}
+	if e := q.Get("error"); e != "" || q.Get("code") == "" {
 		// An instance that does not allow "profile" for this app: once more
 		// with read:accounts.
-		if flow.miauth == "" && e == "invalid_scope" && flow.scope != fedi.Scope("", true) {
+		if flow.misskey == nil && e == "invalid_scope" && flow.scope != fedi.Scope("", true) {
 			flow.scope, flow.verifier = fedi.Scope("", true), fedi.NewVerifier()
 			if next, ok := a.beginFlow(w, r, flow); ok {
 				http.Redirect(w, r, next, http.StatusFound)
@@ -587,11 +612,11 @@ func (a *Service) fediCallback(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// remoteAccount completes the authorization and reads the account. The token
-// is not kept (nor revoked: instances may delete apps without one).
+// remoteAccount completes authorization and reads the account. Native Misskey
+// tokens are revoked; Mastodon tokens stay remote so its apps are not deleted.
 func (a *Service) remoteAccount(ctx context.Context, flow fediFlow, code string) (fedi.Account, error) {
-	if flow.miauth != "" {
-		return a.Fedi.Client.MiAuthAccount(ctx, flow.inst, flow.miauth)
+	if flow.misskey != nil {
+		return a.Fedi.Client.MisskeyOAuthAccount(ctx, flow.inst, flow.misskey, a.Fedi.clientID(), a.Fedi.redirectURI(), code, flow.verifier)
 	}
 	token, err := a.Fedi.Client.Token(ctx, flow.inst, flow.app, a.Fedi.redirectURI(), code, flow.verifier)
 	if err != nil {
