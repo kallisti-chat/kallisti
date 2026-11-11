@@ -297,6 +297,26 @@ func TestCloseEndsAllConnections(t *testing.T) {
 	}
 }
 
+// A shutdown while the upstream dial still runs: also "going away", not
+// an upstream error (the dial fails only because of the shutdown).
+func TestCloseDuringTheUpstreamDial(t *testing.T) {
+	dialing := make(chan struct{})
+	b, url := startBridgeWith(t, Options{Dial: func(ctx context.Context, _ Upstream) (net.Conn, error) {
+		close(dialing)
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}})
+	c, _, err := connect(t, url, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-dialing
+	go b.Close()
+	if got := closeStatus(t, c); got != websocket.StatusGoingAway {
+		t.Errorf("close status %v, want 1001", got)
+	}
+}
+
 func TestRejectsConnectionsAboveThePerIPLimit(t *testing.T) {
 	echo := startEcho(t)
 	url := startBridge(t, Options{Dial: dialer(echo.addr), MaxPerIP: 2})

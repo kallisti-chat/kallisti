@@ -2933,6 +2933,34 @@ Fixed the performance harness to honor FFMPEG and SQLITE3 overrides during prere
 
 Trimmed unused explicit test-image tools and the Rust test job package list. Both Debian image variants and all eight isolated official-client tests passed, as did YAML/shell syntax. Independent source review approved the change. Declarative removals used integration checks rather than unit TDD. The GitHub Rust job was not run; desktop packaging and required libraries are unchanged.
 
+## 2026-11-10: Voice settings: tolerate empty and duplicate device IDs
+
+Normalized microphone, speaker, and camera choices before keyed rendering to prevent duplicate-key panel crashes. Six component tests cover duplicates, redacted IDs, selections, and repeated category entry after device changes. Full workspace checks and build passed; independent review approved the fix. No real device was opened.
+
+## 2026-11-10: Chat: clear stale errors when sending another message
+
+Clear stale chat errors at the next open-socket send attempt, for plain and confirmed posts. New refusals remain visible and unrelated incoming messages do not hide errors. Seven connection regressions and existing edit-correlation tests pass. Full workspace checks and build passed; independent review approved the fix.
+
+## 2026-11-10: Performance tests: validate executable paths across POSIX shells
+
+Fixed a POSIX-shell portability error in performance prerequisites: command -v alone can accept a directory or non-executable explicit path under dash. Added regular-file and execute-permission checks. The four CI failures reproduced locally under dash; all sixteen cases now pass under dash, Bash, and the Mac default shell. Full workspace JavaScript checks and independent review passed. Application code is unchanged.
+
+## 2026-11-10: Android release app: cleartext to the local bridge
+
+The release APK (v0.13.1) never connected to Kallisti servers with a UDP port: the WebView refused the bridge socket `ws://127.0.0.1:<port>` with `net::ERR_CLEARTEXT_NOT_PERMITTED` (release builds set `usesCleartextTraffic="false"`, debug builds `true`), and the close has no reason, so no fallback to a direct connection. A network security config now allows cleartext only to 127.0.0.1; a debug-only copy keeps it for all hosts (dev server). Reproduced and checked in the emulator with a locally built, debug-signed release APK: QR login to test.kallisti.chat, then #general; `ws://` and `http://` to other hosts stay blocked. No unit test: Android manifest configuration.
+
+## 2026-11-10: QR scanner without Google Play services
+
+tauri-plugin-barcode-scanner uses ML Kit's unbundled scanner, whose model comes from Google Play services: without them the camera opened but no code was read (the emulator logged `com.google.mlkit.dynamite.barcode not found`). The app now also depends on `com.google.mlkit:barcode-scanning` (bundled model; it needs the unbundled artifact for the API classes, so that stays). The APK grows by about 6 MB (barhopper for four ABIs). Checked in the emulator with a debug-signed release APK and the camera on an image file: a fresh install scanned a login code, logged in and connected.
+
+## 2026-11-10: Apps: straight to the server when the bridge socket never opens
+
+The fallback to a direct WebSocket only looked at the bridge's close reason ("cannot reach …"); a socket the web view could not open (Android's cleartext refusal) closed without one, so the app never got in. Connections now have `failedToOpen` (closed before open, and not by the client: a newer attempt or a wake closes sockets before they open, and that must not drop UDP for the rest of the run, as the review found). Checked in the emulator with a release APK built without the network security config: QR login, then connected straight.
+
+## 2026-11-11: Two flaky Go tests
+
+`TestTimeOutsEnd` checked the `OnTimeoutsChanged` count as soon as the client saw the unmute, but an expired time-out unmutes first, then saves and calls the hook: the test now waits for it. `TestCloseEndsAllConnections` got 1011 when `Close` cancelled the bridge during its upstream dial ("operation was canceled" → "upstream unavailable"). That was a real gap: a shutdown during the dial now closes with 1001 as for open connections. A new test with a dial that blocks until shutdown failed before the fix. Both packages passed 30 runs with `-race`.
+
 ## 2026-11-09: Standard Mac settings shortcut
 
 Cmd+, opens settings on Mac through the existing active-client keyboard handler. Other platforms and modified combinations remain unchanged; like other navigation shortcuts, it does not open over an existing dialog.

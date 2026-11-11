@@ -390,7 +390,7 @@
     }
     const udpPort = udpPorts.get(origin);
     const target = udpPort ? kallistiSocket(origin, token, { bridge: await getBridge(), udpPort }) : null;
-    return target && !bridgeFailed(bridged.get(target.url)?.closeReason) ? target : kallistiSocket(origin, token);
+    return target && !bridgeFailed(bridged.get(target.url)) ? target : kallistiSocket(origin, token);
   };
   const connectTo = (target: Target, c: Credentials) => {
     const conn = connect(target.url, c, audio, target.protocols, target.site);

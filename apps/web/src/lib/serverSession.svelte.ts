@@ -15,6 +15,7 @@ export type SessionConnection = {
   readonly state: ServerState;
   readonly closed: boolean;
   readonly closeReason: string;
+  readonly failedToOpen: boolean;
   readonly wasSynced: boolean;
   // The text side is known (text channels, or none: a plain Mumble server).
   readonly textSettled: boolean;
@@ -94,7 +95,7 @@ export const createServerSession = <C extends SessionConnection>(deps: SessionDe
         closed: connection.closed,
         closeReason: connection.closeReason,
         wasSynced: connection.wasSynced,
-        straightNext: viaAppBridge.has(connection) && bridgeFailed(connection.closeReason),
+        straightNext: viaAppBridge.has(connection) && bridgeFailed(connection),
       }),
   );
   // Why it failed, for the login screen (null: fine, or it comes back).
