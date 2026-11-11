@@ -399,3 +399,4 @@
 - [x] [Android release app cannot connect through the local bridge](issues/android-bridge-cleartext.md)
 - [x] [QR scanner without Google Play services](issues/qr-scan-without-play-services.md)
 - [x] [Apps: connect straight when the bridge socket never opens](issues/bridge-fallback-unopened-socket.md)
+- [x] [Flaky Go tests: TestTimeOutsEnd and TestCloseEndsAllConnections](issues/flaky-go-tests-timeouts-bridge-close.md)

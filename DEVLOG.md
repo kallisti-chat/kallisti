@@ -2956,3 +2956,7 @@ tauri-plugin-barcode-scanner uses ML Kit's unbundled scanner, whose model comes 
 ## 2026-11-10: Apps: straight to the server when the bridge socket never opens
 
 The fallback to a direct WebSocket only looked at the bridge's close reason ("cannot reach …"); a socket the web view could not open (Android's cleartext refusal) closed without one, so the app never got in. Connections now have `failedToOpen` (closed before open, and not by the client: a newer attempt or a wake closes sockets before they open, and that must not drop UDP for the rest of the run, as the review found). Checked in the emulator with a release APK built without the network security config: QR login, then connected straight.
+
+## 2026-11-11: Two flaky Go tests
+
+`TestTimeOutsEnd` checked the `OnTimeoutsChanged` count as soon as the client saw the unmute, but an expired time-out unmutes first, then saves and calls the hook: the test now waits for it. `TestCloseEndsAllConnections` got 1011 when `Close` cancelled the bridge during its upstream dial ("operation was canceled" → "upstream unavailable"). That was a real gap: a shutdown during the dial now closes with 1001 as for open connections. A new test with a dial that blocks until shutdown failed before the fix. Both packages passed 30 runs with `-race`.
