@@ -2978,3 +2978,7 @@ Authentication and fediverse package tests pass, covering linking, reauthenticat
 ## 2026-11-11: Preserve HTTPS sessions on proxied WebSockets
 
 Some reverse proxies forward secure WebSocket upgrades with `X-Forwarded-Proto: wss` instead of `https`. Recognize it alongside `https` only when proxy trust is enabled, so `/ws` reads the same host-only session cookie as the OAuth callback and account API. Regression checks cover HTTPS-to-WSS session recognition, untrusted WSS headers, and plain WS.
+
+## 2026-11-12: Android: background playback without the microphone
+
+A listener reported "fast, stop, fast" playback in the background (DJ Booth, Android app). In the emulator (release APK, headless, a bot playing stereo music into the channel, every scheduled chunk recorded through DevTools) background playback was smooth for 6 minutes while the voice service ran. Without it Android froze the app about 5 s after it left the screen. The service was of type microphone and started only with the microphone allowed, so listeners who deny it got none. It now starts at once, as mediaPlayback without the microphone, and starts again as microphone once it is allowed (in front, onResume). Checked: microphone denied, the service runs as mediaPlayback and 3 minutes in the background stay smooth (not frozen); allowed afterwards, the same service becomes microphone. Not checked: the reporter's phone; whether its throttling (rather than freezing) makes the reported bursts is still open. No unit test: Android service types.

@@ -400,3 +400,4 @@
 - [x] [QR scanner without Google Play services](issues/qr-scan-without-play-services.md)
 - [x] [Apps: connect straight when the bridge socket never opens](issues/bridge-fallback-unopened-socket.md)
 - [x] [Flaky Go tests: TestTimeOutsEnd and TestCloseEndsAllConnections](issues/flaky-go-tests-timeouts-bridge-close.md)
+- [x] [Android: background playback without the microphone permission](issues/android-listen-without-microphone.md)
