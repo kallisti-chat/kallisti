@@ -321,11 +321,16 @@
   $effect(() => capture?.setMuted((me?.selfMute ?? false) || !voiceOn));
 
   let showSettings = $state(untrack(() => openSettings));
+  let echoTest = $state(false);
+  const setEchoTest = (on: boolean) => {
+    if (on) requestAudio();
+    echoTest = on;
+  };
+  $effect(() => capture?.setEcho(echoTest));
   // The category the settings open at: the account's after a fresh login
   // for the first password, or for a guest keeping the account.
   let settingsStart = $state<SectionId | undefined>(untrack(() => (openSettings ? "account" : undefined)));
   const openSettingsAt = (start?: SectionId) => {
-    requestAudio(); // still in the gesture, before the microphone effect
     settingsStart = start;
     showSettings = true;
   };
@@ -360,7 +365,7 @@
   const inputDeviceId = $derived(prefs.inputDeviceId);
   const closeWhenMuted = $derived(prefs.closeMicWhenMuted);
   const micOn = $derived(
-    micWanted({ inVoice: voiceOn, selfMute: me?.selfMute ?? false, settingsOpen: showSettings, closeWhenMuted }),
+    micWanted({ inVoice: voiceOn, selfMute: me?.selfMute ?? false, echoTest, closeWhenMuted }),
   );
   $effect(() => {
     const [target, deviceId, on] = [capture, inputDeviceId, micOn];
@@ -1574,9 +1579,6 @@
     });
   });
   $effect(() => {
-    streamClient?.setPreviews(prefs.streamPreviews);
-  });
-  $effect(() => {
     streamClient?.setCameraDevice(prefs.cameraDeviceId);
   });
   $effect(() => {
@@ -2182,7 +2184,7 @@
     noiseError={capture?.noiseError ?? null}
     noiseRunning={capture?.running ?? null}
     onChange={settings.update}
-    onEcho={capture ? (on) => capture?.setEcho(on) : undefined}
+    onEcho={setEchoTest}
     {account}
     push={pushName ? { base: connection.httpBase, name: pushName, prefs: pushPrefs } : undefined}
     profile={me && {

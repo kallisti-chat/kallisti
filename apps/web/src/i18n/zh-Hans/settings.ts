@@ -92,6 +92,8 @@ export default {
   "settings.qrExpired": "此码已过期。",
   "settings.qrNewCode": "新的登录码",
 
+  "settings.voiceInput": "输入",
+  "settings.voiceOutput": "输出",
   "settings.inputDevice": "输入设备",
   "settings.deviceDefault": "默认",
   "settings.microphone": "麦克风",
@@ -110,10 +112,10 @@ export default {
   "settings.noiseLoading": "正在加载 DeepFilterNet3（约 12 MB，仅一次）…",
   "settings.noiseHint":
     "强：去除风扇等持续噪音；单纯打字不会触发发送。最强：还能去除大部分打字声，但需加载约 12 MB，占用更多 CPU，并带来少许延迟。",
-  "settings.hearYourself": "听自己的声音",
-  "settings.echoTestStart": "开始回声测试",
+  "settings.micTest": "麦克风测试",
+  "settings.echoTestStart": "开始测试",
   "settings.echoTestStop": "停止",
-  "settings.echoTestHint": "播放降噪后你的麦克风声音，即其他人听到的效果。请使用耳机。",
+  "settings.echoTestHint": "播放降噪后你的麦克风声音，即其他人听到的效果，并在音量条上显示音量。请使用耳机。",
   "settings.outputDevice": "输出设备",
   "settings.speakers": "扬声器",
   "settings.playbackBuffer": "播放缓冲",
@@ -142,8 +144,6 @@ export default {
     "用于演奏音乐：不使用降噪、回声消除或自动音量，音质更好（若麦克风有两个声道则为立体声）。请使用耳机。",
   "settings.closeMic": "静音时关闭麦克风",
   "settings.closeMicHint": "浏览器便不再显示正在录音，但静音或取消静音时声音会短暂中断。",
-  "settings.streamPreviews": "显示我的屏幕共享和摄像头的预览",
-  "settings.streamPreviewsHint": "未观看的人会看到一张小图，每隔几秒更新一次。",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的屏幕",

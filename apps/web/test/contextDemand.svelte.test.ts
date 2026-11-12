@@ -79,18 +79,31 @@ describe("Client shared context demand", () => {
     expect(audio.suspend).toHaveBeenCalledOnce();
   });
 
-  it("resumes in the settings click, before effects, and releases on close", async () => {
+  it("opens no audio for the settings; the mic test resumes in its click and releases on stop and on close", async () => {
     const demand = createContextDemand(), audio = ctx();
     demand.setContext(audio);
     const { target } = show(server(), demand);
     await flush();
     target.querySelector<HTMLButtonElement>(`button[title="${t("common.settings")}"]`)!.click();
-    expect(audio.resume).toHaveBeenCalledOnce(); // no flush yet
     await flush();
+    expect(audio.resume).not.toHaveBeenCalled();
     expect(audio.suspend).toHaveBeenCalledOnce(); // initial idle only
-    target.querySelector<HTMLDialogElement>("dialog")!.dispatchEvent(new Event("close"));
+    const button = (text: string) => [...target.querySelectorAll<HTMLButtonElement>("dialog button")].find((b) => b.textContent?.trim() === text)!;
+    button(t("settings.sectionVoice")).click();
+    await flush();
+    button(t("settings.echoTestStart")).click();
+    expect(audio.resume).toHaveBeenCalledOnce(); // in the click, no flush yet
+    await flush();
+    expect(audio.suspend).toHaveBeenCalledOnce();
+    button(t("settings.echoTestStop")).click();
     await flush();
     expect(audio.suspend).toHaveBeenCalledTimes(2);
+    button(t("settings.echoTestStart")).click();
+    await flush();
+    expect(audio.resume).toHaveBeenCalledTimes(2);
+    target.querySelector<HTMLDialogElement>("dialog")!.dispatchEvent(new Event("close"));
+    await flush();
+    expect(audio.suspend).toHaveBeenCalledTimes(3);
   });
 
   it("holds a pending join before restart and confirmation; a refused join expires", async () => {
@@ -165,7 +178,7 @@ describe("Client shared context demand", () => {
     const streams = {
       watching: [7], volumeOf: () => volume, sharing: { screen: false, camera: false },
       preview: { screen: null, camera: null }, gone: false,
-      setPreviews: noop, setCameraDevice: noop, setQuality: noop, setDeaf: noop,
+      setCameraDevice: noop, setQuality: noop, setDeaf: noop,
       unwatch: noop, watch: noop, attach: noop, statsOf: () => null,
     } as unknown as NonNullable<Connection["streams"]>;
     demand.setContext(audio);

@@ -92,6 +92,8 @@ export default {
   "settings.qrExpired": "代碼已過期。",
   "settings.qrNewCode": "新代碼",
 
+  "settings.voiceInput": "輸入",
+  "settings.voiceOutput": "輸出",
   "settings.inputDevice": "輸入裝置",
   "settings.deviceDefault": "預設",
   "settings.microphone": "麥克風",
@@ -110,10 +112,10 @@ export default {
   "settings.noiseLoading": "正在載入 DeepFilterNet3（約 12 MB，只需一次）…",
   "settings.noiseHint":
     "「強」會去除風扇和其他持續的噪音；單純打字不會開始傳送。「最強」也會去除大部分打字聲，但需要載入約 12 MB，使用更多 CPU，並增加些微延遲。",
-  "settings.hearYourself": "聽聽自己的聲音",
-  "settings.echoTestStart": "開始回音測試",
+  "settings.micTest": "麥克風測試",
+  "settings.echoTestStart": "開始測試",
   "settings.echoTestStop": "停止",
-  "settings.echoTestHint": "以其他人聽到的方式播放你的麥克風（經過噪音抑制後）。請使用耳機。",
+  "settings.echoTestHint": "以其他人聽到的方式播放你的麥克風（經過噪音抑制後），並在橫條上顯示音量。請使用耳機。",
   "settings.outputDevice": "輸出裝置",
   "settings.speakers": "喇叭",
   "settings.playbackBuffer": "播放緩衝",
@@ -142,8 +144,6 @@ export default {
     "用於演奏音樂：不使用噪音抑制、回音消除或自動音量，音質更好（如果麥克風有兩個聲道則為立體聲）。請使用耳機麥克風。",
   "settings.closeMic": "靜音時關閉麥克風",
   "settings.closeMicHint": "瀏覽器就不會再顯示正在錄音，但在你靜音或取消靜音時，聲音會短暫中斷。",
-  "settings.streamPreviews": "顯示我的螢幕分享和相機預覽",
-  "settings.streamPreviewsHint": "沒有在觀看的人會看到一張小圖片，每隔幾秒更新一次。",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的螢幕",

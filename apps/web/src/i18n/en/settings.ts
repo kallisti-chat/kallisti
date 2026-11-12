@@ -98,6 +98,8 @@ export default {
   "settings.qrNewCode": "New code",
 
   // Voice & video.
+  "settings.voiceInput": "Input",
+  "settings.voiceOutput": "Output",
   "settings.inputDevice": "Input device",
   "settings.deviceDefault": "Default",
   "settings.microphone": "Microphone",
@@ -116,10 +118,10 @@ export default {
   "settings.noiseLoading": "Loading DeepFilterNet3 (about 12 MB, once)…",
   "settings.noiseHint":
     "Strong removes fan and other steady noise; typing alone does not start sending. Strongest also removes most typing, but loads about 12 MB, uses more CPU and adds a little delay.",
-  "settings.hearYourself": "Hear yourself",
-  "settings.echoTestStart": "Start echo test",
+  "settings.micTest": "Mic test",
+  "settings.echoTestStart": "Start test",
   "settings.echoTestStop": "Stop",
-  "settings.echoTestHint": "Plays your microphone as the others hear it, after noise suppression. Use headphones.",
+  "settings.echoTestHint": "Plays your microphone as the others hear it, after noise suppression, and shows its level on the bar. Use headphones.",
   "settings.outputDevice": "Output device",
   "settings.speakers": "Speakers",
   "settings.playbackBuffer": "Playback buffer",
@@ -148,8 +150,6 @@ export default {
     "For playing music: no noise suppression, echo cancellation or automatic volume, and better sound (stereo if the microphone has two channels). Use a headset.",
   "settings.closeMic": "Close the microphone when muted",
   "settings.closeMicHint": "The browser then stops showing it as recording, but the sound stops for a moment when you mute or unmute.",
-  "settings.streamPreviews": "Show a preview of my screen share and camera",
-  "settings.streamPreviewsHint": "People who are not watching see a small picture, updated every few seconds.",
 
   // Streams (lib/stream/quality) and OBS.
   "settings.qualityLabel": "{height}p {fps} fps",

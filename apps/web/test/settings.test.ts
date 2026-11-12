@@ -18,7 +18,6 @@ describe("parseSettings", () => {
       notifications: true,
       closeMicWhenMuted: true,
       noiseSuppression: "strong",
-      streamPreviews: false,
       theme: "system",
       timeFormat: "24",
       echoCancellation: false,

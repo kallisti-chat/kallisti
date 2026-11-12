@@ -2982,3 +2982,15 @@ Some reverse proxies forward secure WebSocket upgrades with `X-Forwarded-Proto: 
 ## 2026-11-12: Android: background playback without the microphone
 
 A listener reported "fast, stop, fast" playback in the background (DJ Booth, Android app). In the emulator (release APK, headless, a bot playing stereo music into the channel, every scheduled chunk recorded through DevTools) background playback was smooth for 6 minutes while the voice service ran. Without it Android froze the app about 5 s after it left the screen. The service was of type microphone and started only with the microphone allowed, so listeners who deny it got none. It now starts at once, as mediaPlayback without the microphone, and starts again as microphone once it is allowed (in front, onResume). Checked: microphone denied, the service runs as mediaPlayback and 3 minutes in the background stay smooth (not frozen); allowed afterwards, the same service becomes microphone. Not checked: the reporter's phone; whether its throttling (rather than freezing) makes the reported bursts is still open. No unit test: Android service types.
+
+## 2026-11-09: Settings microphone preview is opt-in
+
+Opening settings no longer requests audio or opens the microphone. Start echo test activates the preview; stopping it, leaving Voice settings, or closing settings releases that demand. Normal voice-channel capture remains unchanged.
+
+## 2026-11-12: Voice settings in Discord's order
+
+With the microphone open only for the test, the level meter belongs next to the test button. The Voice & video section is now: microphone and speaker side by side (stacked when narrow), camera and stream previews; "Input" (mode, mic test with button, level meter and threshold mark, sensitivity or push-to-talk key, noise suppression, echo cancellation, music mode, close when muted); "Output" (playback buffer). New strings in all languages ("Input", "Output", "Mic test", "Start test"). The test button called `onEcho` from an effect, after the click: Safari and iOS may refuse to start audio there; it now runs in the click (test first, red before). Checked with headless Chromium screenshots, wide and narrow; independent review found nothing significant.
+
+## 2026-11-12: Stream previews always on
+
+The setting "Show a preview of my screen share and camera" is gone: others always see the small picture of a stream before they watch (the stream client's default). A stored `streamPreviews: false` is ignored.

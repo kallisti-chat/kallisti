@@ -92,6 +92,8 @@ export default {
   "settings.qrExpired": "Der Code ist abgelaufen.",
   "settings.qrNewCode": "Neuer Code",
 
+  "settings.voiceInput": "Eingabe",
+  "settings.voiceOutput": "Ausgabe",
   "settings.inputDevice": "Eingabegerät",
   "settings.deviceDefault": "Standard",
   "settings.microphone": "Mikrofon",
@@ -110,10 +112,10 @@ export default {
   "settings.noiseLoading": "DeepFilterNet3 wird geladen (etwa 12 MB, einmalig)…",
   "settings.noiseHint":
     "Stark entfernt Lüfter- und anderes gleichmäßiges Rauschen; Tippen allein startet das Senden nicht. Am stärksten entfernt auch das meiste Tippen, lädt aber etwa 12 MB, braucht mehr CPU und fügt etwas Verzögerung hinzu.",
-  "settings.hearYourself": "Dich selbst hören",
-  "settings.echoTestStart": "Echotest starten",
+  "settings.micTest": "Mikrofontest",
+  "settings.echoTestStart": "Test starten",
   "settings.echoTestStop": "Stoppen",
-  "settings.echoTestHint": "Spielt dein Mikrofon so ab, wie andere es hören, nach der Rauschunterdrückung. Verwende Kopfhörer.",
+  "settings.echoTestHint": "Spielt dein Mikrofon so ab, wie andere es hören, nach der Rauschunterdrückung, und zeigt seinen Pegel im Balken. Verwende Kopfhörer.",
   "settings.outputDevice": "Ausgabegerät",
   "settings.speakers": "Lautsprecher",
   "settings.playbackBuffer": "Wiedergabepuffer",
@@ -142,8 +144,6 @@ export default {
     "Zum Musikmachen: keine Rauschunterdrückung, keine Echounterdrückung, keine automatische Lautstärke, und besserer Klang (Stereo, wenn das Mikrofon zwei Kanäle hat). Verwende ein Headset.",
   "settings.closeMic": "Mikrofon schließen, wenn stummgeschaltet",
   "settings.closeMicHint": "Der Browser zeigt dann keine Aufnahme mehr an, aber der Ton setzt kurz aus, wenn du die Stummschaltung ein- oder ausschaltest.",
-  "settings.streamPreviews": "Vorschau meiner Bildschirmübertragung und Kamera zeigen",
-  "settings.streamPreviewsHint": "Wer nicht zuschaut, sieht ein kleines Bild, das alle paar Sekunden aktualisiert wird.",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Bildschirm von {name}",
