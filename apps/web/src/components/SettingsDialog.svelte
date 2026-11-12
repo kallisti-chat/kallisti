@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ComponentProps } from "svelte";
+  import { untrack, type ComponentProps } from "svelte";
   import { GROUP_TITLES, sectionsFor, type SectionId } from "../lib/settingsSections";
   import CategoryDialog from "./CategoryDialog.svelte";
   import ProfilePicture from "./ProfilePicture.svelte";
@@ -119,12 +119,18 @@
 
   let dialog: HTMLDialogElement | undefined = $state();
   let echo = $state(false);
-  $effect(() => {
-    onEcho?.(echo);
-  });
+  // Called in the click: the audio may start only in a user gesture.
+  const setEcho = (on: boolean) => {
+    echo = on;
+    onEcho?.(on);
+  };
   // The echo test and a key being recorded end with their category.
   $effect(() => {
-    if (section !== "voice") echo = recordingKey = false;
+    if (section !== "voice")
+      untrack(() => {
+        recordingKey = false;
+        if (echo) setEcho(false);
+      });
   });
   $effect(() => () => onEcho?.(false)); // off when the settings close
   let devices = $state<MediaDeviceInfo[]>([]);
@@ -366,7 +372,7 @@
         <div class="row">
           <span class="label">{t("settings.hearYourself")}</span>
           <div class="buttons">
-            <button type="button" class="secondary" aria-pressed={echo} onclick={() => (echo = !echo)}>
+            <button type="button" class="secondary" aria-pressed={echo} onclick={() => setEcho(!echo)}>
               {echo ? t("settings.echoTestStop") : t("settings.echoTestStart")}
             </button>
           </div>
