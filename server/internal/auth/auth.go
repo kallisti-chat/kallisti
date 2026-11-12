@@ -878,7 +878,9 @@ func (a *Service) clearCookie(w http.ResponseWriter, r *http.Request, base strin
 }
 
 func (a *Service) secure(r *http.Request) bool {
-	return r.TLS != nil || (a.TrustForwardedFor && r.Header.Get("X-Forwarded-Proto") == "https")
+	proto := r.Header.Get("X-Forwarded-Proto")
+	// Some reverse proxies forward secure WebSocket upgrades as "wss".
+	return r.TLS != nil || (a.TrustForwardedFor && (proto == "https" || proto == "wss"))
 }
 
 // cors allows every site to call the API with a token, and the web app's

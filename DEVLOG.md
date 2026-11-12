@@ -2961,6 +2961,28 @@ The fallback to a direct WebSocket only looked at the bridge's close reason ("ca
 
 `TestTimeOutsEnd` checked the `OnTimeoutsChanged` count as soon as the client saw the unmute, but an expired time-out unmutes first, then saves and calls the hook: the test now waits for it. `TestCloseEndsAllConnections` got 1011 when `Close` cancelled the bridge during its upstream dial ("operation was canceled" → "upstream unavailable"). That was a real gap: a shutdown during the dial now closes with 1001 as for open connections. A new test with a dial that blocks until shutdown failed before the fix. Both packages passed 30 runs with `-race`.
 
+## 2026-11-09: Native Misskey account linking
+
+Fediverse linking now supports native Misskey MiAuth when Mastodon app registration is unavailable. Existing OAuth providers keep their current flow. MiAuth requests only account-read permission, verifies the returned token's local account, and preserves browser/session binding and one-use callbacks for linking, login, and reauthentication.
+
+Authentication and fediverse package tests pass, including native linking, callback tampering, expiry/replay, reauthentication, and OAuth compatibility. No live Misskey account was used.
+
+MiAuth now attempts token self-revocation after account verification, including failed verification. Unsupported revocation does not block login. Fediverse and authentication tests pass with successful and refused revocation.
+
+## 2026-11-11: Native Misskey OAuth replaces MiAuth
+
+Replaced native MiAuth with authorization-code OAuth, S256 PKCE, and public HTML client metadata at `/api/fedi/client`. Existing Mastodon-compatible providers are unchanged. Native discovery is restricted to the selected instance; callbacks validate state and the issuer when advertised. Account verification and best-effort token self-revocation remain.
+
+Authentication and fediverse package tests pass, covering linking, reauthentication, metadata, code replay, issuer/PKCE validation, and unsafe discovery endpoints. Native Misskey now requires OAuth support and access to the Kallisti server's public HTTPS metadata page.
+
+## 2026-11-11: Preserve HTTPS sessions on proxied WebSockets
+
+Some reverse proxies forward secure WebSocket upgrades with `X-Forwarded-Proto: wss` instead of `https`. Recognize it alongside `https` only when proxy trust is enabled, so `/ws` reads the same host-only session cookie as the OAuth callback and account API. Regression checks cover HTTPS-to-WSS session recognition, untrusted WSS headers, and plain WS.
+
+## 2026-11-12: Android: background playback without the microphone
+
+A listener reported "fast, stop, fast" playback in the background (DJ Booth, Android app). In the emulator (release APK, headless, a bot playing stereo music into the channel, every scheduled chunk recorded through DevTools) background playback was smooth for 6 minutes while the voice service ran. Without it Android froze the app about 5 s after it left the screen. The service was of type microphone and started only with the microphone allowed, so listeners who deny it got none. It now starts at once, as mediaPlayback without the microphone, and starts again as microphone once it is allowed (in front, onResume). Checked: microphone denied, the service runs as mediaPlayback and 3 minutes in the background stay smooth (not frozen); allowed afterwards, the same service becomes microphone. Not checked: the reporter's phone; whether its throttling (rather than freezing) makes the reported bursts is still open. No unit test: Android service types.
+
 ## 2026-11-09: Settings microphone preview is opt-in
 
 Opening settings no longer requests audio or opens the microphone. Start echo test activates the preview; stopping it, leaving Voice settings, or closing settings releases that demand. Normal voice-channel capture remains unchanged.
