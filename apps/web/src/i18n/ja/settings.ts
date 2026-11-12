@@ -92,6 +92,8 @@ export default {
   "settings.qrExpired": "コードの有効期限が切れました。",
   "settings.qrNewCode": "新しいコード",
 
+  "settings.voiceInput": "入力",
+  "settings.voiceOutput": "出力",
   "settings.inputDevice": "入力デバイス",
   "settings.deviceDefault": "デフォルト",
   "settings.microphone": "マイク",
@@ -110,10 +112,10 @@ export default {
   "settings.noiseLoading": "DeepFilterNet3 を読み込み中 (約 12 MB、初回のみ)…",
   "settings.noiseHint":
     "「強」はファンなどの一定したノイズを除去します。タイピング音だけでは送信が始まりません。「最強」はタイピング音もほぼ除去しますが、約 12 MB を読み込み、CPU 使用量が増え、わずかな遅延が加わります。",
-  "settings.hearYourself": "自分の声を聞く",
-  "settings.echoTestStart": "エコーテストを開始",
+  "settings.micTest": "マイクテスト",
+  "settings.echoTestStart": "テストを開始",
   "settings.echoTestStop": "停止",
-  "settings.echoTestHint": "ノイズ抑制後の、他の人に聞こえるとおりのマイク音声を再生します。ヘッドホンをお使いください。",
+  "settings.echoTestHint": "ノイズ抑制後の、他の人に聞こえるとおりのマイク音声を再生し、その音量をバーに表示します。ヘッドホンをお使いください。",
   "settings.outputDevice": "出力デバイス",
   "settings.speakers": "スピーカー",
   "settings.playbackBuffer": "再生バッファー",

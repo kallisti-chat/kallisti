@@ -92,6 +92,8 @@ export default {
   "settings.qrExpired": "El código caducó.",
   "settings.qrNewCode": "Código nuevo",
 
+  "settings.voiceInput": "Entrada",
+  "settings.voiceOutput": "Salida",
   "settings.inputDevice": "Dispositivo de entrada",
   "settings.deviceDefault": "Predeterminado",
   "settings.microphone": "Micrófono",
@@ -110,10 +112,10 @@ export default {
   "settings.noiseLoading": "Cargando DeepFilterNet3 (unos 12 MB, una sola vez)…",
   "settings.noiseHint":
     "Fuerte elimina el ruido de ventiladores y otros ruidos constantes; teclear por sí solo no inicia la transmisión de voz. Máxima también elimina la mayor parte del tecleo, pero descarga unos 12 MB, usa más CPU y añade un poco de retraso.",
-  "settings.hearYourself": "Escucharte",
-  "settings.echoTestStart": "Iniciar prueba de eco",
+  "settings.micTest": "Prueba de micrófono",
+  "settings.echoTestStart": "Iniciar prueba",
   "settings.echoTestStop": "Detener",
-  "settings.echoTestHint": "Reproduce tu micrófono como lo oyen los demás, después de la supresión de ruido. Usa auriculares.",
+  "settings.echoTestHint": "Reproduce tu micrófono como lo oyen los demás, después de la supresión de ruido, y muestra su nivel en la barra. Usa auriculares.",
   "settings.outputDevice": "Dispositivo de salida",
   "settings.speakers": "Altavoces",
   "settings.playbackBuffer": "Búfer de reproducción",

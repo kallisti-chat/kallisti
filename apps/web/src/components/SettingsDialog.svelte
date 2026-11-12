@@ -312,26 +312,42 @@
       {#if voiceError}
         <p class="hint warn voice-error" role="status">{voiceError}</p>
       {/if}
-      <label>
-        {t("settings.inputDevice")}
-        <select
-          value={settings.inputDeviceId ?? ""}
-          onchange={(e) => onChange({ inputDeviceId: e.currentTarget.value || null })}
-        >
-          <option value="">{t("settings.deviceDefault")}</option>
-          {#each inputs as d (d.deviceId)}
-            <option value={d.deviceId}>{d.label || t("settings.microphone")}</option>
-          {/each}
-        </select>
-        {#if fellBack}
-          <span class="hint warn" role="status">
-            {deviceLabel ? t("settings.micFellBack", { device: deviceLabel }) : t("settings.micFellBackDefault")}
-          </span>
-        {:else if deviceLabel}
-          <span class="hint">{t("settings.micInUse", { device: deviceLabel })}</span>
+      <!-- Devices first (as Discord), then what goes in, then what comes out. -->
+      <div class="devices">
+        <label>
+          {t("settings.inputDevice")}
+          <select
+            value={settings.inputDeviceId ?? ""}
+            onchange={(e) => onChange({ inputDeviceId: e.currentTarget.value || null })}
+          >
+            <option value="">{t("settings.deviceDefault")}</option>
+            {#each inputs as d (d.deviceId)}
+              <option value={d.deviceId}>{d.label || t("settings.microphone")}</option>
+            {/each}
+          </select>
+          {#if fellBack}
+            <span class="hint warn" role="status">
+              {deviceLabel ? t("settings.micFellBack", { device: deviceLabel }) : t("settings.micFellBackDefault")}
+            </span>
+          {:else if deviceLabel}
+            <span class="hint">{t("settings.micInUse", { device: deviceLabel })}</span>
+          {/if}
+        </label>
+        {#if outputSupported}
+          <label>
+            {t("settings.outputDevice")}
+            <select
+              value={settings.outputDeviceId ?? ""}
+              onchange={(e) => onChange({ outputDeviceId: e.currentTarget.value || null })}
+            >
+              <option value="">{t("settings.deviceDefault")}</option>
+              {#each outputs as d (d.deviceId)}
+                <option value={d.deviceId}>{d.label || t("settings.speakers")}</option>
+              {/each}
+            </select>
+          </label>
         {/if}
-      </label>
-
+      </div>
       {#if hasCamera}
         <label>
           {t("settings.camera")}
@@ -345,6 +361,90 @@
         </label>
       {/if}
 
+      <label class="check">
+        <input type="checkbox" checked={settings.streamPreviews} onchange={(e) => onChange({ streamPreviews: e.currentTarget.checked })} />
+        <span>{t("settings.streamPreviews")}</span>
+        <span class="hint">{t("settings.streamPreviewsHint")}</span>
+      </label>
+
+      <h4 class="group">{t("settings.voiceInput")}</h4>
+      <fieldset>
+        <legend>{t("settings.inputMode")}</legend>
+        <label class="radio">
+          <input
+            type="radio"
+            name="mode"
+            checked={settings.mode === "vad"}
+            onchange={() => onChange({ mode: "vad" })}
+          />
+          {t("settings.voiceActivity")}
+        </label>
+        <label class="radio">
+          <input
+            type="radio"
+            name="mode"
+            checked={settings.mode === "ptt"}
+            onchange={() => onChange({ mode: "ptt" })}
+          />
+          {t("settings.pushToTalk")}
+        </label>
+      </fieldset>
+      <!-- The microphone opens only for the test (or in voice): the meter
+           sits next to the button that starts it, the threshold right under. -->
+      <div class="row">
+        <span class="label">{t("settings.micTest")}</span>
+        <div class="mic-test">
+          {#if onEcho}
+            <button type="button" class="secondary" aria-pressed={echo} onclick={() => setEcho(!echo)}>
+              {echo ? t("settings.echoTestStop") : t("settings.echoTestStart")}
+            </button>
+          {/if}
+          <div class="meter" aria-hidden="true">
+            <div
+              class="level"
+              class:active={settings.mode === "vad" ? level >= settings.vadThresholdDb : level > METER_MIN_DB}
+              style:width="{meterPercent(level)}%"
+            ></div>
+            {#if settings.mode === "vad"}
+              <div class="threshold" style:left="{meterPercent(settings.vadThresholdDb)}%"></div>
+            {/if}
+          </div>
+        </div>
+        {#if onEcho}<p class="hint">{t("settings.echoTestHint")}</p>{/if}
+      </div>
+      {#if settings.mode === "ptt"}
+        <div class="row">
+          <span class="label">{t("settings.pttKey")}</span>
+          <button
+            class="key"
+            class:recording={recordingKey}
+            aria-pressed={recordingKey}
+            onclick={() => (recordingKey = true)}
+          >
+            {recordingKey ? t("settings.pttRecording") : keyLabel(settings.pttKey)}
+          </button>
+          <p class="hint">
+            {isDesktop()
+              ? t("settings.pttHintDesktop")
+              : t("settings.pttHintBrowser")}
+          </p>
+        </div>
+      {:else}
+        <div class="row">
+          <span class="label">{t("settings.sensitivity")}</span>
+          <input
+            type="range"
+            min={METER_MIN_DB}
+            max="0"
+            step="1"
+            value={settings.vadThresholdDb}
+            oninput={(e) => onChange({ vadThresholdDb: Number(e.currentTarget.value) })}
+            aria-label={t("settings.vadThreshold")}
+            aria-valuetext={t("settings.decibels", { value: settings.vadThresholdDb })}
+          />
+          <p class="hint">{t("settings.sensitivityHint")}</p>
+        </div>
+      {/if}
       <label>
         {t("settings.noiseSuppression")}
         <select
@@ -368,106 +468,6 @@
           <span class="hint">{t("settings.noiseHint")}</span>
         {/if}
       </label>
-      {#if onEcho}
-        <div class="row">
-          <span class="label">{t("settings.hearYourself")}</span>
-          <div class="buttons">
-            <button type="button" class="secondary" aria-pressed={echo} onclick={() => setEcho(!echo)}>
-              {echo ? t("settings.echoTestStop") : t("settings.echoTestStart")}
-            </button>
-          </div>
-          <p class="hint">{t("settings.echoTestHint")}</p>
-        </div>
-      {/if}
-
-      {#if outputSupported}
-        <label>
-          {t("settings.outputDevice")}
-          <select
-            value={settings.outputDeviceId ?? ""}
-            onchange={(e) => onChange({ outputDeviceId: e.currentTarget.value || null })}
-          >
-            <option value="">{t("settings.deviceDefault")}</option>
-            {#each outputs as d (d.deviceId)}
-              <option value={d.deviceId}>{d.label || t("settings.speakers")}</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
-      <label>
-        {t("settings.playbackBuffer")}
-        <select
-          value={settings.playbackBuffer}
-          onchange={(e) => onChange({ playbackBuffer: e.currentTarget.value as PlaybackBuffer })}
-        >
-          {#each BUFFERS as b (b)}
-            <option value={b}>{bufferLabel(b)}</option>
-          {/each}
-        </select>
-        <span class="hint">{t("settings.playbackBufferHint")}</span>
-      </label>
-      <fieldset>
-        <legend>{t("settings.inputMode")}</legend>
-        <label class="radio">
-          <input
-            type="radio"
-            name="mode"
-            checked={settings.mode === "vad"}
-            onchange={() => onChange({ mode: "vad" })}
-          />
-          {t("settings.voiceActivity")}
-        </label>
-        <label class="radio">
-          <input
-            type="radio"
-            name="mode"
-            checked={settings.mode === "ptt"}
-            onchange={() => onChange({ mode: "ptt" })}
-          />
-          {t("settings.pushToTalk")}
-        </label>
-      </fieldset>
-
-      {#if settings.mode === "ptt"}
-        <div class="row">
-          <span class="label">{t("settings.pttKey")}</span>
-          <button
-            class="key"
-            class:recording={recordingKey}
-            aria-pressed={recordingKey}
-            onclick={() => (recordingKey = true)}
-          >
-            {recordingKey ? t("settings.pttRecording") : keyLabel(settings.pttKey)}
-          </button>
-          <p class="hint">
-            {isDesktop()
-              ? t("settings.pttHintDesktop")
-              : t("settings.pttHintBrowser")}
-          </p>
-        </div>
-      {:else}
-        <div class="row">
-          <span class="label">{t("settings.sensitivity")}</span>
-          <div class="meter" aria-hidden="true">
-            <div
-              class="level"
-              class:active={level >= settings.vadThresholdDb}
-              style:width="{meterPercent(level)}%"
-            ></div>
-          </div>
-          <input
-            type="range"
-            min={METER_MIN_DB}
-            max="0"
-            step="1"
-            value={settings.vadThresholdDb}
-            oninput={(e) => onChange({ vadThresholdDb: Number(e.currentTarget.value) })}
-            aria-label={t("settings.vadThreshold")}
-            aria-valuetext={t("settings.decibels", { value: settings.vadThresholdDb })}
-          />
-          <p class="hint">{t("settings.sensitivityHint")}</p>
-        </div>
-      {/if}
       <label class="check">
         <input
           type="checkbox"
@@ -492,10 +492,19 @@
         <span>{t("settings.closeMic")}</span>
         <span class="hint">{t("settings.closeMicHint")}</span>
       </label>
-      <label class="check">
-        <input type="checkbox" checked={settings.streamPreviews} onchange={(e) => onChange({ streamPreviews: e.currentTarget.checked })} />
-        <span>{t("settings.streamPreviews")}</span>
-        <span class="hint">{t("settings.streamPreviewsHint")}</span>
+
+      <h4 class="group">{t("settings.voiceOutput")}</h4>
+      <label>
+        {t("settings.playbackBuffer")}
+        <select
+          value={settings.playbackBuffer}
+          onchange={(e) => onChange({ playbackBuffer: e.currentTarget.value as PlaybackBuffer })}
+        >
+          {#each BUFFERS as b (b)}
+            <option value={b}>{bufferLabel(b)}</option>
+          {/each}
+        </select>
+        <span class="hint">{t("settings.playbackBufferHint")}</span>
       </label>
     {:else if id === "notifications"}
       <label class="check">
@@ -668,11 +677,42 @@
   .key.recording {
     outline: 2px solid var(--accent);
   }
+  /* Microphone and speaker side by side, stacked when narrow. */
+  .devices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    column-gap: 16px;
+  }
+  /* A sub-section of the voice settings. */
+  .group {
+    margin: 8px 0 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .mic-test {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mic-test button {
+    flex-shrink: 0;
+  }
   .meter {
+    position: relative;
+    flex: 1;
     height: 8px;
     border-radius: 4px;
     background: var(--bg-rail);
     overflow: hidden;
+  }
+  /* The voice activity threshold (set with the slider below), against the level. */
+  .threshold {
+    position: absolute;
+    inset-block: 0;
+    width: 2px;
+    background: var(--text-muted);
   }
   .level {
     height: 100%;

@@ -98,6 +98,8 @@ export default {
   "settings.qrNewCode": "New code",
 
   // Voice & video.
+  "settings.voiceInput": "Input",
+  "settings.voiceOutput": "Output",
   "settings.inputDevice": "Input device",
   "settings.deviceDefault": "Default",
   "settings.microphone": "Microphone",
@@ -116,10 +118,10 @@ export default {
   "settings.noiseLoading": "Loading DeepFilterNet3 (about 12 MB, once)…",
   "settings.noiseHint":
     "Strong removes fan and other steady noise; typing alone does not start sending. Strongest also removes most typing, but loads about 12 MB, uses more CPU and adds a little delay.",
-  "settings.hearYourself": "Hear yourself",
-  "settings.echoTestStart": "Start echo test",
+  "settings.micTest": "Mic test",
+  "settings.echoTestStart": "Start test",
   "settings.echoTestStop": "Stop",
-  "settings.echoTestHint": "Plays your microphone as the others hear it, after noise suppression. Use headphones.",
+  "settings.echoTestHint": "Plays your microphone as the others hear it, after noise suppression, and shows its level on the bar. Use headphones.",
   "settings.outputDevice": "Output device",
   "settings.speakers": "Speakers",
   "settings.playbackBuffer": "Playback buffer",
