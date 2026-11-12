@@ -402,3 +402,4 @@
 - [x] [Flaky Go tests: TestTimeOutsEnd and TestCloseEndsAllConnections](issues/flaky-go-tests-timeouts-bridge-close.md)
 - [x] [Android: background playback without the microphone permission](issues/android-listen-without-microphone.md)
 - [x] [Bridge: a slow browser loses its connection before the ping grace](issues/bridge-ping-write-timeout.md)
+- [x] [Replies: show the quoted message's picture](issues/reply-quote-media.md)

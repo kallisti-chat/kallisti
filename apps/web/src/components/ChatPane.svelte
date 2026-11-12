@@ -1795,7 +1795,9 @@
     {@const quote = m.reply}
     <button type="button" class="quote" onclick={() => quote.author && (seeking = quote.id)}>
       {#if blocked(quote.author)}<em>{t("chat.quoteBlocked")}</em>
-      {:else if quote.author}<strong>{quote.author}</strong> <span class="ellipsis">{previewText(quote.text)}</span>
+      {:else if quote.author}<strong>{quote.author}</strong>
+        {#if quote.image}<img class="quote-image" src={quote.image} alt="" loading="lazy" onerror={(e) => e.currentTarget.remove()} />{/if}
+        <span class="ellipsis">{previewText(quote.text)}</span>
       {:else}<em>{t("chat.quoteDeleted")}</em>{/if}
     </button>
   {/if}
@@ -3062,6 +3064,17 @@
     color: var(--text-muted);
     text-align: left;
     cursor: pointer;
+  }
+  .quote:has(.quote-image) {
+    align-items: center;
+  }
+  /* A small picture of the answered message's first file. */
+  .quote-image {
+    flex: none;
+    height: 32px;
+    max-width: 64px;
+    object-fit: cover;
+    border-radius: 4px;
   }
   .quote strong {
     flex: 0 1 auto;

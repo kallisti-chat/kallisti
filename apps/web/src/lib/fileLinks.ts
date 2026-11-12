@@ -12,7 +12,8 @@ const expiry = (url: string | undefined): number | null => {
   return ex ? Number(ex) * 1000 : null;
 };
 
-const links = (m: TextMessage) => messageFiles(m).flatMap((f) => [f.url, f.preview]);
+// Its files' links, and its quote's picture (a reply's, see the server's quoteImage).
+const links = (m: TextMessage) => [...messageFiles(m).flatMap((f) => [f.url, f.preview]), m.reply?.image];
 
 // A message's links in this hour, so each is asked once an hour (again
 // only when the server did not answer, for example over its rate limit).

@@ -602,6 +602,18 @@ describe("edited and deleted messages", () => {
     expect(parseServerEvent(JSON.stringify({ type: "message", message: raw }))).toEqual({ type: "message", message: raw });
     expect(toChatMessage(raw).reply).toEqual({ id: 7, author: "bob", text: "q" });
   });
+
+  it("shows a quote's picture only from our server's files", () => {
+    const base = "https://chat.example";
+    const raw = { ...msg(8), reply: { id: 7, author: "bob", text: "", image: "/files/k/cat.png?preview" } };
+    expect(parseServerEvent(JSON.stringify({ type: "message", message: raw }))).toEqual({ type: "message", message: raw });
+    expect(toChatMessage(raw, base).reply).toEqual({ id: 7, author: "bob", text: "", image: "https://chat.example/files/k/cat.png?preview" });
+    // Elsewhere it would load by itself (the reader's IP to another host).
+    const foreign = { ...raw, reply: { ...raw.reply, image: "https://evil.example/files/k/x.png" } };
+    expect(toChatMessage(foreign, base).reply).toEqual({ id: 7, author: "bob", text: "" });
+    const bad = { ...raw, reply: { ...raw.reply, image: 5 } };
+    expect(parseServerEvent(JSON.stringify({ type: "message", message: bad }))).toBeNull();
+  });
 });
 
 describe("read state from the server", () => {
