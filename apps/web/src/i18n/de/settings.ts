@@ -144,8 +144,6 @@ export default {
     "Zum Musikmachen: keine Rauschunterdrückung, keine Echounterdrückung, keine automatische Lautstärke, und besserer Klang (Stereo, wenn das Mikrofon zwei Kanäle hat). Verwende ein Headset.",
   "settings.closeMic": "Mikrofon schließen, wenn stummgeschaltet",
   "settings.closeMicHint": "Der Browser zeigt dann keine Aufnahme mehr an, aber der Ton setzt kurz aus, wenn du die Stummschaltung ein- oder ausschaltest.",
-  "settings.streamPreviews": "Vorschau meiner Bildschirmübertragung und Kamera zeigen",
-  "settings.streamPreviewsHint": "Wer nicht zuschaut, sieht ein kleines Bild, das alle paar Sekunden aktualisiert wird.",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Bildschirm von {name}",

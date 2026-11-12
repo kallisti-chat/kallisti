@@ -361,11 +361,6 @@
         </label>
       {/if}
 
-      <label class="check">
-        <input type="checkbox" checked={settings.streamPreviews} onchange={(e) => onChange({ streamPreviews: e.currentTarget.checked })} />
-        <span>{t("settings.streamPreviews")}</span>
-        <span class="hint">{t("settings.streamPreviewsHint")}</span>
-      </label>
 
       <h4 class="group">{t("settings.voiceInput")}</h4>
       <fieldset>

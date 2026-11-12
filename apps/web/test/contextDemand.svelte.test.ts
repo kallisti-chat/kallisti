@@ -178,7 +178,7 @@ describe("Client shared context demand", () => {
     const streams = {
       watching: [7], volumeOf: () => volume, sharing: { screen: false, camera: false },
       preview: { screen: null, camera: null }, gone: false,
-      setPreviews: noop, setCameraDevice: noop, setQuality: noop, setDeaf: noop,
+      setCameraDevice: noop, setQuality: noop, setDeaf: noop,
       unwatch: noop, watch: noop, attach: noop, statsOf: () => null,
     } as unknown as NonNullable<Connection["streams"]>;
     demand.setContext(audio);

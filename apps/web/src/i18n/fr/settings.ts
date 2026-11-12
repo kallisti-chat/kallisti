@@ -151,8 +151,6 @@ export default {
   "settings.closeMic": "Fermer le micro quand tu es muet",
   "settings.closeMicHint":
     "Le navigateur n'indique alors plus qu'il enregistre, mais le son se coupe un instant quand tu coupes ou réactives le micro.",
-  "settings.streamPreviews": "Afficher un aperçu de mon partage d'écran et de ma caméra",
-  "settings.streamPreviewsHint": "Les personnes qui ne regardent pas voient une petite image, mise à jour toutes les quelques secondes.",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Écran de {name}",

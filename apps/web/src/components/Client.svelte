@@ -1579,9 +1579,6 @@
     });
   });
   $effect(() => {
-    streamClient?.setPreviews(prefs.streamPreviews);
-  });
-  $effect(() => {
     streamClient?.setCameraDevice(prefs.cameraDeviceId);
   });
   $effect(() => {

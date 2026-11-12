@@ -144,8 +144,6 @@ export default {
     "用於演奏音樂：不使用噪音抑制、回音消除或自動音量，音質更好（如果麥克風有兩個聲道則為立體聲）。請使用耳機麥克風。",
   "settings.closeMic": "靜音時關閉麥克風",
   "settings.closeMicHint": "瀏覽器就不會再顯示正在錄音，但在你靜音或取消靜音時，聲音會短暫中斷。",
-  "settings.streamPreviews": "顯示我的螢幕分享和相機預覽",
-  "settings.streamPreviewsHint": "沒有在觀看的人會看到一張小圖片，每隔幾秒更新一次。",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的螢幕",

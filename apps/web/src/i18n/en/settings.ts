@@ -150,8 +150,6 @@ export default {
     "For playing music: no noise suppression, echo cancellation or automatic volume, and better sound (stereo if the microphone has two channels). Use a headset.",
   "settings.closeMic": "Close the microphone when muted",
   "settings.closeMicHint": "The browser then stops showing it as recording, but the sound stops for a moment when you mute or unmute.",
-  "settings.streamPreviews": "Show a preview of my screen share and camera",
-  "settings.streamPreviewsHint": "People who are not watching see a small picture, updated every few seconds.",
 
   // Streams (lib/stream/quality) and OBS.
   "settings.qualityLabel": "{height}p {fps} fps",

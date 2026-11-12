@@ -144,8 +144,6 @@ export default {
     "演奏向けです。ノイズ抑制、エコー除去、自動音量調整をオフにし、音質を上げます (マイクが 2 チャンネルならステレオ)。ヘッドセットをお使いください。",
   "settings.closeMic": "ミュート中はマイクを閉じる",
   "settings.closeMicHint": "ブラウザーに録音中と表示されなくなりますが、ミュートやミュート解除のときに音が一瞬途切れます。",
-  "settings.streamPreviews": "画面共有とカメラのプレビューを表示",
-  "settings.streamPreviewsHint": "視聴していない人には、数秒ごとに更新される小さな画像が表示されます。",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} の画面",

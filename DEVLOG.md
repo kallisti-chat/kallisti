@@ -2990,3 +2990,7 @@ Opening settings no longer requests audio or opens the microphone. Start echo te
 ## 2026-11-12: Voice settings in Discord's order
 
 With the microphone open only for the test, the level meter belongs next to the test button. The Voice & video section is now: microphone and speaker side by side (stacked when narrow), camera and stream previews; "Input" (mode, mic test with button, level meter and threshold mark, sensitivity or push-to-talk key, noise suppression, echo cancellation, music mode, close when muted); "Output" (playback buffer). New strings in all languages ("Input", "Output", "Mic test", "Start test"). The test button called `onEcho` from an effect, after the click: Safari and iOS may refuse to start audio there; it now runs in the click (test first, red before). Checked with headless Chromium screenshots, wide and narrow; independent review found nothing significant.
+
+## 2026-11-12: Stream previews always on
+
+The setting "Show a preview of my screen share and camera" is gone: others always see the small picture of a stream before they watch (the stream client's default). A stored `streamPreviews: false` is ignored.

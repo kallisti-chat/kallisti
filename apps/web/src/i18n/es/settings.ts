@@ -144,8 +144,6 @@ export default {
     "Para tocar música: sin supresión de ruido, cancelación de eco ni volumen automático, y con mejor sonido (estéreo si el micrófono tiene dos canales). Usa auriculares.",
   "settings.closeMic": "Cerrar el micrófono al silenciarte",
   "settings.closeMicHint": "Así el navegador deja de mostrar que graba, pero el sonido se corta un momento al silenciarte o dejar de silenciarte.",
-  "settings.streamPreviews": "Mostrar una vista previa de mi pantalla compartida y mi cámara",
-  "settings.streamPreviewsHint": "Quienes no están mirando ven una imagen pequeña que se actualiza cada pocos segundos.",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Pantalla de {name}",

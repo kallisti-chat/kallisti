@@ -144,8 +144,6 @@ export default {
     "用于演奏音乐：不使用降噪、回声消除或自动音量，音质更好（若麦克风有两个声道则为立体声）。请使用耳机。",
   "settings.closeMic": "静音时关闭麦克风",
   "settings.closeMicHint": "浏览器便不再显示正在录音，但静音或取消静音时声音会短暂中断。",
-  "settings.streamPreviews": "显示我的屏幕共享和摄像头的预览",
-  "settings.streamPreviewsHint": "未观看的人会看到一张小图，每隔几秒更新一次。",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的屏幕",

@@ -117,9 +117,8 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
   let limits = DEFAULT_LIMITS;
   let cameraDevice: string | null = null;
   let error = $state<string | null>(null);
-  // Who watches our streams (sessions), and whether others see thumbnails.
+  // Who watches our streams (sessions).
   let viewers = $state(both<number[]>(() => []));
-  let previews = true;
   // Deafened: stream sound is silent too.
   let deaf = false;
   // Watching: by stream id (see protocol.streamId).
@@ -278,7 +277,7 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
       let previewAt = performance.now() + PREVIEW_FIRST_MS;
       const onFrame = (frame: VideoFrame) => {
         const now = performance.now();
-        if (previews && now >= previewAt) {
+        if (now >= previewAt) {
           previewAt = now + PREVIEW_EVERY_MS;
           const image = thumbnail(frame);
           if (image.length <= MAX_PREVIEW) send({ type: "preview", image, ...own(kind) });
@@ -648,12 +647,6 @@ export const createStreamClient = (url: string, token: () => Promise<string>, au
       if (!v?.gain || !audio) return;
       if (!deaf) v.gain.gain.setTargetAtTime(volume, audio.currentTime, 0.02);
       sounds = { ...sounds, [session]: volume };
-    },
-    // Whether others see thumbnails of our streams (a setting); turned
-    // off, the last ones go too.
-    setPreviews: (on: boolean) => {
-      if (previews && !on) for (const kind of KINDS) if (sharing[kind]) send({ type: "preview", image: "", ...own(kind) });
-      previews = on;
     },
     setDeaf: (on: boolean) => {
       deaf = on;
