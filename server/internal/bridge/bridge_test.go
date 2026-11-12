@@ -392,7 +392,8 @@ func TestSuspendedBrowsersGetAGrace(t *testing.T) {
 }
 
 // Writes to a page that does not read block, and pings wait for them:
-// not a reason to close before the grace either.
+// not a reason to close before the grace either. Read slowly too: longer
+// than the grace in all (a ping cut off mid-frame closes the connection).
 func TestSuspendedBrowsersSurviveAFullSocket(t *testing.T) {
 	const size = 16 << 20 // beyond the socket buffers
 	var upstreamClosed atomic.Bool
@@ -420,6 +421,7 @@ func TestSuspendedBrowsersSurviveAFullSocket(t *testing.T) {
 			t.Fatalf("after %d bytes: %v", got, err)
 		}
 		got += len(data)
+		time.Sleep(3 * time.Millisecond)
 	}
 }
 

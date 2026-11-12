@@ -2994,3 +2994,7 @@ With the microphone open only for the test, the level meter belongs next to the 
 ## 2026-11-12: Stream previews always on
 
 The setting "Show a preview of my screen share and camera" is gone: others always see the small picture of a stream before they watch (the stream client's default). A stored `streamPreviews: false` is ignored.
+
+## 2026-11-12: Bridge pings wait for the grace
+
+CI failed on `TestSuspendedBrowsersSurviveAFullSocket` ("EOF" after 2.6 MB). The bridge pinged the browser with a timeout of one tick, and coder/websocket closes the connection when a write's context ends mid-frame: with the test's 50 ms ticks a slow reader was cut off long before the 1 s grace. One browser ping at a time now runs in its own goroutine and may wait for the rest of the grace; the Mumble pings upstream go on every tick. The test now reads at 3 ms per frame (longer than the grace in all): it failed every run before the fix. In production the library's own 5 s limit on control frame writes applies first, so there the change mostly lets the pong wait the full grace.
