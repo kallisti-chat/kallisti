@@ -1,8 +1,8 @@
-// Package fedi talks to fediverse instances through the Mastodon API
-// (Mastodon, Pleroma/Akkoma, GoToSocial, Pixelfed, Friendica, ...) for
-// fediverse logins: register an app, OAuth (authorization code with PKCE),
-// and read the logged-in account. Instances are named by users, so every
-// request goes through a guarded client (see NewClient).
+// Package fedi talks to fediverse instances through Mastodon OAuth
+// (Mastodon, Pleroma/Akkoma, GoToSocial, Pixelfed, Friendica, ...) and native
+// Misskey OAuth for fediverse logins, reading only the logged-in account.
+// Instances are named by users, so every request goes through a guarded
+// client (see NewClient).
 package fedi
 
 import (
@@ -45,8 +45,8 @@ const (
 var (
 	ErrInstance = errors.New("this is not a fediverse server address")
 	// ErrUnreachable: no connection, a refused address, or not an answer of
-	// the Mastodon API.
-	ErrUnreachable = errors.New("cannot reach this server, or it does not offer Mastodon logins")
+	// a supported fediverse API.
+	ErrUnreachable = errors.New("cannot reach this server, or it does not offer supported fediverse logins")
 )
 
 // Instance is a fediverse server: its host (lower-case, ASCII; the key of

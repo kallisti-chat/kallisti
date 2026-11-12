@@ -1,5 +1,5 @@
-// Package fedifake is a small fake fediverse instance (the parts of the
-// Mastodon API that fediverse logins use), for tests and local checks.
+// Package fedifake is a small fake fediverse instance (Mastodon OAuth or
+// native Misskey OAuth), for tests and local checks.
 // Never run it where real users can reach it: it approves every login.
 package fedifake
 
@@ -11,12 +11,16 @@ import (
 	"encoding/json"
 	"errors"
 	"html/template"
+	"io"
 	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"golang.org/x/net/html"
 )
 
 // Instance serves /api/v1/apps, /oauth/authorize (a page that approves
@@ -39,6 +43,10 @@ type Instance struct {
 	// SingleUseApps: as Misskey and Sharkey, an app's client id is base64
 	// of an auth session URL (<base>/auth/<id>), and one login uses it up.
 	SingleUseApps bool
+	// NativeMisskey offers public-client OAuth, without Mastodon-compatible APIs.
+	NativeMisskey bool
+	// NoIssuer simulates native servers without RFC 9207 response support.
+	NoIssuer bool
 
 	mu       sync.Mutex
 	apps     map[string]app   // by client id
@@ -83,8 +91,24 @@ func (f *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		f.limited = map[string]bool{}
 	}
 	f.mu.Unlock()
+	if f.NativeMisskey && strings.HasPrefix(r.URL.Path, "/api/v1/") {
+		http.NotFound(w, r)
+		return
+	}
 	r.ParseForm()
 	switch {
+	case f.NativeMisskey && r.URL.Path == "/.well-known/oauth-authorization-server" && r.Method == http.MethodGet:
+		base := requestOrigin(r)
+		writeJSON(w, http.StatusOK, map[string]any{
+			"issuer": base, "authorization_endpoint": base + "/oauth/authorize", "token_endpoint": base + "/oauth/token",
+			"response_types_supported": []string{"code"}, "grant_types_supported": []string{"authorization_code"},
+			"code_challenge_methods_supported": []string{"S256"}, "token_endpoint_auth_methods_supported": []string{"none"},
+			"scopes_supported": []string{"read:account"}, "authorization_response_iss_parameter_supported": !f.NoIssuer,
+		})
+	case f.NativeMisskey && r.URL.Path == "/api/i" && r.Method == http.MethodPost:
+		f.verifyMisskey(w, r)
+	case f.NativeMisskey && r.URL.Path == "/api/i/revoke-token" && r.Method == http.MethodPost:
+		f.revokeMisskey(w, r)
 	case r.URL.Path == "/api/v1/instance" && r.Method == http.MethodGet:
 		version := f.Version
 		if version == "" {
@@ -96,7 +120,7 @@ func (f *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/oauth/authorize" && r.Method == http.MethodGet:
 		f.authorizePage(w, r)
 	case r.URL.Path == "/oauth/authorize" && r.Method == http.MethodPost:
-		callback, err := f.approve(r.Form, r.PostForm.Get("user"))
+		callback, err := f.approve(r.Form, r.PostForm.Get("user"), requestOrigin(r))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -118,6 +142,14 @@ func (f *Instance) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+func requestOrigin(r *http.Request) string {
+	scheme := "https"
+	if r.TLS == nil {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host
 }
 
 func (f *Instance) register(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +188,17 @@ func (f *Instance) check(q url.Values) (app, error) {
 	f.mu.Lock()
 	a, ok := f.apps[q.Get("client_id")]
 	f.mu.Unlock()
+	if f.NativeMisskey {
+		var err error
+		a, err = misskeyClient(q.Get("client_id"))
+		if err != nil {
+			return app{}, err
+		}
+		ok = true
+		if q.Get("scope") != "read:account" {
+			return app{}, errors.New("invalid scope")
+		}
+	}
 	switch {
 	case !ok:
 		return app{}, errors.New("unknown client")
@@ -181,10 +224,10 @@ func (f *Instance) Approve(authorizeURL, user string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return f.approve(u.Query(), user)
+	return f.approve(u.Query(), user, u.Scheme+"://"+u.Host)
 }
 
-func (f *Instance) approve(q url.Values, user string) (string, error) {
+func (f *Instance) approve(q url.Values, user, issuer string) (string, error) {
 	a, err := f.check(q)
 	if err != nil {
 		return "", err
@@ -195,6 +238,9 @@ func (f *Instance) approve(q url.Values, user string) (string, error) {
 	cb, _ := url.Parse(a.redirect)
 	v := cb.Query()
 	v.Set("state", q.Get("state"))
+	if f.NativeMisskey && !f.NoIssuer {
+		v.Set("iss", issuer)
+	}
 	if f.ProfileDenied && slices.Contains(strings.Fields(q.Get("scope")), "profile") {
 		v.Set("error", "invalid_scope")
 	} else {
@@ -210,6 +256,17 @@ func (f *Instance) approve(q url.Values, user string) (string, error) {
 
 func (f *Instance) token(w http.ResponseWriter, r *http.Request) {
 	p := r.PostForm
+	if f.NativeMisskey && strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		var body map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
+			return
+		}
+		p = url.Values{}
+		for key, value := range body {
+			p.Set(key, value)
+		}
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	g, ok := f.codes[p.Get("code")]
@@ -256,6 +313,103 @@ func (f *Instance) verify(w http.ResponseWriter, r *http.Request) {
 		acc["avatar"], acc["avatar_static"] = base+"/media/avatar", base+"/media/avatar_static"
 	}
 	writeJSON(w, http.StatusOK, acc)
+}
+
+// misskeyClient fetches the real public HTML metadata rather than trusting
+// redirect_uri from the authorization request.
+func misskeyClient(clientID string) (app, error) {
+	u, err := url.Parse(clientID)
+	if err != nil || u.Host == "" || u.User != nil || u.Fragment != "" || (u.Scheme != "https" && u.Scheme != "http") {
+		return app{}, errors.New("invalid client_id URL")
+	}
+	client := &http.Client{Timeout: 5 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := client.Get(clientID)
+	if err != nil {
+		return app{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
+		return app{}, errors.New("invalid client metadata response")
+	}
+	z := html.NewTokenizer(io.LimitReader(resp.Body, 64<<10))
+	for {
+		switch z.Next() {
+		case html.ErrorToken:
+			return app{}, errors.New("client metadata has no redirect_uri")
+		case html.StartTagToken, html.SelfClosingTagToken:
+			token := z.Token()
+			if token.Data != "link" && token.Data != "a" {
+				continue
+			}
+			var rel, href string
+			for _, attr := range token.Attr {
+				switch attr.Key {
+				case "rel":
+					rel = attr.Val
+				case "href":
+					href = attr.Val
+				}
+			}
+			if slices.Contains(strings.Fields(rel), "redirect_uri") && href != "" {
+				return app{redirect: href, scopes: "read:account"}, nil
+			}
+		}
+	}
+}
+
+func (f *Instance) verifyMisskey(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Token string `json:"i"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	user, ok := f.tokens[body.Token]
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+		return
+	}
+	writeJSON(w, http.StatusOK, f.misskeyUser(r, user))
+}
+
+func (f *Instance) revokeMisskey(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Auth  string `json:"i"`
+		Token string `json:"token"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil || body.Auth == "" || body.Auth != body.Token {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.tokens[body.Auth]; !ok {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+	delete(f.tokens, body.Token)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// misskeyUser is called with mu held and shares IDs with the OAuth API.
+func (f *Instance) misskeyUser(r *http.Request, user string) map[string]any {
+	id, ok := f.users[user]
+	if !ok {
+		id = strconv.Itoa(100 + len(f.users))
+		f.users[user] = id
+	}
+	account := map[string]any{"id": id, "username": user, "host": nil}
+	if f.avatar != nil {
+		scheme := "https"
+		if r.TLS == nil {
+			scheme = "http"
+		}
+		account["avatarUrl"] = scheme + "://" + r.Host + "/media/avatar"
+	}
+	return account
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
