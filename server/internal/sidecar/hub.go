@@ -507,6 +507,7 @@ type wireQuote struct {
 	Author  string `json:"author"`
 	Text    string `json:"text"`
 	Webhook bool   `json:"webhook,omitempty"` // a webhook's post (see store.Quote)
+	Image   string `json:"image,omitempty"`   // a small picture of its first file (see quoteImage)
 }
 
 const quoteLength = 100
@@ -567,6 +568,21 @@ func (h *Hub) previewURL(u store.Upload) string {
 	return h.fileURL(u, "preview")
 }
 
+// quoteImage is a small picture of a quoted message's first file ("":
+// none): its preview if that is a picture, else the file if browsers show
+// it; never a spoiler's.
+func (h *Hub) quoteImage(u *store.Upload) string {
+	switch {
+	case u == nil || strings.HasPrefix(u.Name, "SPOILER_"):
+		return ""
+	case strings.HasPrefix(u.Preview, "image/"):
+		return h.previewURL(*u)
+	case slices.Contains([]string{"image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"}, u.Type):
+		return h.fileURL(*u, "")
+	}
+	return ""
+}
+
 // previewType is its preview's type ("": none).
 func previewType(u store.Upload) string {
 	if !u.HasPreview() {
@@ -600,7 +616,7 @@ func (h *Hub) toWireFor(m store.Message, viewer *uint32) wireMessage {
 		w.Pinned = m.PinnedAt.UnixMilli()
 	}
 	if r := m.Reply; r != nil {
-		w.Reply = &wireQuote{ID: r.ID, Author: r.Author, Text: shorten(r.Text, quoteLength), Webhook: r.Webhook}
+		w.Reply = &wireQuote{ID: r.ID, Author: r.Author, Text: shorten(r.Text, quoteLength), Webhook: r.Webhook, Image: h.quoteImage(r.Upload)}
 	}
 	for _, u := range m.Uploads {
 		w.Uploads = append(w.Uploads, wireUpload{URL: h.fileURL(u, ""), Name: u.Name, Type: u.Type, Size: u.Size, Width: u.Width, Height: u.Height,

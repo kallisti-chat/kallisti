@@ -11,7 +11,7 @@ const maxFileLinkAsks = 100
 
 // fileLinks sends messages again whose file links expire (see filelink), to
 // this connection only, as edits (not marked edited); not the ones it may
-// not read.
+// not read. A reply's quote picture is one of its links (see quoteImage).
 func (c *Conn) fileLinks(id mumble.Identity, req request) {
 	if c.hub.FileLinks == nil {
 		return
@@ -19,7 +19,7 @@ func (c *Conn) fileLinks(id mumble.Identity, req request) {
 	asks := slices.Compact(slices.Sorted(slices.Values(req.Messages)))
 	for _, mid := range asks[:min(len(asks), maxFileLinkAsks)] {
 		m, err := c.hub.store.MessageByID(mid)
-		if err != nil || len(m.Uploads) == 0 {
+		if err != nil || len(m.Uploads) == 0 && (m.Reply == nil || m.Reply.Upload == nil) {
 			continue
 		}
 		if ch, ok := c.hub.chatOf(m.ChannelID); ok && c.hub.may(id, ch, false) {

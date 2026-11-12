@@ -1044,6 +1044,30 @@ func TestMessagesAfterHaveTheirFiles(t *testing.T) {
 	}
 }
 
+// A reply's quote carries the answered message's first file (the
+// clients show a small picture of it).
+func TestReplyQuotesTheFirstFile(t *testing.T) {
+	s := open(t)
+	s.EnsureChannels([]string{"general"})
+	at := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	pic, _ := s.AddUpload(Upload{Key: "p", Name: "cat.png", Type: "image/png", Size: 1, Author: "a"}, at)
+	doc, _ := s.AddUpload(Upload{Key: "d", Name: "notes.pdf", Type: "application/pdf", Size: 1, Author: "a"}, at)
+	orig, _ := s.AddMessage(NewMessage{ChannelID: 1, Author: "a", At: at, Text: "look", Uploads: []Attachment{{ID: pic.ID}, {ID: doc.ID}}})
+	plain, _ := s.AddMessage(NewMessage{ChannelID: 1, Author: "a", At: at, Text: "no files"})
+	reply, err := s.AddMessage(NewMessage{ChannelID: 1, Author: "b", At: at, Text: "nice", ReplyTo: orig.ID})
+	if err != nil || reply.Reply == nil || reply.Reply.Upload == nil || reply.Reply.Upload.Key != "p" {
+		t.Fatalf("new reply %+v %v", reply.Reply, err)
+	}
+	s.AddMessage(NewMessage{ChannelID: 1, Author: "b", At: at, Text: "ok", ReplyTo: plain.ID})
+	hist, _ := s.History(1, 0, 10)
+	if q := hist[2].Reply; q == nil || q.Upload == nil || q.Upload.Key != "p" {
+		t.Fatalf("history %+v", q)
+	}
+	if q := hist[3].Reply; q == nil || q.Upload != nil {
+		t.Fatalf("a quote without files %+v", q)
+	}
+}
+
 func TestSessionExpires(t *testing.T) {
 	s := open(t)
 	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
