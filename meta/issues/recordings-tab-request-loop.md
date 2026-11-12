@@ -14,4 +14,4 @@ GitHub #19: with Server settings → Recordings open, the client sends `recordin
 
 ## Result (2026-11-12)
 
-The effect depends on the recorded channels by value (a derived string). Test red first (22 requests), green after. Not done: showing the rate-limit error in the panel (suggested in the report).
+The effect depends on the recorded channels by value (a derived string). Test red first (22 requests), green after. Also: rate errors name the refused request, and a token request refused over the rate limit fails at once with the server's message (the panel shows download errors).

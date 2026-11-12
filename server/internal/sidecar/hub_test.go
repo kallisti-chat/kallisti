@@ -211,8 +211,9 @@ func TestRateLimit(t *testing.T) {
 	}
 }
 
-// Over the limit: marked, so the client can tell it from a real error; a
-// send comes back with its text for the composer.
+// Over the limit: marked, so the client can tell it from a real error, with
+// the refused request's type (a token waiter fails at once); a send comes
+// back with its text for the composer.
 func TestRateLimitIsMarked(t *testing.T) {
 	h := newHub(t, "general")
 	c := ready(t, h, "alice")
@@ -221,7 +222,7 @@ func TestRateLimitIsMarked(t *testing.T) {
 		next(t, c)
 	}
 	c.Handle([]byte(`{"type":"history","channel":1}`))
-	if m := next(t, c); m["type"] != "error" || m["about"] != "rate" {
+	if m := next(t, c); m["type"] != "error" || m["about"] != "rate" || m["request"] != "history" {
 		t.Fatalf("history: %v", m)
 	}
 	c.Handle([]byte(`{"type":"send","channel":1,"text":"hi"}`))

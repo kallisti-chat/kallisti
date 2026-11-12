@@ -276,12 +276,13 @@ export type ServerEvent =
   // refused by slow mode, and when the wait ends.
   // returned: a refused send's text, for the composer of its chat.
   // about "rate": a background request over the server's rate limit (not
-  // shown as an error; a send comes back as "refused").
+  // shown as an error; a send comes back as "refused"); request: its type.
   // nonce: the refused send's (see sendAnswer).
   | {
       type: "error";
       message: string;
       about?: "manage" | "rate";
+      request?: string;
       slow?: { channel: number; until: number };
       returned?: { channel: number; text: string };
       nonce?: string;
@@ -823,7 +824,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       const returned = isNum(v.channel) && isStr(v.text) ? { returned: { channel: v.channel, text: v.text } } : {};
       if (v.about === "slow-mode" && isNum(v.channel) && isNum(v.until)) return { ...error, slow: { channel: v.channel, until: v.until }, ...returned };
       if (v.about === "refused") return { ...error, ...returned };
-      return v.about === "manage" || v.about === "rate" ? { ...error, about: v.about } : error;
+      if (v.about === "rate") return { ...error, about: v.about, ...(isStr(v.request) && { request: v.request }) };
+      return v.about === "manage" ? { ...error, about: v.about } : error;
     }
     case "upload-token":
       return isStr(v.token)

@@ -126,17 +126,19 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   // emoji: for a custom emoji (a refusal comes as a manage error).
   let tokenWaiter: { resolve: (tokens: string[]) => void; reject: (err: Error) => void; emoji: boolean } | null = null;
   // Tokens asked for over the WebSocket (type: the request and answer).
-  // Answered in order; a waiter that timed out leaves the queue, so a late
-  // answer cannot go to the wrong one.
+  // Answered in order, or refused over the rate limit (at once: GitHub
+  // #19); a waiter that timed out leaves the queue, so a late answer cannot
+  // go to the wrong one.
   type TokenType = "stream-token" | "recording-token";
-  const tokenWaiters: Record<TokenType, ((token: string) => void)[]> = { "stream-token": [], "recording-token": [] };
+  type TokenWaiter = { done: (token: string) => void; fail: (message: string) => void };
+  const tokenWaiters: Record<TokenType, TokenWaiter[]> = { "stream-token": [], "recording-token": [] };
   const askToken = (type: TokenType) =>
     new Promise<string>((resolve, reject) => {
       if (ws.readyState !== WebSocket.OPEN) return reject(new Error(t("client.notConnected")));
       const waiters = tokenWaiters[type];
-      const waiter = (t: string) => {
-        clearTimeout(timeout);
-        resolve(t);
+      const waiter: TokenWaiter = {
+        done: (token) => (clearTimeout(timeout), resolve(token)),
+        fail: (message) => (clearTimeout(timeout), reject(new Error(message))),
       };
       const timeout = setTimeout(() => {
         waiters.splice(waiters.indexOf(waiter), 1);
@@ -276,7 +278,9 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       const ev = parseServerEvent(event.data);
       if (ev?.type === "upload-token") tokenWaiter?.resolve(ev.tokens ?? [ev.token]);
       else if (ev?.type === "error" && ev.about === "manage" && tokenWaiter?.emoji) tokenWaiter.reject(new Error(ev.message));
-      else if (ev?.type === "stream-token" || ev?.type === "recording-token") tokenWaiters[ev.type].shift()?.(ev.token);
+      else if (ev?.type === "stream-token" || ev?.type === "recording-token") tokenWaiters[ev.type].shift()?.done(ev.token);
+      else if (ev?.type === "error" && ev.about === "rate" && (ev.request === "stream-token" || ev.request === "recording-token"))
+        tokenWaiters[ev.request].shift()?.fail(ev.message);
       else if (ev && !settleWaiters("text", ev.type === "error" && ev.about === "manage" ? ev.message : null, (w) => w.via === "text" && w.confirms(ev)))
         text = reduceText(text, ev);
       if (ev?.type === "ready") fetchTextures();

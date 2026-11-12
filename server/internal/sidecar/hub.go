@@ -721,7 +721,7 @@ func (c *Conn) overLimit(id mumble.Identity, req request) {
 		c.send(map[string]any{"type": "error", "message": text, "about": "refused", "channel": req.Channel, "text": req.composerText()})
 		return
 	}
-	c.send(map[string]any{"type": "error", "message": text, "about": "rate"})
+	c.send(map[string]any{"type": "error", "message": text, "about": "rate", "request": req.Type})
 }
 
 func (c *Conn) Handle(raw []byte) {

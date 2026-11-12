@@ -3006,3 +3006,5 @@ feld asked for it: a reply to a message with media showed only the quoted text. 
 ## 2026-11-12: Recordings tab request loop (GitHub #19)
 
 The report blamed the recordings list, but the answer only replaces `text.recordings`. The effect read the prop `recording`, passed as `text.recording`: the child's effect then depends on the parent's whole `text`, which every event replaces, so each answer (and any chat event) asked again; the rate limit then refused the download token. It now depends on the recorded channels by value. A harness test that replaces its text state like Client asked 22 times before the fix and once after (and once more when a recording starts).
+
+Follow-up: a download whose token request hit the rate limit failed silently after 10 s. Rate errors now name the refused request (`request`, additive), and a pending stream or recording token fails at once with the server's message, which the Recordings panel shows. Tests: the server's rate error carries the type; a client token request fails on its own refusal, not on another request's (both red first).
