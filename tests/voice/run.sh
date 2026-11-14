@@ -16,7 +16,8 @@ mumble=64790
 
 (cd "$root/server" && go build -o "$work/server" ./cmd/server && go build -o "$work/voicecheck" ./cmd/voicecheck)
 
-WEB_DIR="$root/apps/web/dist" LISTEN_PORT=$port MUMBLE_LISTEN=127.0.0.1:$mumble \
+# upload previews are unrelated to voice and need not depend on host ffmpeg.
+MEDIA_PREVIEWS=0 WEB_DIR="$root/apps/web/dist" LISTEN_PORT=$port MUMBLE_LISTEN=127.0.0.1:$mumble \
   DB_PATH="$work/kallisti.db" UPLOAD_DIR="$work/uploads" ALLOWED_ORIGINS="http://localhost:$port" \
   "$work/server" >"$work/server.log" 2>&1 &
 server=$!
