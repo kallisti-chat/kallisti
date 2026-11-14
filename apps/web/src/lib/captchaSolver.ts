@@ -21,4 +21,3 @@ export const solve = async (challenge: string, bits: number, batch = 512) => {
     if (i >= 0) return nonces[i]!;
   }
 };
-
