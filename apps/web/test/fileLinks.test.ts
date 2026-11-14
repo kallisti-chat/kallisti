@@ -15,6 +15,13 @@ const msg = (id: number, url: string, preview?: string): TextMessage => ({
 });
 
 describe("signed file links", () => {
+  it("asks again for a reply whose quote's picture expires (see the quote's image)", () => {
+    const reply = (id: number, image: string): TextMessage => ({ id, channel: 1, author: "a", text: "yes", at: 1, reply: { id: 1, author: "b", text: "", image } });
+    const soon = reply(7, signed(now + 30 * 60_000, true));
+    const fresh = reply(8, signed(now + 20 * hour, true));
+    expect(fileLinksToAsk([soon, fresh], new Set(), now).map((m) => m.id)).toEqual([7]);
+  });
+
   it("asks again for messages whose links expire within the hour, once per link", () => {
     const fresh = msg(1, signed(now + 20 * hour));
     const soon = msg(2, signed(now + 30 * 60_000));

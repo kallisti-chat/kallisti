@@ -338,8 +338,9 @@ const (
 // 30 s) and the browser (its network code answers, not the page), until
 // the connection ends. A browser without a pong for the grace is closed.
 //
-// Each ping waits for its pong up to the next one, so the loop keeps
-// pinging upstream. While a page does not read, the writes to it block
+// One browser ping at a time waits for its pong up to the end of the
+// grace, in its own goroutine, so the loop keeps pinging upstream. While a
+// page does not read, the writes to it block
 // (voice and Mumble state wait upstream, text overflows to a resync) and
 // pings wait for them. The write of a ping frame itself may time out (5 s
 // in the websocket library) and close the connection: only if the socket
@@ -350,29 +351,47 @@ func (c *conn) keepAlive() {
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	lastPong := time.Now()
+	// A shorter wait than the grace would end a slow browser early: the
+	// library closes the connection when a write's context ends mid-frame.
+	pong := make(chan error, 1)
+	pinging := false
+	defer func() {
+		if pinging {
+			<-pong // ends with c.ctx: no goroutine outlives the connection
+		}
+	}()
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
+		case err := <-pong:
+			pinging = false
+			switch {
+			case err == nil:
+				lastPong = time.Now()
+			case c.ctx.Err() != nil:
+				return
+			case time.Since(lastPong) >= grace:
+				// No close handshake: the browser does not answer anyway.
+				c.ws.CloseNow()
+				c.upstream.Close()
+				return
+			}
+			continue
 		case <-tick.C:
 		}
 		ping := mumble.MessageFrame(mumble.TypePing, &pb.Ping{Timestamp: proto.Uint64(uint64(time.Now().UnixMilli()))})
 		if _, err := c.upstream.Write(ping); err != nil {
 			return
 		}
-		ctx, cancel := context.WithTimeout(c.ctx, every)
-		err := c.ws.Ping(ctx)
-		cancel()
-		switch {
-		case err == nil:
-			lastPong = time.Now()
-		case c.ctx.Err() != nil:
-			return
-		case time.Since(lastPong) >= grace:
-			// No close handshake: the browser does not answer anyway.
-			c.ws.CloseNow()
-			c.upstream.Close()
-			return
+		if !pinging {
+			pinging = true
+			wait := max(grace-time.Since(lastPong), every)
+			go func() {
+				ctx, cancel := context.WithTimeout(c.ctx, wait)
+				defer cancel()
+				pong <- c.ws.Ping(ctx)
+			}()
 		}
 	}
 }

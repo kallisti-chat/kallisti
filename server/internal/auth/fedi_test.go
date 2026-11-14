@@ -26,7 +26,7 @@ var home string
 
 // fediSetup: a server with fediverse logins and a fake instance (on
 // loopback, which only tests allow).
-func fediSetup(t *testing.T, f *fedifake.Instance) (*Service, *httptest.Server, string) {
+func fediSetup(t *testing.T, f http.Handler) (*Service, *httptest.Server, string) {
 	t.Helper()
 	a, srv := setup(t)
 	inst := httptest.NewTLSServer(f)

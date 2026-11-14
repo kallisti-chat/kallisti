@@ -7,6 +7,8 @@
     <!-- Voice in the background: VoiceService. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Listening without the microphone allowed. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- AndroidTV support -->
@@ -36,7 +38,7 @@
           android:name=".VoiceService"
           android:exported="false"
           android:stopWithTask="true"
-          android:foregroundServiceType="microphone" />
+          android:foregroundServiceType="microphone|mediaPlayback" />
 
         <provider
           android:name="androidx.core.content.FileProvider"

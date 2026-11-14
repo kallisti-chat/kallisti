@@ -24,7 +24,6 @@ class StartArgs {
 @TauriPlugin
 class VoicePlugin(private val activity: Activity) : Plugin(activity) {
   private val main = Handler(Looper.getMainLooper())
-  private val retry = Runnable { reconcile() }
   private var askedNotifications = false
 
   @Command
@@ -47,7 +46,6 @@ class VoicePlugin(private val activity: Activity) : Plugin(activity) {
 
   // On the main thread.
   private fun reconcile() {
-    main.removeCallbacks(retry)
     val channel = VoiceService.wanted
     if (channel == null) {
       // A start still on its way stops itself (VoiceService.onStartCommand).
@@ -57,19 +55,17 @@ class VoicePlugin(private val activity: Activity) : Plugin(activity) {
       }
       return
     }
-    if (VoiceService.running) {
+    // At once, without the microphone too (as mediaPlayback). Allowed
+    // later (its dialog closed: onResume), it starts again as microphone,
+    // which Android allows only in front, as here.
+    val mic = VoiceService.micAllowed(activity)
+    if (VoiceService.running && (VoiceService.recording || !mic)) {
       VoiceService.update(activity, channel)
-      return
-    }
-    // A microphone service may start only with the microphone allowed: on
-    // the first join the page's permission request is still open.
-    if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-      main.postDelayed(retry, 1000)
       return
     }
     // After the microphone (one permission request at a time), once:
     // without it the service runs, but its notification hides (13+).
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !askedNotifications &&
+    if (mic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !askedNotifications &&
       activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
     ) {
       askedNotifications = true

@@ -778,15 +778,13 @@ func TestHostOnlyCookiesOverHTTPS(t *testing.T) {
 	if c == nil || !c.Secure || c.Path != "/" || c.Domain != "" {
 		t.Fatalf("cookies %v", resp.Cookies())
 	}
-	me := func(name string) bool {
-		r := httptest.NewRequest("GET", "/api/me", nil)
-		r.Header.Set("X-Forwarded-Proto", "https")
-		r.AddCookie(&http.Cookie{Name: name, Value: c.Value})
-		_, ok := a.AccountFor(r)
-		return ok
-	}
-	if !me("__Host-" + CookieName) {
-		t.Fatal("the __Host- cookie did not count")
+	for _, proto := range []string{"https", "wss"} {
+		r := httptest.NewRequest("GET", "/ws", nil)
+		r.Header.Set("X-Forwarded-Proto", proto)
+		r.AddCookie(c)
+		if _, ok := a.AccountFor(r); !ok {
+			t.Fatalf("the HTTPS session did not authenticate over %s", proto)
+		}
 	}
 }
 
@@ -798,6 +796,8 @@ func TestSessionCookieProxyTrust(t *testing.T) {
 		trust       bool
 	}{
 		{"untrusted https header", "https", false},
+		{"untrusted wss header", "wss", false},
+		{"trusted ws header", "ws", true},
 		{"plain http", "", false},
 		{"trusted missing header", "", true},
 		{"trusted http header", "http", true},

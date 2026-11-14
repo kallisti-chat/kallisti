@@ -2961,6 +2961,54 @@ The fallback to a direct WebSocket only looked at the bridge's close reason ("ca
 
 `TestTimeOutsEnd` checked the `OnTimeoutsChanged` count as soon as the client saw the unmute, but an expired time-out unmutes first, then saves and calls the hook: the test now waits for it. `TestCloseEndsAllConnections` got 1011 when `Close` cancelled the bridge during its upstream dial ("operation was canceled" → "upstream unavailable"). That was a real gap: a shutdown during the dial now closes with 1001 as for open connections. A new test with a dial that blocks until shutdown failed before the fix. Both packages passed 30 runs with `-race`.
 
+## 2026-11-09: Native Misskey account linking
+
+Fediverse linking now supports native Misskey MiAuth when Mastodon app registration is unavailable. Existing OAuth providers keep their current flow. MiAuth requests only account-read permission, verifies the returned token's local account, and preserves browser/session binding and one-use callbacks for linking, login, and reauthentication.
+
+Authentication and fediverse package tests pass, including native linking, callback tampering, expiry/replay, reauthentication, and OAuth compatibility. No live Misskey account was used.
+
+MiAuth now attempts token self-revocation after account verification, including failed verification. Unsupported revocation does not block login. Fediverse and authentication tests pass with successful and refused revocation.
+
+## 2026-11-11: Native Misskey OAuth replaces MiAuth
+
+Replaced native MiAuth with authorization-code OAuth, S256 PKCE, and public HTML client metadata at `/api/fedi/client`. Existing Mastodon-compatible providers are unchanged. Native discovery is restricted to the selected instance; callbacks validate state and the issuer when advertised. Account verification and best-effort token self-revocation remain.
+
+Authentication and fediverse package tests pass, covering linking, reauthentication, metadata, code replay, issuer/PKCE validation, and unsafe discovery endpoints. Native Misskey now requires OAuth support and access to the Kallisti server's public HTTPS metadata page.
+
+## 2026-11-11: Preserve HTTPS sessions on proxied WebSockets
+
+Some reverse proxies forward secure WebSocket upgrades with `X-Forwarded-Proto: wss` instead of `https`. Recognize it alongside `https` only when proxy trust is enabled, so `/ws` reads the same host-only session cookie as the OAuth callback and account API. Regression checks cover HTTPS-to-WSS session recognition, untrusted WSS headers, and plain WS.
+
+## 2026-11-12: Android: background playback without the microphone
+
+A listener reported "fast, stop, fast" playback in the background (DJ Booth, Android app). In the emulator (release APK, headless, a bot playing stereo music into the channel, every scheduled chunk recorded through DevTools) background playback was smooth for 6 minutes while the voice service ran. Without it Android froze the app about 5 s after it left the screen. The service was of type microphone and started only with the microphone allowed, so listeners who deny it got none. It now starts at once, as mediaPlayback without the microphone, and starts again as microphone once it is allowed (in front, onResume). Checked: microphone denied, the service runs as mediaPlayback and 3 minutes in the background stay smooth (not frozen); allowed afterwards, the same service becomes microphone. Not checked: the reporter's phone; whether its throttling (rather than freezing) makes the reported bursts is still open. No unit test: Android service types.
+
+## 2026-11-09: Settings microphone preview is opt-in
+
+Opening settings no longer requests audio or opens the microphone. Start echo test activates the preview; stopping it, leaving Voice settings, or closing settings releases that demand. Normal voice-channel capture remains unchanged.
+
+## 2026-11-12: Voice settings in Discord's order
+
+With the microphone open only for the test, the level meter belongs next to the test button. The Voice & video section is now: microphone and speaker side by side (stacked when narrow), camera and stream previews; "Input" (mode, mic test with button, level meter and threshold mark, sensitivity or push-to-talk key, noise suppression, echo cancellation, music mode, close when muted); "Output" (playback buffer). New strings in all languages ("Input", "Output", "Mic test", "Start test"). The test button called `onEcho` from an effect, after the click: Safari and iOS may refuse to start audio there; it now runs in the click (test first, red before). Checked with headless Chromium screenshots, wide and narrow; independent review found nothing significant.
+
+## 2026-11-12: Stream previews always on
+
+The setting "Show a preview of my screen share and camera" is gone: others always see the small picture of a stream before they watch (the stream client's default). A stored `streamPreviews: false` is ignored.
+
+## 2026-11-12: Bridge pings wait for the grace
+
+CI failed on `TestSuspendedBrowsersSurviveAFullSocket` ("EOF" after 2.6 MB). The bridge pinged the browser with a timeout of one tick, and coder/websocket closes the connection when a write's context ends mid-frame: with the test's 50 ms ticks a slow reader was cut off long before the 1 s grace. One browser ping at a time now runs in its own goroutine and may wait for the rest of the grace; the Mumble pings upstream go on every tick. The test now reads at 3 ms per frame (longer than the grace in all): it failed every run before the fix. In production the library's own 5 s limit on control frame writes applies first, so there the change mostly lets the pong wait the full grace.
+
+## 2026-11-12: A reply's quote shows the answered message's picture
+
+feld asked for it: a reply to a message with media showed only the quoted text. The store now loads the quoted messages' first files in the same query as the messages' own (`withUploads`), and the quote on the wire carries `image`: the preview if it is a picture, else the file for pictures browsers show; never a spoiler's. The client keeps only our own `/files/` URLs (as for attachments) and shows a 32 px thumbnail in the quote line. With private-room media the quote's signed link is refreshed like the message's own (client `fileLinks`, server `file-links`). Tests: store (first file, history, none), the picture rules, the wire check and own URLs, fresh links for a reply without files (each red first). Seen in headless Chromium after sending and after a reload. Left as before: an edit of the original does not resend its replies, so their quote (text and now picture) stays as it was until reload.
+
+## 2026-11-12: Recordings tab request loop (GitHub #19)
+
+The report blamed the recordings list, but the answer only replaces `text.recordings`. The effect read the prop `recording`, passed as `text.recording`: the child's effect then depends on the parent's whole `text`, which every event replaces, so each answer (and any chat event) asked again; the rate limit then refused the download token. It now depends on the recorded channels by value. A harness test that replaces its text state like Client asked 22 times before the fix and once after (and once more when a recording starts).
+
+Follow-up: a download whose token request hit the rate limit failed silently after 10 s. Rate errors now name the refused request (`request`, additive), and a pending stream or recording token fails at once with the server's message, which the Recordings panel shows. Tests: the server's rate error carries the type; a client token request fails on its own refusal, not on another request's (both red first).
+
 ## 2026-11-09: Standard Mac settings shortcut
 
 Cmd+, opens settings on Mac through the existing active-client keyboard handler. Other platforms and modified combinations remain unchanged; like other navigation shortcuts, it does not open over an existing dialog.

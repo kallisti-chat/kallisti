@@ -68,6 +68,8 @@ type Quote struct {
 	Text   string
 	// A webhook's post: its name may be a user's (who is not answered).
 	Webhook bool
+	// Its first file, if any (the clients show a small picture of it).
+	Upload *Upload
 }
 
 // MaxUploads is the most files one message has; MaxDescription the
@@ -1010,7 +1012,8 @@ func scanUpload(row interface{ Scan(...any) error }, more ...any) (Upload, error
 	return u, err
 }
 
-// withUploads fills in messages' uploads.
+// withUploads fills in messages' uploads, and their quotes' first ones
+// (in the same query).
 func withUploads(q interface {
 	Query(string, ...any) (*sql.Rows, error)
 }, msgs []Message) error {
@@ -1018,9 +1021,19 @@ func withUploads(q interface {
 		return nil
 	}
 	at := map[int64]int{}
-	ids := make([]int64, len(msgs))
+	quoting := map[int64][]int{} // a quoted message: the replies to it
+	ids := make([]int64, 0, len(msgs))
 	for i, m := range msgs {
-		at[m.ID], ids[i] = i, m.ID
+		at[m.ID] = i
+		ids = append(ids, m.ID)
+	}
+	for i, m := range msgs {
+		if r := m.Reply; r != nil && r.Author != "" {
+			if _, listed := at[r.ID]; !listed && quoting[r.ID] == nil {
+				ids = append(ids, r.ID)
+			}
+			quoting[r.ID] = append(quoting[r.ID], i)
+		}
 	}
 	in, args := inList(ids)
 	rows, err := q.Query(`SELECT `+uploadColumns+`, message_id FROM uploads WHERE message_id IN (`+in+`) ORDER BY message_id, position`, args...)
@@ -1034,8 +1047,14 @@ func withUploads(q interface {
 		if err != nil {
 			return err
 		}
-		m := &msgs[at[id]]
-		m.Uploads = append(m.Uploads, u)
+		if i, ok := at[id]; ok {
+			msgs[i].Uploads = append(msgs[i].Uploads, u)
+		}
+		for _, i := range quoting[id] {
+			if msgs[i].Reply.Upload == nil {
+				msgs[i].Reply.Upload = &u
+			}
+		}
 	}
 	return rows.Err()
 }

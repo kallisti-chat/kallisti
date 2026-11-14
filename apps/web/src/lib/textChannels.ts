@@ -75,8 +75,9 @@ export type TextMessage = {
   thread?: Thread; // the thread started from it (see lib/threads)
   poll?: Poll; // a poll message (text: the poll as text, see lib/polls)
 };
-// webhook: the quoted post is a webhook's (see lib/mentions replyPing).
-export type Quote = { id: number; author: string; text: string; webhook?: boolean };
+// webhook: the quoted post is a webhook's (see lib/mentions replyPing);
+// image: a small picture of its first file.
+export type Quote = { id: number; author: string; text: string; webhook?: boolean; image?: string };
 // A chat line for display: a text channel message can carry an attachment
 // and a verified mark.
 // source: the stored message (id and plain text), for editing.
@@ -275,12 +276,13 @@ export type ServerEvent =
   // refused by slow mode, and when the wait ends.
   // returned: a refused send's text, for the composer of its chat.
   // about "rate": a background request over the server's rate limit (not
-  // shown as an error; a send comes back as "refused").
+  // shown as an error; a send comes back as "refused"); request: its type.
   // nonce: the refused send's (see sendAnswer).
   | {
       type: "error";
       message: string;
       about?: "manage" | "rate";
+      request?: string;
       slow?: { channel: number; until: number };
       returned?: { channel: number; text: string };
       nonce?: string;
@@ -599,7 +601,8 @@ const isMessage = (v: unknown): v is TextMessage =>
   (v.edited === undefined || isNum(v.edited)) &&
   (v.pinned === undefined || isNum(v.pinned)) &&
   (v.reply === undefined ||
-    (isObj(v.reply) && isNum(v.reply.id) && isStr(v.reply.author) && isStr(v.reply.text) && (v.reply.webhook === undefined || typeof v.reply.webhook === "boolean"))) &&
+    (isObj(v.reply) && isNum(v.reply.id) && isStr(v.reply.author) && isStr(v.reply.text) && (v.reply.webhook === undefined || typeof v.reply.webhook === "boolean") &&
+      (v.reply.image === undefined || isStr(v.reply.image)))) &&
   (v.upload === undefined || isAttachment(v.upload)) &&
   (v.uploads === undefined || (Array.isArray(v.uploads) && v.uploads.every(isAttachment))) &&
   (v.sticker === undefined || isMessageSticker(v.sticker)) &&
@@ -821,7 +824,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       const returned = isNum(v.channel) && isStr(v.text) ? { returned: { channel: v.channel, text: v.text } } : {};
       if (v.about === "slow-mode" && isNum(v.channel) && isNum(v.until)) return { ...error, slow: { channel: v.channel, until: v.until }, ...returned };
       if (v.about === "refused") return { ...error, ...returned };
-      return v.about === "manage" || v.about === "rate" ? { ...error, about: v.about } : error;
+      if (v.about === "rate") return { ...error, about: v.about, ...(isStr(v.request) && { request: v.request }) };
+      return v.about === "manage" ? { ...error, about: v.about } : error;
     }
     case "upload-token":
       return isStr(v.token)
@@ -1418,6 +1422,12 @@ const ownAttachment = ({ preview, ...u }: Attachment, base: string): Attachment 
   return url ? { ...u, url, ...(own && { preview: own }) } : null;
 };
 
+// A quote's picture only from our server too (see fileUrl).
+const ownQuote = ({ image, ...q }: Quote, base: string): Quote => {
+  const own = image && fileUrl(image, base);
+  return own ? { ...q, image: own } : q;
+};
+
 // The key of one of our files, from its URL (null: not one).
 export const fileKey = (url: string) => /\/files\/([^/?#]+)\//.exec(url)?.[1] ?? null;
 
@@ -1448,7 +1458,7 @@ export const toChatMessage = (m: TextMessage, base = "", channels?: ReadonlyMap<
       source: { id: m.id, text: m.text },
       ...(m.edited !== undefined && { edited: m.edited }),
       ...(m.pinned !== undefined && { pinned: m.pinned }),
-      ...(m.reply && { reply: m.reply }),
+      ...(m.reply && { reply: ownQuote(m.reply, base) }),
       ...(m.reactions?.length && { reactions: m.reactions }),
       ...(m.mentionAll && { mentionAll: m.mentionAll }),
       ...(m.noPing && { noPing: true }),

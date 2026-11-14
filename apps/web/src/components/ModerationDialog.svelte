@@ -219,8 +219,12 @@
   const sorted = $derived(connections && worstFirst(connections));
 
   const mayRecordings = $derived(!!onLoadRecordings);
+  // The recorded channels by value: the prop is read through the parent's
+  // whole text state, which every event replaces (GitHub #19: each answer
+  // asked again, and the rate limit then refused the download token).
+  const recorded = $derived((recording ?? []).join(","));
   $effect(() => {
-    void recording; // a recording started or stopped: the list changed
+    void recorded; // a recording started or stopped: the list changed
     if (section === "recordings" && mayRecordings) untrack(() => onLoadRecordings)?.();
   });
   let downloadError = $state<string | null>(null);

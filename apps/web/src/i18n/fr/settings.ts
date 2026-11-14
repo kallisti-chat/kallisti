@@ -97,6 +97,8 @@ export default {
   "settings.qrExpired": "Le code a expiré.",
   "settings.qrNewCode": "Nouveau code",
 
+  "settings.voiceInput": "Entrée",
+  "settings.voiceOutput": "Sortie",
   "settings.inputDevice": "Périphérique d'entrée",
   "settings.deviceDefault": "Par défaut",
   "settings.microphone": "Micro",
@@ -115,11 +117,10 @@ export default {
   "settings.noiseLoading": "Chargement de DeepFilterNet3 (environ 12 Mo, une seule fois)…",
   "settings.noiseHint":
     "Forte retire le bruit des ventilateurs et autres bruits constants ; taper au clavier seul ne déclenche pas l'envoi. Maximale retire aussi la plupart des bruits de clavier, mais charge environ 12 Mo, utilise plus de CPU et ajoute un peu de délai.",
-  "settings.hearYourself": "T'entendre toi-même",
-  "settings.echoTestStart": "Lancer le test d'écho",
+  "settings.micTest": "Test du micro",
+  "settings.echoTestStart": "Lancer le test",
   "settings.echoTestStop": "Arrêter",
-  "settings.echoTestHint":
-    "Joue ton micro comme les autres l'entendent, après la suppression du bruit. Utilise un casque.",
+  "settings.echoTestHint": "Joue ton micro comme les autres l'entendent, après la suppression du bruit, et montre son niveau dans la barre. Utilise un casque.",
   "settings.outputDevice": "Périphérique de sortie",
   "settings.speakers": "Haut-parleurs",
   "settings.playbackBuffer": "Tampon de lecture",
@@ -150,8 +151,6 @@ export default {
   "settings.closeMic": "Fermer le micro quand tu es muet",
   "settings.closeMicHint":
     "Le navigateur n'indique alors plus qu'il enregistre, mais le son se coupe un instant quand tu coupes ou réactives le micro.",
-  "settings.streamPreviews": "Afficher un aperçu de mon partage d'écran et de ma caméra",
-  "settings.streamPreviewsHint": "Les personnes qui ne regardent pas voient une petite image, mise à jour toutes les quelques secondes.",
 
   "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Écran de {name}",
