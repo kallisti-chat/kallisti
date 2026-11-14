@@ -111,3 +111,10 @@ acceptance check: the provider must honor `prompt=login` and `max_age=0` and
 return a fresh `auth_time` claim. Missing or stale authentication times fail
 closed; without this support an OIDC-only user cannot set a password or unlink.
 Verify this with the deployed Pocket ID version before admitting users.
+
+Pocket ID v2.9.0 supports ordinary login but does not return `auth_time`, so
+first-password setup fails with that version. Pocket ID's
+[compatibility fix](https://github.com/pocket-id/pocket-id/pull/1520) first shipped
+in v2.10.0. Upgrade to a maintained release with this support and repeat the
+first-password check. A newly issued token's `iat` is not proof of a fresh
+authentication and must not replace `auth_time`.
