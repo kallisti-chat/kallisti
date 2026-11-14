@@ -2,6 +2,7 @@
   import { untrack } from "svelte";
   import QrShowDialog from "./QrShowDialog.svelte";
   import { thisDevice } from "../lib/qrLogin";
+  import { keepOidcInvite, type OidcProvider } from "../lib/oidc";
   import { registrationToken } from "../lib/registration";
   import { parseInviteLink } from "../lib/invites";
   import UserName from "./UserName.svelte";
@@ -23,6 +24,8 @@
     onAccountChange,
     onConnect,
     onScan,
+    oidcSignup = false,
+    onOidcSignupDone,
     fediSignup = false,
     onFediSignupDone,
     onHandoff,
@@ -51,6 +54,8 @@
     onScan?: () => void;
     // Back from a fediverse login without an account here: choose a name
     // (see lib/fedi). onFediSignupDone: made, or given up.
+    oidcSignup?: boolean;
+    onOidcSignupDone?: () => void;
     fediSignup?: boolean;
     onFediSignupDone?: () => void;
     // A handoff's account was made (see Connect): its token waits.
@@ -253,6 +258,66 @@
     logo = null;
   });
 
+  let oidc = $state<OidcProvider>({ enabled: false, name: "" });
+  $effect(() => {
+    oidc = { enabled: false, name: "" };
+    if (desktop) return;
+    const used = api;
+    const at = shown();
+    void used.oidcProvider().then((provider) => { if (current(used, at)) oidc = provider; });
+  });
+  const oidcLogin = async () => {
+    busy = true;
+    apiError = null;
+    try {
+      const token = inviteToken();
+      keepOidcInvite(token, keep ?? (invite ? location.pathname : ""));
+      location.assign(await api.oidcStart());
+    } catch (err) {
+      apiError = err instanceof Error ? err.message : String(err);
+      busy = false;
+    }
+  };
+  let oidcPending = $state<{ name: string; provider: string } | null | undefined>();
+  $effect(() => {
+    if (!oidcSignup || oidcPending !== undefined) return;
+    const used = api;
+    const at = shown();
+    void used.oidcSignup().then((pending) => {
+      if (!current(used, at)) return;
+      oidcPending = pending;
+      if (pending) username = pending.name;
+    });
+  });
+  const createFromOidc = async (event: SubmitEvent) => {
+    event.preventDefault();
+    const name = username.trim();
+    if (!name || !oidcPending) return;
+    const used = api;
+    const at = shown();
+    busy = true;
+    apiError = null;
+    try {
+      const token = inviteToken();
+      const proof = await prove();
+      if (!current(used, at)) return;
+      const made = await used.oidcCreate(name, proof, token);
+      if (!current(used, at)) return;
+      const created = await used.me();
+      if (!current(used, at)) return;
+      clearInvite();
+      onAccountChange(created ?? { name: made, temporary: false, password: false, oidc: { provider: oidcPending.provider } });
+      onOidcSignupDone?.();
+      connectAs(made, true);
+    } catch (err) {
+      if (!current(used, at)) return;
+      apiError = err instanceof Error ? err.message : String(err);
+      if (inviteRequired(err)) inviteOnly = true;
+    } finally {
+      if (current(used, at)) busy = false;
+    }
+  };
+
   // Fediverse logins: the server's switch; the instance from last time.
   let fediOn = $state(false);
   $effect(() => {
@@ -382,6 +447,26 @@
       <button class="primary" onclick={() => connectAs(account.name, true)}>{t("common.retry")}</button>
       <button class="link" onclick={logout}>{t("login.logOut")}</button>
     </div>
+  {:else if oidcSignup}
+    {#if oidcPending}
+      <form class="card" onsubmit={createFromOidc}>
+        <h1>{t("login.chooseNameTitle")}</h1>
+        <p class="sub">{t("login.oidcChooseName", { provider: oidcPending.provider })}</p>
+        <label>{t("login.name")}
+          <input bind:value={username} required maxlength="32" autocomplete="username" />
+        </label>
+        {#if inviteOnly || accountInvite}{@render inviteField(inviteOnly)}{/if}
+        {#if apiError}<p class="error" role="alert">{apiError}</p>{/if}
+        {#if checking}<p class="hint" role="status">{t("login.checkingBrowser")}</p>{/if}
+        <button class="primary" type="submit" disabled={busy}>{t("login.createAccount")}</button>
+        <button type="button" class="link" onclick={onOidcSignupDone}>{t("common.cancel")}</button>
+      </form>
+    {:else}
+      <div class="card">
+        <p class="sub" role="status">{oidcPending === null ? t("login.oidcExpired") : t("common.loading")}</p>
+        {#if oidcPending === null}<button class="primary" onclick={onOidcSignupDone}>{t("common.back")}</button>{/if}
+      </div>
+    {/if}
   {:else if fediSignup}
     {#if signup && !chooseName}
       {@const [before, after] = around(t("login.makingAccount"), "name")}
@@ -513,6 +598,11 @@
         {#if homeError}<p class="error" role="alert">{homeError}</p>{/if}
         <button class="secondary" type="submit" disabled={!homeAddress.trim()}>{t("login.openAtHome")}</button>
       </form>
+    {/if}
+    {#if oidc.enabled && !desktop}
+      <div class="card fedi">
+        <button class="secondary" type="button" disabled={busy} onclick={oidcLogin}>{t("login.oidcContinue", { provider: oidc.name })}</button>
+      </div>
     {/if}
     {#if fediOn && !desktop}
       <form class="card fedi" onsubmit={fediLogin}>

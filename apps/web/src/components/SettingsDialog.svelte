@@ -21,6 +21,7 @@
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import SaveStatus from "./SaveStatus.svelte";
+  import OidcAccount from "./OidcAccount.svelte";
   import FediAccount from "./FediAccount.svelte";
   import AllowedSites from "./AllowedSites.svelte";
   import QrShowDialog from "./QrShowDialog.svelte";
@@ -254,7 +255,7 @@
             <p class="hint">{t("settings.guestAccountHint")}</p>
           {:else if !account.hasPassword}
             <span class="label">{t("settings.setPasswordTitle")}</span>
-            <p class="hint">{t("settings.fediOnlyHint")}</p>
+            <p class="hint">{t(account.oidc?.linked ? "settings.oidcOnlyHint" : "settings.fediOnlyHint")}</p>
           {:else}
             <span class="label">{t("settings.changePassword")}</span>
             <input type="password" bind:value={oldPassword} placeholder={t("settings.currentPassword")} autocomplete="current-password" required />
@@ -279,6 +280,15 @@
             </div>
           {/if}
         </form>
+        {#if (reauth || (!account.hasPassword && !account.temporary)) && account.oidc?.linked && !isDesktop()}
+          <div class="buttons">
+            <button type="button" class="secondary" disabled={reauthSave.busy || account.oidc.linked.enabled === false} onclick={() => reauthSave.run(() => account!.oidc!.reauth())}>
+              {t("settings.confirmWith", { host: account.oidc.linked.provider })}
+            </button>
+            <SaveStatus save={reauthSave.state} done="" />
+          </div>
+        {/if}
+        <OidcAccount {account} />
         <FediAccount {account} />
         {#if account.sites && !account.temporary}<AllowedSites sites={account.sites} />{/if}
         {#if account.qr && !account.temporary}

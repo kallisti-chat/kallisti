@@ -645,6 +645,17 @@ func (a *Service) remoteAccount(ctx context.Context, flow fediFlow, code string)
 
 // fediLink links the remote account to the account; the result for home.
 func (a *Service) fediLink(acc store.Account, session string, id store.FediIdentity) (string, string) {
+	// an oidc-only account must prove ownership before adding a second login.
+	// otherwise a stolen browser session could attach the attacker's identity.
+	if acc.PasswordHash == "" && !acc.Temporary {
+		_, err := a.Store.OIDCIdentityOf(acc.ID)
+		if err == nil && !a.takeOIDCProof(session, acc.ID) {
+			return "error", "reauth"
+		}
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return "error", "failed"
+		}
+	}
 	err := a.Store.LinkFedi(acc.ID, session, id, a.Now())
 	if errors.Is(err, store.ErrFediTaken) {
 		return "error", "taken"

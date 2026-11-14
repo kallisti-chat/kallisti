@@ -2,6 +2,13 @@ import type en from "../en/settings";
 import type { Translation } from "../types";
 
 export default {
+  "settings.oidcAccount": "身份提供商",
+  "settings.oidcLinkHint": "请确认当前密码，以关联你的身份提供商账号。",
+  "settings.oidcLink": "关联 {provider}",
+  "settings.oidcUnlink": "取消关联 {provider}",
+  "settings.oidcPasswordFirst": "请先设置密码，再关联或取消关联身份提供商。",
+  "settings.oidcOnlyHint": "你使用身份提供商登录。首次设置密码前，请确认该登录。",
+  "settings.oidcUnavailable": "此登录提供商不可用。请联系服务器管理员恢复。",
   "settings.language": "语言",
   "settings.languageAuto": "跟随浏览器",
   "settings.translationIntro": "消息在此设备上翻译，不会发送给任何翻译服务。",

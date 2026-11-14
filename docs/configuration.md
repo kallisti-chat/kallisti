@@ -85,6 +85,15 @@ brackets.
   instances may also be local addresses and plain HTTP (for a fake test
   instance, see `server/cmd/fakefedi`). Never on a public server: users
   could make the server send requests into its local network.
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET` (all unset):
+  enable an additional OpenID Connect login provider for the web app.
+  `OIDC_CLIENT_SECRET_FILE` can replace `OIDC_CLIENT_SECRET` with a mounted
+  secret file. Set only one secret source. The issuer must use HTTPS.
+  `OIDC_NAME` defaults to `OpenID Connect`; `OIDC_REDIRECT_URL` defaults to
+  the first explicit allowed origin plus `/api/oidc/callback`. The callback
+  must use HTTPS and its origin must be explicitly listed in `ALLOWED_ORIGINS`.
+  See [OpenID Connect setup](oidc.md) for provider registration, account
+  linking, invitation rules, and session limitations.
 - `FFMPEG_PATH` (none: `ffmpeg` on `PATH`) and `MEDIA_PREVIEWS=0`: with
   ffmpeg, videos get a thumbnail (a frame at 1 s, at most 480 px) and large
   pictures (over 1600 px on a side, or over 1 MB) a smaller copy for the

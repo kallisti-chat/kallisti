@@ -47,6 +47,8 @@ type Config struct {
 	// fediverse instances may be on local addresses and plain HTTP (no
 	// protection against requests into the local network).
 	FediInsecureDev bool
+	// oidc: one optional administrator-configured login provider.
+	OIDC *OIDC
 	// MEDIA_PREVIEWS=0: no video thumbnails and picture previews, even
 	// with ffmpeg (FFMPEG_PATH, else on PATH).
 	NoMediaPreviews bool
@@ -242,6 +244,9 @@ func Parse(getenv func(string) string) (Config, error) {
 	}
 	c.FFmpegPath = getenv("FFMPEG_PATH")
 	var err error
+	if c.OIDC, err = parseOIDC(getenv, c.AllowedOrigins); err != nil {
+		return Config{}, err
+	}
 	if c.Push, err = parsePush(getenv); err != nil {
 		return Config{}, err
 	}
