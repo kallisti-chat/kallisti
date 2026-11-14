@@ -42,21 +42,33 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // The microphone: an oscillator behind a gain the test turns up and down.
 // Devices are stubbed too (headless Chrome crashes on enumerateDevices).
 const stubMicrophone = `
+  const trace = window.__voiceTest;
+  trace.micStage = 'installed';
   const md = navigator.mediaDevices;
   md.enumerateDevices = async () => [];
   md.getUserMedia = async () => {
-    const c = new AudioContext({ sampleRate: 48000 });
-    const o = c.createOscillator();
-    o.frequency.value = 440;
-    const g = c.createGain();
-    g.gain.value = 0;
-    window.__mic = g;
-    const d = c.createMediaStreamDestination();
-    o.connect(g);
-    g.connect(d);
-    o.start();
-    await c.resume();
-    return d.stream;
+    trace.micRequests++;
+    try {
+      trace.micStage = 'context';
+      const c = new AudioContext({ sampleRate: 48000 });
+      trace.micStage = 'nodes';
+      const o = c.createOscillator();
+      o.frequency.value = 440;
+      const g = c.createGain();
+      g.gain.value = 0;
+      window.__mic = g;
+      const d = c.createMediaStreamDestination();
+      o.connect(g);
+      g.connect(d);
+      o.start();
+      trace.micStage = 'resume';
+      await c.resume();
+      trace.micStage = 'running';
+      return d.stream;
+    } catch (error) {
+      trace.errors.push('microphone: ' + String(error));
+      throw error;
+    }
   };`;
 
 const { sessionId } = await call("POST", "/session", { capabilities: { alwaysMatch: capabilities } });
@@ -73,6 +85,16 @@ const click = (el) => call("POST", `${s}/element/${el[ELEMENT]}/click`, {});
 
 try {
   await call("POST", `${s}/url`, { url: appUrl });
+  await run(`
+    const trace = window.__voiceTest = { micRequests: 0, micStage: 'not installed', clicks: [], errors: [] };
+    const record = (value) => { if (trace.errors.length < 20) trace.errors.push(String(value).slice(0, 2000)); };
+    window.addEventListener('error', (event) => record(event.error ?? event.message));
+    window.addEventListener('unhandledrejection', (event) => record(event.reason));
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest?.('button');
+      if (button && trace.clicks.length < 20) trace.clicks.push(button.textContent.trim().slice(0, 100));
+    }, true);
+  `);
   // "Log in" comes first.
   await click(await waitFor("the Guest tab", `return [...document.querySelectorAll("button")].find((b) => b.textContent.trim() === "Guest") ?? null`));
   const name = await waitFor("the guest form", `return document.querySelector("button[aria-pressed=true]")?.textContent.trim() === "Guest" ? document.querySelector("input[required]") : null`);
@@ -96,6 +118,22 @@ try {
     await sleep(2000);
   }
   await sleep(1000);
+} catch (error) {
+  try {
+    console.error("voice startup diagnostics:", JSON.stringify(await run(`return {
+      trace: window.__voiceTest,
+      status: document.querySelector('[aria-label="Your status"]')?.textContent,
+      alerts: [...document.querySelectorAll('[role="alert"], .mic-error')].map((el) => el.textContent.slice(0, 2000)),
+      channels: [...document.querySelectorAll('nav button[aria-current], nav button[aria-pressed="true"]')].map((el) => el.textContent.trim()),
+      secureContext: window.isSecureContext,
+      audioContext: typeof AudioContext,
+      mediaDevices: !!navigator.mediaDevices,
+      microphoneContext: window.__mic?.context.state,
+    }`)));
+  } catch (diagnosticError) {
+    console.error("voice diagnostics unavailable:", String(diagnosticError));
+  }
+  throw error;
 } finally {
   await call("DELETE", s).catch(() => {});
 }
