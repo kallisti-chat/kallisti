@@ -32,6 +32,7 @@
     trustServer,
   } from "./lib/desktop";
   import { httpBase } from "./lib/textChannels";
+  import { refuseFileDrop } from "./lib/composer";
   import { serverOrigin } from "./lib/serverList";
   import { localStore, safeGet, safeSet, tabStorage } from "./lib/storage";
   import { connectWays, popupLogin, type ConnectPhase } from "./lib/popupLogin";
@@ -739,7 +740,14 @@
   };
 </script>
 
-<svelte:window ononline={wakeAll} onpagehide={() => allSessions().forEach((s) => (s.place && s.keepPlace(s.place, true), s.keepStreams()))} onpointerdowncapture={wakeSound} onkeydowncapture={wakeSound} />
+<svelte:window
+  ononline={wakeAll}
+  onpagehide={() => allSessions().forEach((s) => (s.place && s.keepPlace(s.place, true), s.keepStreams()))}
+  onpointerdowncapture={wakeSound}
+  onkeydowncapture={wakeSound}
+  ondragover={refuseFileDrop}
+  ondrop={refuseFileDrop}
+/>
 <svelte:document onvisibilitychange={wakeAll} />
 
 <!-- The rail of servers: the same while a server connects, fails or
