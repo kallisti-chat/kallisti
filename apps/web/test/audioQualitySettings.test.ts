@@ -70,11 +70,11 @@ describe("settings parsing for quality", () => {
   it("clamps custom bitrates and buffer numbers", () => {
     const parsed = parseSettings(JSON.stringify({
       voiceBitrate: 24_000,
-      musicBitrate: 1_000_000, // above 558000
+      musicBitrate: 1_000_000, // above 510000
       playbackBuffer: 15, // below 30
     }));
     expect(parsed.voiceBitrate).toBe(24_000);
-    expect(parsed.musicBitrate).toBe(558_000);
+    expect(parsed.musicBitrate).toBe(510_000);
     expect(parsed.playbackBuffer).toBe(30);
   });
 });

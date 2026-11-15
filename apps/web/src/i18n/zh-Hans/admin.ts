@@ -8,7 +8,7 @@ export default {
   "admin.qualityMaxVoiceBitrate": "最大语音码率",
   "admin.qualityMaxVoiceBitrateNote": "用户可选择的语音码率上限（默认 128 kbps）。",
   "admin.qualityMaxMusicBitrate": "最大音乐码率",
-  "admin.qualityMaxMusicBitrateNote": "音乐模式的码率上限（默认 320 kbps）。",
+  "admin.qualityMaxMusicBitrateNote": "音乐模式的码率上限（默认 192 kbps）。两项上限适用于 Kallisti 应用；Mumble 客户端自行决定码率。",
   "admin.qualityMaxStreamResolution": "最大直播分辨率",
   "admin.qualityMaxStreamResolutionNote": "屏幕共享和摄像头直播允许的最大分辨率尺寸。",
   "admin.qualityMaxStreamFramerate": "最大直播帧率",

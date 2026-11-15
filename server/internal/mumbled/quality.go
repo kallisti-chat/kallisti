@@ -7,28 +7,28 @@ import (
 
 // QualityLimits defines server-wide quality and bandwidth caps for voice and streaming.
 type QualityLimits struct {
-	MaxBitrateVoice int `json:"maxBitrateVoice"` // in bps for speech (e.g. 40000..558000)
-	MaxBitrateMusic int `json:"maxBitrateMusic"` // in bps for music mode (e.g. 64000..558000)
+	MaxBitrateVoice int `json:"maxBitrateVoice"` // in bps for speech (e.g. 40000..510000)
+	MaxBitrateMusic int `json:"maxBitrateMusic"` // in bps for music mode (e.g. 64000..510000)
 	BytesPerSecond  int `json:"bytesPerSecond"`  // upload bytes/s per stream (e.g. 1048576)
-	MaxSide         int `json:"maxSide"`         // max stream resolution dimension (e.g. 720..4096)
+	MaxSide         int `json:"maxSide"`         // largest side of a stream picture in pixels (1920: 1080p)
 	MaxFps          int `json:"maxFps"`          // max stream framerate (e.g. 15..120)
 }
 
 const (
-	DefaultMaxBitrateVoice = 128_000
-	DefaultMaxBitrateMusic = 192_000
+	DefaultMaxBitrateVoice      = 128_000
+	DefaultMaxBitrateMusic      = 192_000
 	DefaultStreamBytesPerSecond = 1 << 20 // 1 MiB/s (~8.38 Mbit/s)
-	DefaultStreamMaxSide = 4096
-	DefaultStreamMaxFps = 60
+	DefaultStreamMaxSide        = 4096
+	DefaultStreamMaxFps         = 60
 
-	MinVoiceBitrate = 16_000
-	MaxVoiceBitrate = 558_000
+	MinVoiceBitrate         = 16_000
+	MaxVoiceBitrate         = 510_000
 	MinStreamBytesPerSecond = 100_000
 	MaxStreamBytesPerSecond = 10_000_000 // ~80 Mbit/s
-	MinStreamSide = 480
-	MaxStreamSide = 4096
-	MinStreamFps = 15
-	MaxStreamFps = 120
+	MinStreamSide           = 480
+	MaxStreamSide           = 4096
+	MinStreamFps            = 15
+	MaxStreamFps            = 120
 )
 
 func DefaultQualityLimits() QualityLimits {

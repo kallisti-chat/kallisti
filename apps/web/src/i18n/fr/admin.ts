@@ -8,7 +8,7 @@ export default {
   "admin.qualityMaxVoiceBitrate": "Débit vocal maximal",
   "admin.qualityMaxVoiceBitrateNote": "Limite supérieure pour le débit vocal choisi par les utilisateurs (128 kbps par défaut).",
   "admin.qualityMaxMusicBitrate": "Débit musical maximal",
-  "admin.qualityMaxMusicBitrateNote": "Limite supérieure pour le débit en mode musique (320 kbps par défaut).",
+  "admin.qualityMaxMusicBitrateNote": "Limite supérieure pour le débit en mode musique (192 kbps par défaut). Les deux limites s'appliquent dans les applications Kallisti ; les clients Mumble choisissent leur propre débit.",
   "admin.qualityMaxStreamResolution": "Résolution maximale de diffusion",
   "admin.qualityMaxStreamResolutionNote": "Dimension maximale autorisée pour le partage d'écran et la caméra.",
   "admin.qualityMaxStreamFramerate": "Fréquence d'images maximale",

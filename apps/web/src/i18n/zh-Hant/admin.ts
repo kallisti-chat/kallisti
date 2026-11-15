@@ -8,7 +8,7 @@ export default {
   "admin.qualityMaxVoiceBitrate": "最大語音位元速率",
   "admin.qualityMaxVoiceBitrateNote": "使用者可選擇的語音位元速率上限（預設 128 kbps）。",
   "admin.qualityMaxMusicBitrate": "最大音樂位元速率",
-  "admin.qualityMaxMusicBitrateNote": "音樂模式的位元速率上限（預設 320 kbps）。",
+  "admin.qualityMaxMusicBitrateNote": "音樂模式的位元速率上限（預設 192 kbps）。兩項上限適用於 Kallisti 應用程式；Mumble 用戶端自行決定位元速率。",
   "admin.qualityMaxStreamResolution": "最大直播解析度",
   "admin.qualityMaxStreamResolutionNote": "螢幕共享和攝影機直播允許的最大解析度尺寸。",
   "admin.qualityMaxStreamFramerate": "最大直播畫面播放速率",

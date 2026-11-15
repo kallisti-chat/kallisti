@@ -145,11 +145,11 @@ export const parseSettings = (raw: string | null): Settings => {
     audioChannels: d.audioChannels === "mono" || d.audioChannels === "stereo" ? d.audioChannels : "auto",
     voiceBitrate:
       typeof d.voiceBitrate === "number" && d.voiceBitrate >= 16_000
-        ? clamp(d.voiceBitrate, 16_000, 558_000)
+        ? clamp(d.voiceBitrate, 16_000, 510_000)
         : DEFAULT_SETTINGS.voiceBitrate,
     musicBitrate:
       typeof d.musicBitrate === "number" && d.musicBitrate >= 32_000
-        ? clamp(d.musicBitrate, 32_000, 558_000)
+        ? clamp(d.musicBitrate, 32_000, 510_000)
         : DEFAULT_SETTINGS.musicBitrate,
     musicMode: d.musicMode === true,
     playbackBuffer:

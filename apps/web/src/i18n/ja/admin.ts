@@ -8,7 +8,7 @@ export default {
   "admin.qualityMaxVoiceBitrate": "最大音声ビットレート",
   "admin.qualityMaxVoiceBitrateNote": "ユーザーが選択できる音声ビットレートの上限です（デフォルト: 128 kbps）。",
   "admin.qualityMaxMusicBitrate": "最大音楽ビットレート",
-  "admin.qualityMaxMusicBitrateNote": "音楽モードのビットレートの上限です（デフォルト: 320 kbps）。",
+  "admin.qualityMaxMusicBitrateNote": "音楽モードのビットレートの上限です（デフォルト: 192 kbps）。どちらの上限も Kallisti アプリに適用されます。Mumble クライアントは自分でビットレートを決めます。",
   "admin.qualityMaxStreamResolution": "最大配信解像度",
   "admin.qualityMaxStreamResolutionNote": "画面共有およびカメラ配信の最大解像度です。",
   "admin.qualityMaxStreamFramerate": "最大配信フレームレート",

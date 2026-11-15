@@ -10,7 +10,7 @@ export default {
   "admin.qualityMaxVoiceBitrate": "Maximum voice bitrate",
   "admin.qualityMaxVoiceBitrateNote": "Upper limit for voice speech bitrate chosen by users (default 128 kbps).",
   "admin.qualityMaxMusicBitrate": "Maximum music bitrate",
-  "admin.qualityMaxMusicBitrateNote": "Upper limit for music mode bitrate chosen by users (default 320 kbps).",
+  "admin.qualityMaxMusicBitrateNote": "Upper limit for music mode bitrate chosen by users (default 192 kbps). Both limits apply in the Kallisti apps; Mumble clients choose their own bitrate.",
   "admin.qualityMaxStreamResolution": "Maximum stream resolution",
   "admin.qualityMaxStreamResolutionNote": "Maximum resolution dimension allowed for screen share and camera streams.",
   "admin.qualityMaxStreamFramerate": "Maximum stream framerate",

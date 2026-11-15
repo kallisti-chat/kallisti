@@ -8,7 +8,7 @@ export default {
   "admin.qualityMaxVoiceBitrate": "Tasa máxima de bits de voz",
   "admin.qualityMaxVoiceBitrateNote": "Límite superior para la tasa de bits de voz elegida por los usuarios (128 kbps por defecto).",
   "admin.qualityMaxMusicBitrate": "Tasa máxima de bits de música",
-  "admin.qualityMaxMusicBitrateNote": "Límite superior para la tasa de bits en modo música (320 kbps por defecto).",
+  "admin.qualityMaxMusicBitrateNote": "Límite superior para la tasa de bits en modo música (192 kbps por defecto). Ambos límites se aplican en las apps de Kallisti; los clientes de Mumble eligen su propia tasa.",
   "admin.qualityMaxStreamResolution": "Resolución máxima de transmisión",
   "admin.qualityMaxStreamResolutionNote": "Dimensión máxima permitida para transmisiones de pantalla y cámara.",
   "admin.qualityMaxStreamFramerate": "Tasa máxima de fotogramas",

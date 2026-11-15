@@ -412,13 +412,13 @@
       <form class="rules" onsubmit={saveQuality}>
         <label>
           {t("admin.qualityMaxVoiceBitrate")} ({voiceBitrateDraft} kbps)
-          <input type="range" min="16" max="558" step="1" bind:value={voiceBitrateDraft} />
+          <input type="range" min="16" max="510" step="1" bind:value={voiceBitrateDraft} />
         </label>
         <p class="note">{t("admin.qualityMaxVoiceBitrateNote")}</p>
 
         <label>
           {t("admin.qualityMaxMusicBitrate")} ({musicBitrateDraft} kbps)
-          <input type="range" min="32" max="558" step="8" bind:value={musicBitrateDraft} />
+          <input type="range" min="32" max="510" step="8" bind:value={musicBitrateDraft} />
         </label>
         <p class="note">{t("admin.qualityMaxMusicBitrateNote")}</p>
 
