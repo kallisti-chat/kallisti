@@ -138,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "帳號和角色會刪除；訊息會保留",
   "admin.deleteUser": "刪除使用者",
+  "admin.recoveryLink": "復原連結",
+  "admin.recoveryLinkNote": "請自行把此連結傳給 {name}。它在 24 小時內可用一次：設定新密碼，並結束其其他登入。",
   "admin.deleteUserAsk": "刪除使用者…",
 
   "admin.inviteOnly": "僅限邀請的伺服器",

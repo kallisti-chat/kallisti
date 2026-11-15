@@ -3,6 +3,7 @@
   import QrShowDialog from "./QrShowDialog.svelte";
   import { thisDevice } from "../lib/qrLogin";
   import { registrationToken } from "../lib/registration";
+  import { recoveryToken } from "../lib/recovery";
   import { parseInviteLink } from "../lib/invites";
   import UserName from "./UserName.svelte";
   import { serverOrigin } from "../lib/serverList";
@@ -118,6 +119,9 @@
     busy = false;
   };
   let busy = $state(false);
+  // An admin's recovery link (see lib/recovery): a new password first.
+  let recovery = $state(untrack(() => (desktop ? null : recoveryToken(location.href, api.base || location.origin))));
+  let newPassword = $state("");
   let checking = $state(false);
   let apiError = $state<string | null>(null);
 
@@ -151,6 +155,33 @@
   const connectAs = (name: string, isAccount: boolean, pw = serverPassword) => {
     safeSet(localStore(), "username", name);
     onConnect({ username: name, password: pw, account: isAccount, ...(desktop && { server: desktop.server }) });
+  };
+
+  const endRecovery = () => {
+    recovery = null;
+    if (location.pathname === "/recover") history.replaceState(history.state, "", "/");
+  };
+  const recover = async (event: SubmitEvent) => {
+    event.preventDefault();
+    if (!recovery) return;
+    const used = api;
+    const at = shown();
+    busy = true;
+    apiError = null;
+    try {
+      const name = await used.recover(recovery, newPassword);
+      if (!current(used, at)) return;
+      newPassword = "";
+      endRecovery();
+      const account = (await used.me()) ?? { name, temporary: false };
+      if (!current(used, at)) return;
+      onAccountChange(account);
+      connectAs(name, true);
+    } catch (err) {
+      if (current(used, at)) apiError = err instanceof Error ? err.message : String(err);
+    } finally {
+      if (current(used, at)) busy = false;
+    }
   };
 
   const submit = async (event: SubmitEvent) => {
@@ -370,6 +401,19 @@
         <button class="link danger" onclick={onTrust}>{t("login.trustAnyway")}</button>
       {/if}
     </div>
+  {:else if recovery}
+    <form class="card" onsubmit={recover}>
+      <h1>{t("login.recoverTitle")}</h1>
+      {@render serverLine()}
+      <p class="sub">{t("login.recoverHint")}</p>
+      <label>
+        {t("settings.newPassword")}
+        <input bind:value={newPassword} type="password" required minlength="8" maxlength="256" autocomplete="new-password" />
+      </label>
+      {#if apiError}<p class="error" role="alert">{apiError}</p>{/if}
+      <button class="primary" type="submit" disabled={busy}>{t("login.recoverSubmit")}</button>
+      <button type="button" class="link" onclick={endRecovery}>{t("common.cancel")}</button>
+    </form>
   {:else if account}
     {@const [before, after] = around(t(account.temporary ? "login.yourGuestAccount" : "login.loggedInAs"), "name")}
     <div class="card">

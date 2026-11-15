@@ -35,6 +35,7 @@
   import { refuseFileDrop } from "./lib/composer";
   import { serverOrigin } from "./lib/serverList";
   import { localStore, safeGet, safeSet, tabStorage } from "./lib/storage";
+  import { recoveryToken } from "./lib/recovery";
   import { connectWays, popupLogin, type ConnectPhase } from "./lib/popupLogin";
   import { proxyUrl } from "./lib/status";
   import { loggedOut } from "./lib/reconnect";
@@ -115,13 +116,16 @@
   // Each login, logout and server change: older account checks count for
   // nothing (see the check after an error).
   let authGeneration = 0;
+  // An admin's recovery link (see lib/recovery): its form first, also over
+  // a saved login.
+  const recovering = !isDesktop() && recoveryToken(location.href, location.origin) !== null;
   const autoLogin = (acc: Account | null) => {
     // The popup of a handoff logs in nobody here.
     if (!acc || connection || account !== null || connectHome) return void (checking = false);
     account = acc;
     // Another server asks who you are: only the question, no chat (a Mumble
     // connection would take over this user's voice elsewhere).
-    if (authorizeQuery) return void (checking = false);
+    if (authorizeQuery || recovering) return void (checking = false);
     // Still "checking" until the connection exists (start is async).
     void start({ username: acc.name, account: true, ...(desktop && { server: desktopServer }) }).finally(() => (checking = false));
   };

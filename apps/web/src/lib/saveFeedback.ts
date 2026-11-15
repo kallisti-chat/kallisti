@@ -75,6 +75,7 @@ export const confirmsManage = (a: ManageAction): ((ev: ServerEvent) => boolean) 
   if ("inviteOnly" in a) return (ev) => ev.type === "invite-only" && ev.on === a.inviteOnly;
   if ("registrationInvites" in a || "deleteRegistrationInvite" in a) return is("registration-invites");
   if ("createRegistrationInvite" in a) return is("registration-invite-created");
+  if ("recoveryLink" in a) return (ev) => ev.type === "recovery-link" && ev.user === a.recoveryLink;
   if ("captcha" in a) return (ev) => ev.type === "captcha" && ev.level === a.captcha;
   if ("serverName" in a) return (ev) => ev.type === "server-name" && ev.name === a.serverName.trim();
   if ("removeLogo" in a) return (ev) => ev.type === "logo" && ev.version === "";

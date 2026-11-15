@@ -138,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "账号和身份组会被删除；消息会保留",
   "admin.deleteUser": "删除用户",
+  "admin.recoveryLink": "恢复链接",
+  "admin.recoveryLinkNote": "请自行把此链接发给 {name}。它在 24 小时内可用一次：设置新密码，并结束其其他登录。",
   "admin.deleteUserAsk": "删除用户…",
 
   "admin.inviteOnly": "仅限邀请的服务器",

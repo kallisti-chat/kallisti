@@ -248,6 +248,7 @@ export type ServerEvent =
   | { type: "invite-only"; on: boolean }
   | { type: "registration-invites"; invites: Invite[] }
   | { type: "registration-invite-created"; token: string }
+  | { type: "recovery-link"; user: number; token: string }
   // Admins renamed the server (the state has it as the root channel's
   // name: the confirmation only).
   | { type: "server-name"; name: string }
@@ -741,6 +742,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       return Array.isArray(v.invites) && v.invites.every(isInvite) ? { type: "registration-invites", invites: v.invites } : null;
     case "registration-invite-created":
       return isStr(v.token) ? { type: "registration-invite-created", token: v.token } : null;
+    case "recovery-link":
+      return isNum(v.user) && isStr(v.token) ? { type: "recovery-link", user: v.user, token: v.token } : null;
     case "invite-created":
       return isNum(v.voice) && isStr(v.token) ? { type: "invite-created", voice: v.voice, token: v.token } : null;
     case "webhooks":
@@ -1003,6 +1006,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
     case "webhook-picture":
       return { ...state, webhookPictures: { ...state.webhookPictures, [event.webhook]: event.version } };
     case "registration-invite-created": // only the requester shows its token
+    case "recovery-link": // the same
     case "invite-created": // the client shows it once (lib/invites)
     case "invite-joined":
     case "webhook-created": // the same (lib/webhooks)
@@ -1330,6 +1334,7 @@ export type ManageAction =
   | { inviteOnly: boolean }
   | { registrationInvites: true }
   | { createRegistrationInvite: true; seconds: number; uses: number }
+  | { recoveryLink: number }
   | { deleteRegistrationInvite: number }
   | { serverName: string }
   | { removeLogo: true }
@@ -1384,6 +1389,7 @@ const manageBody = (a: ManageAction) => {
   if ("inviteOnly" in a) return { type: "set-invite-only", on: a.inviteOnly };
   if ("registrationInvites" in a) return { type: "registration-invites" };
   if ("createRegistrationInvite" in a) return { type: "create-registration-invite", seconds: a.seconds, uses: a.uses };
+  if ("recoveryLink" in a) return { type: "recovery-link", user: a.recoveryLink };
   if ("deleteRegistrationInvite" in a) return { type: "delete-registration-invite", invite: a.deleteRegistrationInvite };
   if ("captcha" in a) return { type: "set-captcha", level: a.captcha };
   if ("serverName" in a) return { type: "set-server-name", name: a.serverName };

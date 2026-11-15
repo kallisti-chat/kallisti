@@ -149,6 +149,8 @@ export default {
   // Registered users.
   "admin.userDeleteNote": "account and roles go; messages stay",
   "admin.deleteUser": "Delete user",
+  "admin.recoveryLink": "Recovery link",
+  "admin.recoveryLinkNote": "Send this link to {name} yourself. It works once, for 24 hours: it sets a new password and ends their other logins.",
   "admin.deleteUserAsk": "Delete user…",
 
   // Registration: invite-only and account invitations.

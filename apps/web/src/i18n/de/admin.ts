@@ -138,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "Konto und Rollen werden entfernt, Nachrichten bleiben",
   "admin.deleteUser": "Nutzer löschen",
+  "admin.recoveryLink": "Wiederherstellungslink",
+  "admin.recoveryLinkNote": "Schicke diesen Link selbst an {name}. Er gilt einmal und 24 Stunden: Er setzt ein neues Passwort und beendet die anderen Anmeldungen.",
   "admin.deleteUserAsk": "Nutzer löschen…",
 
   "admin.inviteOnly": "Server nur auf Einladung",

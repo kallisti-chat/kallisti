@@ -138,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "se eliminan la cuenta y los roles; los mensajes se conservan",
   "admin.deleteUser": "Eliminar usuario",
+  "admin.recoveryLink": "Enlace de recuperación",
+  "admin.recoveryLinkNote": "Envía tú mismo este enlace a {name}. Funciona una vez, durante 24 horas: pone una contraseña nueva y cierra sus otras sesiones.",
   "admin.deleteUserAsk": "Eliminar usuario…",
 
   "admin.inviteOnly": "Servidor solo con invitación",

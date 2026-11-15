@@ -160,6 +160,7 @@
   import { railBadge, tabTitle, type RailBadge } from "../lib/title";
   import { inviteTarget, messageLink, parseMessageLink, plainLink, type ChannelLink } from "../lib/messageLink";
   import { registrationLink } from "../lib/registration";
+  import { recoveryLink } from "../lib/recovery";
   import { inviteLink, inviteOf, invitePlace, parseInviteLink } from "../lib/invites";
   import { webhookPicture, webhookUrl } from "../lib/webhooks";
   import WebhooksDialog from "./WebhooksDialog.svelte";
@@ -2144,6 +2145,7 @@
       return connection.sendAwait([setBans(bans), queryBans()], (s) => s.bans !== before && s.bans?.length === bans.length);
     }}
     mayDelete={(id) => mayDeleteUser(server, text, id)}
+    onRecoveryLink={async (id) => recoveryLink(site, await connection.recoveryLink(id))}
     onUnregister={(id) =>
       connection.sendAwait([unregister(id), queryRegistered()], (s) => !!s.registered && !s.registered.some((u) => u.userId === id))}
     emoji={customEmoji.list}

@@ -130,6 +130,9 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     changePassword: async (old: string, next: string) => {
       await call("/api/password", { old, new: next });
     },
+    // An admin's recovery link (see lib/recovery): a new password, and this
+    // browser is logged in. The account's name.
+    recover: async (token: string, next: string) => (await call("/api/recover", { token, new: next })).name ?? "",
     whipUrl: whipUrl(base),
     // Streaming from OBS: off on the server (or for guest accounts), or on
     // with or without a key.

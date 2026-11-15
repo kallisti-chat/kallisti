@@ -52,6 +52,7 @@
     onLoad,
     onSetBans,
     onUnregister,
+    onRecoveryLink,
     mayDelete = (id) => id !== 0,
     emoji,
     onAddEmoji,
@@ -100,6 +101,8 @@
     onLoad: (what: "bans" | "users") => void;
     onSetBans: (bans: Ban[]) => Promise<void>;
     onUnregister: (userId: number) => Promise<void>;
+    // An admin's one-time link to set a new password (see lib/recovery).
+    onRecoveryLink?: (userId: number) => Promise<string>;
     // Whom the list offers to delete (default: all but SuperUser).
     mayDelete?: (userId: number) => boolean;
     emoji: readonly CustomEmoji[];
@@ -178,6 +181,13 @@
   );
   let section = $state<ServerSectionId | null>(null);
   let confirming = $state<number | null>(null);
+  let recovery = $state<{ user: number; link: string; copied: boolean } | null>(null);
+  const copyRecovery = () => saves.users.run(async () => {
+    if (!recovery) return;
+    if (!navigator.clipboard) throw new Error(t("admin.copyFallback"));
+    await navigator.clipboard.writeText(recovery.link);
+    recovery.copied = true;
+  });
   // Each change waits for the server (see lib/saveFeedback); a checkbox or
   // select goes back to the server's value when refused.
   const saves = {
@@ -619,8 +629,24 @@
                 </button>
                 <button type="button" onclick={() => (confirming = null)}>{t("common.cancel")}</button>
               {:else}
+                {#if onRecoveryLink}
+                  <button
+                    type="button"
+                    disabled={saves.users.busy}
+                    onclick={() => saves.users.run(async () => (recovery = { user: user.userId, link: await onRecoveryLink(user.userId), copied: false }))}
+                  >
+                    {t("admin.recoveryLink")}
+                  </button>
+                {/if}
                 <button type="button" onclick={() => (confirming = user.userId)}>{t("admin.deleteUserAsk")}</button>
               {/if}
+            {/if}
+            {#if recovery?.user === user.userId}
+              <div class="recovery">
+                <input readonly value={recovery.link} aria-label={t("admin.recoveryLink")} onfocus={(e) => e.currentTarget.select()} />
+                <button type="button" onclick={copyRecovery}>{recovery.copied ? t("common.copied") : t("admin.copyLink")}</button>
+                <p class="note">{t("admin.recoveryLinkNote", { name: user.name })}</p>
+              </div>
             {/if}
           </li>
         {/each}
@@ -866,5 +892,29 @@
     margin: 0;
     font-size: 12px;
     color: var(--text-faint);
+  }
+  li:has(.recovery) {
+    flex-wrap: wrap;
+  }
+  .recovery {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .recovery input {
+    flex: 1;
+    min-width: 12rem;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg-rail);
+    color: var(--text);
+    font: inherit;
+  }
+  .recovery .note {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 12px;
   }
 </style>
