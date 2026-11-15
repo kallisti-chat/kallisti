@@ -3018,3 +3018,7 @@ With that, a file dropped beside the chat (the channel list, a dialog, the login
 ## 2026-11-09: Standard Mac settings shortcut
 
 Cmd+, opens settings on Mac through the existing active-client keyboard handler. Other platforms and modified combinations remain unchanged; like other navigation shortcuts, it does not open over an existing dialog.
+
+## 2026-11-15: CAPTCHA worker crashed in the build
+
+Since v0.13.0 (`a9bb47d4`) `captcha.ts` imports `i18n.svelte`, and the worker imported `captcha.ts`. The worker bundle is not compiled by Svelte, so it stopped at `$state is not defined`: on a server with a CAPTCHA level, web signups and guest joins failed. The solver is now in `captchaSolver.ts` without UI imports (cortexobscura's fix from #28, taken on its own); a test bundles and runs the real worker.
