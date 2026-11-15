@@ -63,26 +63,16 @@ func (t oidcTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return t.base.RoundTrip(r)
 }
 
-// newoidclogin validates local configuration; discovery is lazy so an identity
-// provider outage cannot prevent the server's other login methods from starting.
-func NewOIDCLogin(ctx context.Context, issuer, clientID, clientSecret, redirectURL, name string) (*OIDCLogin, error) {
-	return newOIDCLogin(ctx, issuer, clientID, clientSecret, redirectURL, name, http.DefaultTransport)
+// NewOIDCLogin: the settings come checked (see config.parseOIDC). Discovery
+// is lazy, so a provider outage cannot keep the other logins from starting.
+func NewOIDCLogin(issuer, clientID, clientSecret, redirectURL, name string) (*OIDCLogin, error) {
+	return newOIDCLogin(issuer, clientID, clientSecret, redirectURL, name, http.DefaultTransport)
 }
 
-func newOIDCLogin(_ context.Context, issuer, clientID, clientSecret, redirectURL, name string, transport http.RoundTripper) (*OIDCLogin, error) {
-	u, err := secureOIDCURL(issuer)
-	if err != nil || u.RawQuery != "" {
-		return nil, errors.New("invalid oidc issuer")
-	}
-	redirect, err := secureOIDCURL(redirectURL)
-	if err != nil || redirect.RawQuery != "" || redirect.Path != oidcPath+"/callback" || redirect.RawPath != "" {
-		return nil, errors.New("invalid oidc callback url")
-	}
-	if strings.TrimSpace(clientID) == "" || strings.TrimSpace(clientSecret) == "" {
-		return nil, errors.New("oidc requires client id and secret")
-	}
-	if name = strings.TrimSpace(name); name == "" {
-		name = "OpenID Connect"
+func newOIDCLogin(issuer, clientID, clientSecret, redirectURL, name string, transport http.RoundTripper) (*OIDCLogin, error) {
+	redirect, err := url.Parse(redirectURL)
+	if err != nil {
+		return nil, err
 	}
 	return &OIDCLogin{issuer: issuer, name: name, origin: redirect.Scheme + "://" + redirect.Host,
 		config: oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, RedirectURL: redirectURL, Scopes: []string{oidc.ScopeOpenID, "profile"}},

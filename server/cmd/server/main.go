@@ -127,7 +127,7 @@ func run() error {
 		ServerPassword:    cfg.Builtin == nil || cfg.Builtin.Password != "",
 	}
 	accounts.Fedi = fediLogin(cfg)
-	accounts.OIDC, err = oidcLogin(context.Background(), cfg.OIDC)
+	accounts.OIDC, err = oidcLogin(cfg.OIDC)
 	if err != nil {
 		return err
 	}

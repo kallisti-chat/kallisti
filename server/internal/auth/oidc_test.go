@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -50,7 +49,7 @@ func setupOIDC(t *testing.T) (*Service, *httptest.Server, *oidcIssuer) {
 	p := &oidcIssuer{signer: signer, public: jose.JSONWebKey{Key: &key.PublicKey, KeyID: "test-key", Algorithm: "ES256", Use: "sig"}, codes: make(map[string]url.Values)}
 	p.server = httptest.NewTLSServer(http.HandlerFunc(p.serve))
 	t.Cleanup(p.server.Close)
-	a.OIDC, err = newOIDCLogin(context.Background(), p.server.URL, "client", "secret", "https://chat.example/api/oidc/callback", "Test ID", p.server.Client().Transport)
+	a.OIDC, err = newOIDCLogin(p.server.URL, "client", "secret", "https://chat.example/api/oidc/callback", "Test ID", p.server.Client().Transport)
 	if err != nil {
 		t.Fatal(err)
 	}

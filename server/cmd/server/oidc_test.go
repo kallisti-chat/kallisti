@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +28,7 @@ func TestOIDCSecretFile(t *testing.T) {
 				}
 			}
 			c := &config.OIDC{Issuer: "https://identity.invalid", ClientID: "client", ClientSecretFile: path, RedirectURL: "https://chat.example/api/oidc/callback", Name: "Test"}
-			login, err := oidcLogin(context.Background(), c)
+			login, err := oidcLogin(c)
 			if (err != nil) != tc.bad {
 				t.Fatalf("unexpected secret file result: %v", err)
 			}
@@ -44,7 +43,7 @@ func TestOIDCSecretFile(t *testing.T) {
 }
 
 func TestOIDCDisabledStartup(t *testing.T) {
-	login, err := oidcLogin(context.Background(), nil)
+	login, err := oidcLogin(nil)
 	if login != nil || err != nil {
 		t.Fatal("disabled OIDC altered startup")
 	}

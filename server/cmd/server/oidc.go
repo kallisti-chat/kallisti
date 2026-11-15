@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +11,7 @@ import (
 	"kallisti.chat/server/internal/config"
 )
 
-func oidcLogin(ctx context.Context, cfg *config.OIDC) (*auth.OIDCLogin, error) {
+func oidcLogin(cfg *config.OIDC) (*auth.OIDCLogin, error) {
 	if cfg == nil {
 		return nil, nil
 	}
@@ -32,7 +31,7 @@ func oidcLogin(ctx context.Context, cfg *config.OIDC) (*auth.OIDCLogin, error) {
 	if secret == "" {
 		return nil, errors.New("OIDC client secret is empty")
 	}
-	login, err := auth.NewOIDCLogin(ctx, cfg.Issuer, cfg.ClientID, secret, cfg.RedirectURL, cfg.Name)
+	login, err := auth.NewOIDCLogin(cfg.Issuer, cfg.ClientID, secret, cfg.RedirectURL, cfg.Name)
 	if err != nil {
 		return nil, fmt.Errorf("configure OIDC login: %w", err)
 	}
