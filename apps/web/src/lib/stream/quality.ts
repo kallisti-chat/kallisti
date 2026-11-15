@@ -10,7 +10,7 @@ export const KINDS: readonly Kind[] = ["screen", "camera"];
 // bitrate: optional custom bitrate in bps.
 export type Quality = { height: number; fps: number; bitrate?: number };
 // The server's limits (its "ready"): the upload of both streams together,
-// bytes a second, and the largest side of a picture.
+// bytes a second, and the largest side of a picture (1920: 1080p).
 export type Limits = { bytesPerSecond: number; maxSide: number; maxFps?: number };
 
 const HEIGHTS = [480, 720, 1080];
@@ -65,7 +65,7 @@ export const parseQuality = (v: unknown, kind: Kind): Quality => {
 };
 
 export const qualityOptions = (limits: Limits) => ({
-  heights: HEIGHTS.filter((h) => h <= limits.maxSide),
+  heights: HEIGHTS.filter((h, i) => i === 0 || Math.ceil((h * 16) / 9) <= limits.maxSide),
   fps: FPS.filter((f) => !limits.maxFps || f <= limits.maxFps),
 });
 

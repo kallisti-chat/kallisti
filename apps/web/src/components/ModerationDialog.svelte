@@ -425,10 +425,10 @@
         <label>
           {t("admin.qualityMaxStreamResolution")}
           <select bind:value={streamSideDraft}>
-            <option value={720}>720p (1280×720)</option>
-            <option value={1080}>1080p (1920×1080)</option>
-            <option value={1440}>1440p (2560×1440)</option>
-            <option value={4096}>4K (4096)</option>
+            <option value={1280}>720p (1280×720)</option>
+            <option value={1920}>1080p (1920×1080)</option>
+            <option value={2560}>1440p (2560×1440)</option>
+            <option value={4096}>4K (4096×2160)</option>
           </select>
         </label>
         <p class="note">{t("admin.qualityMaxStreamResolutionNote")}</p>

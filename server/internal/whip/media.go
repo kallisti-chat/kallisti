@@ -270,7 +270,7 @@ func (f *feed) picture(t timed) error {
 			if session := f.session.Load(); session != 0 {
 				f.resWarned = true
 				slog.Info("stream from OBS resolution exceeds limit", "session", session, "width", t.width, "height", t.height, "max_side", f.maxSide)
-				f.warn(session, fmt.Sprintf("Your OBS stream resolution (%dx%d) exceeds the server limit of %dp. In OBS, Settings → Video: set Output (Scaled) Resolution to %dp or lower.", t.width, t.height, f.maxSide, f.maxSide))
+				f.warn(session, fmt.Sprintf("Your OBS stream resolution (%dx%d) is above the server limit of %d pixels on the long side. In OBS, Settings → Video: set Output (Scaled) Resolution so that no side is above %d.", t.width, t.height, f.maxSide, f.maxSide))
 			}
 		}
 		if in != nil {

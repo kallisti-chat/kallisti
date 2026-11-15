@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -139,7 +140,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		switch cmd.Type {
 		case "start":
-			if err := h.Hub.Start(session, cmd.Config); err != nil {
+			if err := h.start(session, cmd.Config); err != nil {
 				c.SendText(map[string]any{"type": "error", "message": err.Error(), "camera": cmd.Camera})
 			} else {
 				c.SendText(map[string]any{"type": "started", "camera": cmd.Camera})
