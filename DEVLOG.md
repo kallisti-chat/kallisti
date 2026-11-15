@@ -3057,3 +3057,11 @@ Merged #20 (ElRizeru) with changes on top:
 ## 2026-11-15: Voice test diagnostics
 
 Taken from #28 (cortexobscura) on its own: when the browser voice test fails, drive.mjs prints the fake microphone's stage, how often it was asked for, page errors, the last clicks and the page state; the test server runs without media previews. Checked on CI by hand: all three browsers pass; with a microphone that throws on purpose, all three print the forced error. The first real Safari flake with them showed a join that never asked for the microphone (see meta/issues/voice-ci-flaky-safari.md).
+
+## 2026-11-15: Admin recovery links
+
+An account without a usable login was lost: a forgotten password, or (with #28) an OIDC-only account whose provider went away; Kallisti had no admin way back. Now an admin makes a one-time link in Registered users (24 h, one per account, the token stored hashed); it sets a new password, ends all sessions and connections and logs in. Who may: the rule for deleting users (admins; for an admin's account only SuperUser), and only for a Kallisti account's own registration (name and certificate, `isAccount`). With Fedi login off, a first password needs such a link now (before: no proof at all).
+
+From the reviews (subagent, Astra): open links go when roles change (a link for a user promoted meanwhile); a login that checked a password replaced meanwhile gets no session (`CreateSessionChecked`: a recovery or change ended the sessions before it, and an attacker with the old password could otherwise keep one); a recovery link opened in a logged-in browser shows its form instead of connecting. Left: the provider's 10-minute identity tokens stay valid after a recovery (they cannot be renewed without a session).
+
+Checked in headless Chromium: link made as SuperUser, password set through the page (also in a browser still logged in), second use 404, other sessions ended, new password works.
