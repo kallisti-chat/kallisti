@@ -3008,3 +3008,17 @@ feld asked for it: a reply to a message with media showed only the quoted text. 
 The report blamed the recordings list, but the answer only replaces `text.recordings`. The effect read the prop `recording`, passed as `text.recording`: the child's effect then depends on the parent's whole `text`, which every event replaces, so each answer (and any chat event) asked again; the rate limit then refused the download token. It now depends on the recorded channels by value. A harness test that replaces its text state like Client asked 22 times before the fix and once after (and once more when a recording starts).
 
 Follow-up: a download whose token request hit the rate limit failed silently after 10 s. Rate errors now name the refused request (`request`, additive), and a pending stream or recording token fails at once with the server's message, which the Recordings panel shows. Tests: the server's rate error carries the type; a client token request fails on its own refusal, not on another request's (both red first).
+
+## 2026-11-14: Dropped files in the desktop app
+
+The chat has taken dropped files since uploads came (`ChatPane`'s `ondrop`, the same path as the picker and a paste), but only in browsers: Tauri's own drop handler is on by default and swallows the drop before the page sees it (tauri-runtime-wry's handler returns `true`), and nothing here listened to Tauri's event. The main window now has `dragDropEnabled: false`, so the page's handler gets the files.
+
+With that, a file dropped beside the chat (the channel list, a dialog, the login) would open in the WebView in place of the app, as it always did in a browser tab (ending a call there). `refuseFileDrop` on the window refuses such a drop (`dropEffect` none); file inputs (emoji, stickers, pictures) still take theirs. Not checked: a real drop into the built app on each desktop system.
+
+## 2026-11-09: Standard Mac settings shortcut
+
+Cmd+, opens settings on Mac through the existing active-client keyboard handler. Other platforms and modified combinations remain unchanged; like other navigation shortcuts, it does not open over an existing dialog.
+
+## 2026-11-15: CAPTCHA worker crashed in the build
+
+Since v0.13.0 (`a9bb47d4`) `captcha.ts` imports `i18n.svelte`, and the worker imported `captcha.ts`. The worker bundle is not compiled by Svelte, so it stopped at `$state is not defined`: on a server with a CAPTCHA level, web signups and guest joins failed. The solver is now in `captchaSolver.ts` without UI imports (cortexobscura's fix from #28, taken on its own); a test bundles and runs the real worker.

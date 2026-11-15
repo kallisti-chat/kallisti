@@ -37,6 +37,22 @@ export const clipboardImage = async (read: Read): Promise<File | null> => {
   return null;
 };
 
+// A file dragged outside a chat (see ChatPane's drop) is refused: the
+// browser would open it in place of the app. Not over a file input: those
+// take a drop themselves.
+type FileDrag = {
+  defaultPrevented: boolean;
+  target: EventTarget | null;
+  dataTransfer: { types: ArrayLike<string>; dropEffect: string } | null;
+  preventDefault(): void;
+};
+export const refuseFileDrop = (e: FileDrag) => {
+  if (e.defaultPrevented || !e.dataTransfer || !Array.from(e.dataTransfer.types).includes("Files")) return;
+  if ((e.target as { type?: unknown } | null)?.type === "file") return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "none";
+};
+
 // A send the server refused comes back; it fills the box only if the user
 // has not typed something new.
 export const refusedDraft = (draft: string, text: string) => (draft.trim() ? draft : text);

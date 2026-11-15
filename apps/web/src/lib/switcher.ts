@@ -41,7 +41,7 @@ export const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test
 // The modifier key's name, for the shortcut lists.
 export const MOD = IS_MAC ? "⌘" : "Ctrl";
 
-export type NavAction = "switcher" | "shortcuts" | { step: 1 | -1; unread: boolean } | null;
+export type NavAction = "switcher" | "shortcuts" | "settings" | { step: 1 | -1; unread: boolean } | null;
 
 // What a key press does: Cmd (Mac) or Ctrl + K or /, Alt(+Shift)+Up/Down.
 // Not for keys that something else used (the message box: Up edits the
@@ -49,6 +49,7 @@ export type NavAction = "switcher" | "shortcuts" | { step: 1 | -1; unread: boole
 // other keyboard layouts.
 export const navAction = (e: KeyboardEvent, mac: boolean): NavAction => {
   if (e.defaultPrevented || e.isComposing) return null;
+  if (mac && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && e.key === ",") return "settings";
   const mod = (mac ? e.metaKey : e.ctrlKey) && !e.altKey;
   const k = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : e.code === "KeyK" ? "k" : e.key;
   if (mod && k === "k") return "switcher";

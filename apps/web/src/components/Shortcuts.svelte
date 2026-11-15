@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MOD } from "../lib/switcher";
+  import { IS_MAC, MOD } from "../lib/switcher";
   import type { Key } from "../i18n/en";
   import { t } from "../lib/i18n.svelte";
 
@@ -15,6 +15,7 @@
     ["↑", "client.shortcutEditLast"],
     ["Shift+Enter", "client.shortcutNewLine"],
     ["Esc", "client.shortcutEscape"],
+    ...(IS_MAC ? ([["⌘+,", "common.settings"]] as [string, Key][]) : []),
     [`${MOD}+/`, "client.shortcutThisList"],
   ];
 </script>
