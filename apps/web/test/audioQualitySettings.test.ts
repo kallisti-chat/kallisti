@@ -88,7 +88,7 @@ describe("stream quality limits", () => {
 
   it("has sensible default quality limits", () => {
     expect(DEFAULT_QUALITY_LIMITS.maxBitrateVoice).toBe(128_000);
-    expect(DEFAULT_QUALITY_LIMITS.maxBitrateMusic).toBe(320_000);
+    expect(DEFAULT_QUALITY_LIMITS.maxBitrateMusic).toBe(192_000);
     expect(DEFAULT_QUALITY_LIMITS.maxFps).toBe(60);
   });
 });

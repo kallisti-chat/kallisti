@@ -38,7 +38,7 @@ export type QualityLimits = {
 
 export const DEFAULT_QUALITY_LIMITS: QualityLimits = {
   maxBitrateVoice: 128_000,
-  maxBitrateMusic: 320_000,
+  maxBitrateMusic: 192_000,
   bytesPerSecond: 1048576,
   maxSide: 4096,
   maxFps: 60,

@@ -12,7 +12,7 @@ type QualityLimits struct {
 func DefaultQualityLimits() QualityLimits {
 	return QualityLimits{
 		MaxBitrateVoice: 128_000,
-		MaxBitrateMusic: 320_000,
+		MaxBitrateMusic: 192_000,
 		BytesPerSecond:  1 << 20,
 		MaxSide:         4096,
 		MaxFps:          60,

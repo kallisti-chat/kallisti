@@ -16,7 +16,7 @@ type QualityLimits struct {
 
 const (
 	DefaultMaxBitrateVoice = 128_000
-	DefaultMaxBitrateMusic = 320_000
+	DefaultMaxBitrateMusic = 192_000
 	DefaultStreamBytesPerSecond = 1 << 20 // 1 MiB/s (~8.38 Mbit/s)
 	DefaultStreamMaxSide = 4096
 	DefaultStreamMaxFps = 60

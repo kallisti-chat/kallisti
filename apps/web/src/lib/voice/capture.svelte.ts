@@ -87,7 +87,7 @@ export const createCapture = (ctx: AudioContext, send: (packet: OutgoingAudio) =
   let voiceBitrate = 40_000;
   let musicBitrate = 128_000;
   let maxBitrateVoice = 128_000;
-  let maxBitrateMusic = 320_000;
+  let maxBitrateMusic = 192_000;
   // See Settings.musicMode: no filter at all. channels: what the frames
   // have (see the worklet), so what the encoder gets.
   let music = $state(false);
