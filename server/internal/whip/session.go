@@ -14,6 +14,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
+	"golang.org/x/time/rate"
 
 	"kallisti.chat/server/internal/stream"
 )
@@ -52,7 +53,13 @@ func newSession(h *Handler, id, account string) *session {
 // open answers the offer.
 func (s *session) open(o offer, sdp string, voice uint32) (string, error) {
 	defer close(s.opened)
-	s.feed = newFeed(s.h.Hub, voice, o.audio != nil, s.h.BytesPerSecond, stream.IngestHooks{
+	bps := s.h.BytesPerSecond
+	side := 4096
+	fps := 60
+	if s.h.Limits != nil {
+		bps, side, fps = s.h.Limits()
+	}
+	s.feed = newFeed(s.h.Hub, voice, o.audio != nil, bps, stream.IngestHooks{
 		Keyframe: func() {
 			select {
 			case s.pli <- struct{}{}:
@@ -68,6 +75,14 @@ func (s *session) open(o offer, sdp string, voice uint32) (string, error) {
 		},
 	})
 	s.feed.still, s.feed.warn = s.h.Preview, s.h.Warn
+	s.feed.limits = s.h.Limits
+	s.feed.maxSide = side
+	s.feed.maxFps = fps
+	s.feed.lastBps = bps
+	s.feed.bytes.SetLimit(rate.Limit(bps))
+	s.feed.bytes.SetBurst(2 * bps)
+	s.feed.fps.SetLimit(rate.Limit(fps))
+	s.feed.fps.SetBurst(max(10, 2*fps))
 	api, err := s.h.api(o)
 	if err != nil {
 		return "", err

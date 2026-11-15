@@ -137,7 +137,8 @@ export default {
 
   "client.voiceUnsupported": "Sprachchat funktioniert in diesem Browser nicht (ihm fehlt {apis}). Verwende einen aktuellen Chrome, Firefox oder Safari.",
   "client.encoderFailed": "Sprach-Encoder fehlgeschlagen: {error}",
-  "client.noiseBrowserFilter": "der Filter des Browsers",
+    "client.noiseOff": "Aus",
+"client.noiseBrowserFilter": "der Filter des Browsers",
   "client.noiseFailed": "{filter} konnte nicht laufen ({reason}). Jetzt aktiv: {now}.",
   "client.noiseTooSlow": "dieser Computer ist dafür zu langsam",
   "client.noiseStopped": "er wurde beendet",

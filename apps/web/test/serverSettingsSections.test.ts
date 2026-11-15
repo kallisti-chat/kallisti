@@ -7,6 +7,7 @@ describe("server settings sections", () => {
   it("groups them as server, members and monitoring", () => {
     expect(serverSections(all).map((s) => `${s.group}:${s.id}`)).toEqual([
       "server:server",
+      "server:quality",
       "server:emoji",
       "server:stickers",
       "server:threads",

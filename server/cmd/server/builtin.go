@@ -390,6 +390,15 @@ func (v voiceServer) Connections(session uint32) ([]sidecar.Connection, error) {
 	return out, err
 }
 
+func (v voiceServer) QualityLimits() sidecar.QualityLimits {
+	return sidecar.QualityLimits(v.Server.QualityLimits())
+}
+
+func (v voiceServer) SetQualityLimits(session uint32, q sidecar.QualityLimits) (sidecar.QualityLimits, error) {
+	updated, err := v.Server.SetQualityLimits(session, mumbled.QualityLimits(q))
+	return sidecar.QualityLimits(updated), err
+}
+
 // dial makes an in-process session for a web client.
 func (b *builtin) dial(_ context.Context, up bridge.Upstream) (net.Conn, error) {
 	client, server := net.Pipe()

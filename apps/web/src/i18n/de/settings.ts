@@ -93,6 +93,7 @@ export default {
   "settings.qrNewCode": "Neuer Code",
 
   "settings.voiceInput": "Eingabe",
+  "settings.advanced": "Erweitert",
   "settings.voiceOutput": "Ausgabe",
   "settings.inputDevice": "Eingabegerät",
   "settings.deviceDefault": "Standard",
@@ -104,7 +105,8 @@ export default {
   "settings.cameraNumbered": "Kamera {number}",
   "settings.cameraListHint": "Die Liste füllt sich, sobald du die Kamera im Sprachkanal eingeschaltet hast.",
   "settings.noiseSuppression": "Rauschunterdrückung",
-  "settings.noiseStandard": "Standard (die des Browsers)",
+    "settings.noiseOff": "Aus (keine Rauschunterdrückung)",
+"settings.noiseStandard": "Standard (die des Browsers)",
   "settings.noiseStrong": "Stark (RNNoise)",
   "settings.noiseStrongest": "Am stärksten (DeepFilterNet3)",
   "settings.noiseOffMusic": "Im Musikmodus aus.",
@@ -121,7 +123,16 @@ export default {
   "settings.playbackBuffer": "Wiedergabepuffer",
   "settings.playbackBufferHint":
     "Wie lange die Stimmen anderer warten, bevor sie abgespielt werden. Mehr füllt Lücken bei einer schlechten Verbindung, aber verzögert mehr. Musik bekommt immer mindestens 500 ms.",
-  "settings.inputMode": "Eingabemodus",
+    "settings.voiceBitrate": "Sprachbitrate",
+  "settings.voiceBitrateHint": "Bitrate für Sprache. Eine höhere Bitrate verbessert die Sprachqualität, benötigt aber mehr Bandbreite.",
+  "settings.musicBitrate": "Musikbitrate",
+  "settings.musicBitrateHint": "Bitrate im Musikmodus (Stereo).",
+  "settings.audioChannels": "Audiokanäle",
+  "settings.audioChannelsAuto": "Automatisch (Mono für Sprache, Stereo für Musik)",
+  "settings.audioChannelsMono": "Mono",
+  "settings.audioChannelsStereo": "Stereo",
+  "settings.audioChannelsHint": "Wählen Sie, ob Ihr Mikrofon in Mono oder Stereo überträgt.",
+"settings.inputMode": "Eingabemodus",
   "settings.voiceActivity": "Sprachaktivierung",
   "settings.pushToTalk": "Push-to-Talk",
   "settings.pttKey": "Push-to-Talk-Taste",
@@ -139,7 +150,9 @@ export default {
   "settings.echoCancellation": "Echounterdrückung",
   "settings.echoCancellationHint":
     "Nötig mit Lautsprechern. Mit einem Headset kannst du sie ausschalten: Auf einem Mac schalten die Desktop-App und Safari Bluetooth-Headsets sonst in ihren Anrufmodus, mit schlechterem Klang.",
-  "settings.musicMode": "Musikmodus",
+    "settings.autoGainControl": "Automatische Lautstärke (Verstärkungsregelung)",
+  "settings.autoGainControlHint": "Passt die Mikrofonlautstärke automatisch an. Ausschalten, wenn die Lautstärke unerwartet schwankt.",
+"settings.musicMode": "Musikmodus",
   "settings.musicModeHint":
     "Zum Musikmachen: keine Rauschunterdrückung, keine Echounterdrückung, keine automatische Lautstärke, und besserer Klang (Stereo, wenn das Mikrofon zwei Kanäle hat). Verwende ein Headset.",
   "settings.closeMic": "Mikrofon schließen, wenn stummgeschaltet",
@@ -153,7 +166,8 @@ export default {
   "settings.obsSteps":
     "OBS 30 oder neuer kann in deinen Sprachkanal streamen: Es erscheint wie eine Bildschirmübertragung. Sei hier verbunden und in einem Sprachkanal, in dem du sprechen darfst. In OBS unter Einstellungen → Stream: Dienst „WHIP“, Server {url}, Bearer-Token: dein Stream-Schlüssel.",
   "settings.obsOutput":
-    "Einstellungen → Ausgabe (Erweitert): H.264-Video, Keyframe-Intervall 1 oder 2 s, Profil baseline oder main, höchstens 1080p und 8 Mbit/s.",
+    "Einstellungen → Ausgabe (Erweitert): H.264-Video, Keyframe-Intervall 1 oder 2 s, Profil baseline oder main.",
+  "settings.obsLimits": "Server-Limits: bis zu {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "Keine B-Frames (wir leiten das Video unverändert weiter; mit ihnen zerfällt das Bild oder wird rosa): Bei x264 trage {option} in „x264-Optionen“ ein; bei NVENC, QuickSync oder AMF setze B-Frames auf 0.",
   "settings.obsNewKey": "Dein Stream-Schlüssel (nur jetzt sichtbar): {key}",

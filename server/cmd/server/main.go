@@ -321,6 +321,10 @@ func run() error {
 		mux.Handle("/api/stream", &stream.Handler{
 			Hub: builtinServer.streams, Redeem: builtinServer.streamTokens.Redeem,
 			AllowedOrigins: cfg.AllowedOrigins, BytesPerSecond: streamBytesPerSecond,
+			Limits: func() (int, int, int) {
+				q := builtinServer.srv.QualityLimits()
+				return q.BytesPerSecond, q.MaxSide, q.MaxFps
+			},
 		})
 		if cfg.Builtin.WHIPPort != 0 {
 			// Chat and voice go on without it (a name that did not resolve).
@@ -493,6 +497,10 @@ func startWHIP(cfg *config.Builtin, b *builtin, accounts *auth.Service, previews
 	}
 	h := &whip.Handler{
 		Settings: settings, Hub: b.streams, BytesPerSecond: streamBytesPerSecond, MaxSessions: whipMaxSessions,
+		Limits: func() (int, int, int) {
+			q := b.srv.QualityLimits()
+			return q.BytesPerSecond, q.MaxSide, q.MaxFps
+		},
 		Account: func(key string) (string, bool) {
 			acc, ok := accounts.StreamKeyAccount(key)
 			return acc.Name, ok

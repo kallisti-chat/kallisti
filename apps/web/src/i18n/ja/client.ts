@@ -137,7 +137,8 @@ export default {
 
   "client.voiceUnsupported": "このブラウザーではボイスを使えません ({apis} がありません)。最新の Chrome、Firefox、Safari をお使いください。",
   "client.encoderFailed": "音声エンコーダーのエラー: {error}",
-  "client.noiseBrowserFilter": "ブラウザーのフィルター",
+    "client.noiseOff": "オフ",
+"client.noiseBrowserFilter": "ブラウザーのフィルター",
   "client.noiseFailed": "{filter} を実行できませんでした ({reason})。現在の設定: {now}。",
   "client.noiseTooSlow": "このコンピューターでは処理が追いつきません",
   "client.noiseStopped": "停止しました",

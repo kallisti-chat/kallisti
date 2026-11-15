@@ -183,6 +183,8 @@ type Server struct {
 
 	// Read at every accept: not under mu, which the voice path uses.
 	bans atomic.Pointer[[]BanEntry]
+	// Read for every stream frame (see QualityLimits): not under mu either.
+	quality atomic.Pointer[QualityLimits]
 
 	mu      sync.Mutex
 	state   *State
@@ -273,6 +275,7 @@ func New(cfg Config) (*Server, error) {
 	state.SetLastChannelID(lastID)
 	var rules msgrules.Rules
 	var homeRules homes.Rules
+	quality := DefaultQualityLimits()
 	if cfg.DB != nil {
 		var err error
 		if _, err = cfg.DB.setting("home_servers", &homeRules); err != nil {
@@ -288,6 +291,9 @@ func New(cfg Config) (*Server, error) {
 			return nil, err
 		}
 		state.Captcha = min(state.Captcha, uint32(len(CaptchaLevels)-1))
+		if quality, err = cfg.DB.QualityLimits(); err != nil {
+			return nil, err
+		}
 	} else {
 		state.Channels[0].ACLs, state.Channels[0].Groups = DefaultRootACL()
 	}
@@ -305,6 +311,7 @@ func New(cfg Config) (*Server, error) {
 		pick:     rand.IntN,
 	}
 	srv.bans.Store(&bans)
+	srv.quality.Store(&quality)
 	if err := srv.loadTimeouts(); err != nil {
 		return nil, err
 	}
