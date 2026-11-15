@@ -232,7 +232,7 @@ type credentials struct {
 }
 
 // Paths: what ServeHTTP answers (for the server's router).
-var Paths = []string{"/api/server", "/api/challenge", "/api/accounts", "/api/guest", "/api/login", "/api/logout", "/api/logout-all", "/api/password", "/api/me", "/api/servers", "/api/friends", "/api/stream-key", "/api/fedi", "/api/fedi/",
+var Paths = []string{"/api/server", "/api/challenge", "/api/accounts", "/api/guest", "/api/login", "/api/logout", "/api/logout-all", "/api/password", "/api/recover", "/api/me", "/api/servers", "/api/friends", "/api/stream-key", "/api/fedi", "/api/fedi/",
 	"/api/v1/", "/oauth/", "/.well-known/webfinger", "/api/oauth/", "/api/qr/"}
 
 func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -298,6 +298,8 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.logoutAll(w, r)
 	case r.URL.Path == "/api/password" && r.Method == http.MethodPost:
 		a.changePassword(w, r)
+	case r.URL.Path == "/api/recover" && r.Method == http.MethodPost:
+		a.recover(w, r)
 	case r.URL.Path == "/api/qr/start" && r.Method == http.MethodPost:
 		a.qrStart(w, r)
 	case r.URL.Path == "/api/qr/scan" && r.Method == http.MethodPost:
@@ -774,8 +776,13 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 	// one too (for Mumble apps, or to unlink), after a fresh login with its
 	// fediverse account in this session: a stolen session cannot set one and
 	// lock the owner out (the change ends the other sessions). With
-	// fediverse logins off there is no other way back in: no check then.
-	if acc.PasswordHash == "" && !acc.Temporary && a.Fedi != nil && !a.Fedi.takeProof(a.SessionKey(r), acc.ID, a.Now()) {
+	// fediverse logins off there is no proof: an admin's recovery link
+	// (see recovery.go) sets the password then.
+	if acc.PasswordHash == "" && !acc.Temporary && a.Fedi == nil {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ask an admin for a recovery link to set a password"})
+		return
+	}
+	if acc.PasswordHash == "" && !acc.Temporary && !a.Fedi.takeProof(a.SessionKey(r), acc.ID, a.Now()) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "confirm with your fediverse account first", "code": "reauth"})
 		return
 	}
@@ -835,9 +842,10 @@ func (a *Service) handOutSession(w http.ResponseWriter, r *http.Request, token s
 }
 
 // newSession is a new session's token.
+// newSession: a session for the account as read (see CreateSessionChecked).
 func (a *Service) newSession(acc store.Account) (string, error) {
 	token := randomHex(32)
-	return token, a.Store.CreateSession(tokenHash(token), acc.ID, a.Now().Add(sessionLifetime))
+	return token, a.Store.CreateSessionChecked(tokenHash(token), acc.ID, acc.PasswordHash, a.Now().Add(sessionLifetime))
 }
 
 func (a *Service) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {

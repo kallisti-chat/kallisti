@@ -152,6 +152,9 @@ type Voice interface {
 	SetServerName(session uint32, name string) (string, error)
 	// IsAdmin: the session's user is an admin (the logo, see logo.go).
 	IsAdmin(session uint32) bool
+	// MayRecover: the session may make a recovery link for the registered
+	// user (see recovery.go); the user's name.
+	MayRecover(session, userID uint32) (string, error)
 	// Connections: every connection over the recent window (admins).
 	Connections(session uint32) ([]Connection, error)
 	// CheckMessage: a session's message to post (with the word
@@ -676,7 +679,7 @@ type request struct {
 	NoPing        bool             `json:"noPing"`                  // send: the reply does not ping
 	Nonce         string           `json:"nonce"`                   // send: the client's id for it, the same on a retry (see store.MessageByNonce)
 	Author        string           `json:"author"`                  // search: only this author
-	User          uint32           `json:"user"`                    // set-moderator, set-admin, dm, bio, delete-messages: registered user id
+	User          uint32           `json:"user"`                    // set-moderator, set-admin, dm, bio, delete-messages, recovery-link: registered user id
 	Moderator     bool             `json:"moderator"`               // set-moderator
 	Admin         bool             `json:"admin"`                   // set-admin
 	Users         []uint32         `json:"users"`                   // set-listen-only: who may speak
@@ -893,6 +896,9 @@ func (c *Conn) Handle(raw []byte) {
 		return
 	case "set-invite-only", "registration-invites", "create-registration-invite", "delete-registration-invite":
 		c.registrationRequest(*id, req)
+		return
+	case "recovery-link":
+		c.recoveryLink(*id, req.User)
 		return
 	case "create-invite":
 		c.createInvite(*id, req)
@@ -1360,6 +1366,11 @@ func (r roles) forUser(h *Hub, id mumble.Identity) roles {
 func (h *Hub) RolesChanged() {
 	if h.voice == nil {
 		return
+	}
+	// A recovery link's account may be an admin now, whose links only
+	// SuperUser makes (see recovery.go): open links go.
+	if err := h.store.DeleteRecoveryLinks(); err != nil {
+		slog.Error("recovery links", "err", err)
 	}
 	all := h.roles()
 	all.Type = "roles"
