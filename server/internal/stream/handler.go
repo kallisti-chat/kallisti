@@ -97,7 +97,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// With the limits, for the streamer's encoders.
 	c.SendText(map[string]any{"type": "ready", "limits": map[string]any{"bytesPerSecond": bps, "maxSide": side, "maxFps": fps}})
-	bytes := rate.NewLimiter(rate.Limit(bps), max(256*1024, bps))
+	bytes := rate.NewLimiter(rate.Limit(bps), 2*bps)
 	texts := rate.NewLimiter(textsPerSec, 2*textsPerSec)
 	sounds := rate.NewLimiter(soundsPerSec, soundsPerSec/2)
 	fpsLimiter := rate.NewLimiter(rate.Limit(fps), max(10, 2*fps))
@@ -112,7 +112,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if curBps != bps || curSide != side || curFps != fps {
 					bps, side, fps = curBps, curSide, curFps
 					bytes.SetLimit(rate.Limit(bps))
-					bytes.SetBurst(max(256*1024, bps))
+					bytes.SetBurst(2 * bps)
 					fpsLimiter.SetLimit(rate.Limit(fps))
 					fpsLimiter.SetBurst(max(10, 2*fps))
 					c.SendText(map[string]any{"type": "limits", "limits": map[string]any{"bytesPerSecond": bps, "maxSide": side, "maxFps": fps}})
@@ -259,4 +259,16 @@ func (t *Tokens) Redeem(s string) (uint32, bool) {
 		return 0, false
 	}
 	return v.session, true
+}
+
+// start: Hub.Start within the admins' largest side (see Limits).
+func (h *Handler) start(session uint32, c Config) error {
+	side := maxSide
+	if h.Limits != nil {
+		_, side, _ = h.Limits()
+	}
+	if c.Width > side || c.Height > side {
+		return fmt.Errorf("the server allows at most %d pixels on the long side", side)
+	}
+	return h.Hub.Start(session, c)
 }
