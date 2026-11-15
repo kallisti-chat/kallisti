@@ -3053,3 +3053,7 @@ Merged #20 (ElRizeru) with changes on top:
   - The browser stream burst is back to twice the rate.
   - Caps are at most 510 kbps (Opus), and the admin note says they apply in Kallisti apps only.
 - **Admin layout:** the admin section has the settings' look: the value is beside the label, so the sliders no longer move with its width. Resolution and frame rate are segmented radio buttons. Checked in headless Chromium: a click and an arrow key change them, and Save stores `maxSide` 1920.
+
+## 2026-11-15: Voice test diagnostics
+
+Taken from #28 (cortexobscura) on its own: when the browser voice test fails, drive.mjs prints the fake microphone's stage, how often it was asked for, page errors, the last clicks and the page state; the test server runs without media previews. Checked on CI by hand: all three browsers pass; with a microphone that throws on purpose, all three print the forced error. The first real Safari flake with them showed a join that never asked for the microphone (see meta/issues/voice-ci-flaky-safari.md).
