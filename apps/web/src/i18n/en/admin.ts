@@ -6,6 +6,17 @@ export default {
   // Server settings: categories and their groups.
   "admin.serverSettingsTitle": "Server settings",
   "admin.sectionOverview": "Overview",
+  "admin.sectionQuality": "Voice & streaming",
+  "admin.qualityMaxVoiceBitrate": "Maximum voice bitrate",
+  "admin.qualityMaxVoiceBitrateNote": "Upper limit for voice speech bitrate chosen by users (default 128 kbps).",
+  "admin.qualityMaxMusicBitrate": "Maximum music bitrate",
+  "admin.qualityMaxMusicBitrateNote": "Upper limit for music mode bitrate chosen by users (default 192 kbps). Both limits apply in the Kallisti apps; Mumble clients choose their own bitrate.",
+  "admin.qualityMaxStreamResolution": "Maximum stream resolution",
+  "admin.qualityMaxStreamResolutionNote": "Maximum resolution dimension allowed for screen share and camera streams.",
+  "admin.qualityMaxStreamFramerate": "Maximum stream framerate",
+  "admin.qualityMaxStreamFramerateNote": "Maximum framerate (FPS) allowed for screen share and camera streams.",
+  "admin.qualityMaxStreamBandwidth": "Maximum stream bandwidth",
+  "admin.qualityMaxStreamBandwidthNote": "Total maximum upload bitrate per stream (default 1 MiB/s ≈ 8.4 Mbit/s).",
   "admin.sectionEmoji": "Emoji",
   "admin.sectionStickers": "Stickers",
   "admin.sectionThreads": "Threads",
@@ -138,6 +149,8 @@ export default {
   // Registered users.
   "admin.userDeleteNote": "account and roles go; messages stay",
   "admin.deleteUser": "Delete user",
+  "admin.recoveryLink": "Recovery link",
+  "admin.recoveryLinkNote": "Send this link to {name} yourself. It works once, for 24 hours: it sets a new password and ends their other logins.",
   "admin.deleteUserAsk": "Delete user…",
 
   // Registration: invite-only and account invitations.

@@ -3022,3 +3022,46 @@ Cmd+, opens settings on Mac through the existing active-client keyboard handler.
 ## 2026-11-15: CAPTCHA worker crashed in the build
 
 Since v0.13.0 (`a9bb47d4`) `captcha.ts` imports `i18n.svelte`, and the worker imported `captcha.ts`. The worker bundle is not compiled by Svelte, so it stopped at `$state is not defined`: on a server with a CAPTCHA level, web signups and guest joins failed. The solver is now in `captchaSolver.ts` without UI imports (cortexobscura's fix from #28, taken on its own); a test bundles and runs the real worker.
+
+## 2026-11-10: Manual audio and video quality settings and server caps
+
+Users asked for fine-grained manual control over audio and video quality, instead of fixed defaults and coarse dropdowns.
+
+Changes across client and server:
+- Voice & audio settings:
+  - Playback buffer: replaced the 3-option dropdown (`low` 60 ms, `medium` 120 ms, `high` 250 ms) with a continuous slider from 30 ms to 500 ms (10 ms steps), with quick preset tick marks and a real-time millisecond readout.
+  - Audio bitrate: users can adjust voice bitrate (default 40 kbps, 16–128+ kbps) and music mode bitrate (default 128 kbps, 32–320+ kbps), both dynamically bounded by server caps.
+  - Audio channels: selectable mode (`auto`, `mono`, `stereo`) allowing stereo microphone transmission when hardware supports it.
+  - Audio filters: Automatic Gain Control (AGC) is now individually toggleable, and noise suppression can be set to "Off" in standard speech mode, allowing completely unfiltered studio/microphone input.
+  - Stream quality defaults: users can configure default resolution and frame rate for screen shares and camera streams.
+- Server moderation & caps:
+  - Added a "Voice & streaming" section in Server Settings (ModerationDialog) for administrators to configure maximum allowed speech bitrate, music bitrate, stream resolution, frame rate (up to 120 fps), and total stream bandwidth.
+  - Limits persist in SQLite (`mumble_settings`) and broadcast to connected clients via sidecar (`quality-limits` event), immediately clamping active encoders and setting limits.
+  - Stream handler and WHIP (OBS) ingest dynamically enforce bandwidth and framerate limits on media streams.
+  - Updated OBS stream dialog and instructions to align with server limits.
+- Full parity across web and desktop (Tauri v2) with complete translations for all 7 supported languages.
+
+## 2026-11-15: Quality settings: review follow-ups
+
+Merged #20 (ElRizeru) with changes on top:
+- **User settings:** channels and bitrates are in a closed "Advanced" block. The buffer is a slider only. The stream quality defaults are removed: the stream preview's quality bar already sets the same value. The default music cap is 192 kbps (Opus stereo gains little above that).
+- **Server limits:**
+  - `maxSide` is the long side; the admin options store 1280/1920/2560/4096. Before, "1080p" stored 1080 and gave 1080×608.
+  - The stream handler now refuses a larger picture; before, only our client held it (test red first). The WHIP warning names the long side.
+  - A change goes out once, not twice.
+  - The limits are an `atomic.Pointer`, read per frame without the Mumble server's lock.
+  - The browser stream burst is back to twice the rate.
+  - Caps are at most 510 kbps (Opus), and the admin note says they apply in Kallisti apps only.
+- **Admin layout:** the admin section has the settings' look: the value is beside the label, so the sliders no longer move with its width. Resolution and frame rate are segmented radio buttons. Checked in headless Chromium: a click and an arrow key change them, and Save stores `maxSide` 1920.
+
+## 2026-11-15: Voice test diagnostics
+
+Taken from #28 (cortexobscura) on its own: when the browser voice test fails, drive.mjs prints the fake microphone's stage, how often it was asked for, page errors, the last clicks and the page state; the test server runs without media previews. Checked on CI by hand: all three browsers pass; with a microphone that throws on purpose, all three print the forced error. The first real Safari flake with them showed a join that never asked for the microphone (see meta/issues/voice-ci-flaky-safari.md).
+
+## 2026-11-15: Admin recovery links
+
+An account without a usable login was lost: a forgotten password, or (with #28) an OIDC-only account whose provider went away; Kallisti had no admin way back. Now an admin makes a one-time link in Registered users (24 h, one per account, the token stored hashed); it sets a new password, ends all sessions and connections and logs in. Who may: the rule for deleting users (admins; for an admin's account only SuperUser), and only for a Kallisti account's own registration (name and certificate, `isAccount`). With Fedi login off, a first password needs such a link now (before: no proof at all).
+
+From the reviews (subagent, Astra): open links go when roles change (a link for a user promoted meanwhile); a login that checked a password replaced meanwhile gets no session (`CreateSessionChecked`: a recovery or change ended the sessions before it, and an attacker with the old password could otherwise keep one); a recovery link opened in a logged-in browser shows its form instead of connecting. Left: the provider's 10-minute identity tokens stay valid after a recovery (they cannot be renewed without a session).
+
+Checked in headless Chromium: link made as SuperUser, password set through the page (also in a browser still logged in), second use 404, other sessions ended, new password works.

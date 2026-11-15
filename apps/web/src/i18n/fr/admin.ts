@@ -4,7 +4,18 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "Paramètres du serveur",
   "admin.sectionOverview": "Vue d'ensemble",
-  "admin.sectionEmoji": "Émojis",
+  "admin.sectionQuality": "Voix et streaming",
+  "admin.qualityMaxVoiceBitrate": "Débit vocal maximal",
+  "admin.qualityMaxVoiceBitrateNote": "Limite supérieure pour le débit vocal choisi par les utilisateurs (128 kbps par défaut).",
+  "admin.qualityMaxMusicBitrate": "Débit musical maximal",
+  "admin.qualityMaxMusicBitrateNote": "Limite supérieure pour le débit en mode musique (192 kbps par défaut). Les deux limites s'appliquent dans les applications Kallisti ; les clients Mumble choisissent leur propre débit.",
+  "admin.qualityMaxStreamResolution": "Résolution maximale de diffusion",
+  "admin.qualityMaxStreamResolutionNote": "Dimension maximale autorisée pour le partage d'écran et la caméra.",
+  "admin.qualityMaxStreamFramerate": "Fréquence d'images maximale",
+  "admin.qualityMaxStreamFramerateNote": "Fréquence maximale (IPS) autorisée pour les flux d'écran et de caméra.",
+  "admin.qualityMaxStreamBandwidth": "Bande passante maximale du flux",
+  "admin.qualityMaxStreamBandwidthNote": "Débit montant maximal par flux (1 Mio/s ≈ 8,4 Mbit/s par défaut).",
+"admin.sectionEmoji": "Émojis",
   "admin.sectionStickers": "Autocollants",
   "admin.sectionThreads": "Fils",
   "admin.sectionRules": "Règles des messages",
@@ -134,6 +145,8 @@ export default {
 
   "admin.userDeleteNote": "le compte et les rôles partent ; les messages restent",
   "admin.deleteUser": "Supprimer l'utilisateur",
+  "admin.recoveryLink": "Lien de récupération",
+  "admin.recoveryLinkNote": "Envoie toi-même ce lien à {name}. Il marche une fois, pendant 24 heures : il définit un nouveau mot de passe et ferme ses autres connexions.",
   "admin.deleteUserAsk": "Supprimer l'utilisateur…",
 
   "admin.inviteOnly": "Serveur sur invitation",

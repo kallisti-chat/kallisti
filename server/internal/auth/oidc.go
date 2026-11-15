@@ -493,18 +493,24 @@ func (a *Service) takeOIDCProof(session string, account int64) bool {
 	return err == nil && id == proof.v && id.Issuer == o.issuer
 }
 
-// firstpasswordproof fails closed for oidc identities even when their provider
-// was removed. legacy fediverse recovery behavior is otherwise unchanged.
+// firstPasswordProof: a fresh login with a provider linked to the account,
+// in this session (taken once): OIDC or fediverse.
 func (a *Service) firstPasswordProof(acc store.Account, r *http.Request) bool {
-	if a.takeOIDCProof(a.SessionKey(r), acc.ID) {
-		return true
+	return a.takeOIDCProof(a.SessionKey(r), acc.ID) || a.Fedi != nil && a.Fedi.takeProof(a.SessionKey(r), acc.ID, a.Now())
+}
+
+// mayProve: a login linked to the account works here now, so it can give
+// that proof; else only an admin's recovery link sets a first password.
+func (a *Service) mayProve(acc store.Account) bool {
+	if a.Fedi != nil {
+		if _, err := a.Store.FediIdentityOf(acc.ID); err == nil {
+			return true
+		}
 	}
-	_, err := a.Store.OIDCIdentityOf(acc.ID)
-	if err == nil {
-		return a.Fedi != nil && a.Fedi.takeProof(a.SessionKey(r), acc.ID, a.Now())
+	if a.OIDC != nil {
+		if id, err := a.Store.OIDCIdentityOf(acc.ID); err == nil && id.Issuer == a.OIDC.issuer {
+			return true
+		}
 	}
-	if !errors.Is(err, store.ErrNotFound) {
-		return false
-	}
-	return a.Fedi == nil || a.Fedi.takeProof(a.SessionKey(r), acc.ID, a.Now())
+	return false
 }

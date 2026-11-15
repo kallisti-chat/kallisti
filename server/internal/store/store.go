@@ -258,7 +258,7 @@ func Open(path string) (*Store, error) {
 	// One writer at a time is all SQLite allows anyway, and an in-memory
 	// database exists only for one connection.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema + reactionsTable + ";" + statusTable + ";" + channelListTable + ";" + emojiTable + ";" + userEmojiTables + ";" + stickersTable + ";" + invitesTable + ";" + webhooksTable + ";" + pushTables + ";" + streamKeysTable + ";" + categoriesTable + ";" + threadsTable + ";" + oidcTables + ";" + fediTables + ";" + pollsTables + ";" + logoTable + ";" + accountServersTable + ";" + friendsTable + ";" + oauthTables + ";" + registrationTables); err != nil {
+	if _, err := db.Exec(schema + reactionsTable + ";" + statusTable + ";" + channelListTable + ";" + emojiTable + ";" + userEmojiTables + ";" + stickersTable + ";" + invitesTable + ";" + webhooksTable + ";" + pushTables + ";" + streamKeysTable + ";" + categoriesTable + ";" + threadsTable + ";" + oidcTables + ";" + fediTables + ";" + pollsTables + ";" + logoTable + ";" + accountServersTable + ";" + friendsTable + ";" + oauthTables + ";" + registrationTables + ";" + recoveryTable); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("create schema: %w", err)
 	}
@@ -1531,6 +1531,16 @@ func (s *Store) CreateSession(tokenHash string, accountID int64, expires time.Ti
 	_, err := s.db.Exec(`INSERT INTO sessions (token_hash, account_id, expires_at) VALUES (?, ?, ?)`,
 		tokenHash, accountID, expires.UnixMilli())
 	return err
+}
+
+// CreateSessionChecked creates a session only while the account's
+// password hash is the one checked, in one statement: a login that checked
+// a password a recovery or a change replaced meanwhile gets ErrNotFound
+// (they end the sessions before; this one would stay).
+func (s *Store) CreateSessionChecked(tokenHash string, accountID int64, passwordHash string, expires time.Time) error {
+	return rowChanged(s.db.Exec(`INSERT INTO sessions (token_hash, account_id, expires_at)
+		SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM accounts WHERE id = ? AND password_hash = ?)`,
+		tokenHash, accountID, expires.UnixMilli(), accountID, passwordHash))
 }
 
 // CreateSessionVouched creates a session only while the voucher (another

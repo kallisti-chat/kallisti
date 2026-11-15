@@ -38,6 +38,7 @@
   import { createSave } from "../lib/saveFeedback.svelte";
   import RegistrationSettings from "./RegistrationSettings.svelte";
   import type { Invite } from "../lib/invites";
+  import type { QualityLimits } from "../lib/textChannels";
   import SaveStatus from "./SaveStatus.svelte";
 
   // Server settings for moderators and admins: the ban list, the custom
@@ -51,6 +52,7 @@
     onLoad,
     onSetBans,
     onUnregister,
+    onRecoveryLink,
     mayDelete = (id) => id !== 0,
     emoji,
     onAddEmoji,
@@ -88,6 +90,8 @@
     recording = [],
     onLoadRecordings,
     onDownloadRecording,
+    qualityLimits = null,
+    onSaveQualityLimits,
     onClose,
     phone = false,
   }: {
@@ -97,6 +101,8 @@
     onLoad: (what: "bans" | "users") => void;
     onSetBans: (bans: Ban[]) => Promise<void>;
     onUnregister: (userId: number) => Promise<void>;
+    // An admin's one-time link to set a new password (see lib/recovery).
+    onRecoveryLink?: (userId: number) => Promise<string>;
     // Whom the list offers to delete (default: all but SuperUser).
     mayDelete?: (userId: number) => boolean;
     emoji: readonly CustomEmoji[];
@@ -151,6 +157,8 @@
     recording?: readonly number[] | null;
     onLoadRecordings?: () => void;
     onDownloadRecording?: (id: string) => Promise<void>;
+    qualityLimits?: QualityLimits | null;
+    onSaveQualityLimits?: (q: QualityLimits) => Promise<void>;
     onClose: () => void;
     // Phones: a list of categories, each its own page (see CategoryDialog).
     phone?: boolean;
@@ -173,6 +181,13 @@
   );
   let section = $state<ServerSectionId | null>(null);
   let confirming = $state<number | null>(null);
+  let recovery = $state<{ user: number; link: string; copied: boolean } | null>(null);
+  const copyRecovery = () => saves.users.run(async () => {
+    if (!recovery) return;
+    if (!navigator.clipboard) throw new Error(t("admin.copyFallback"));
+    await navigator.clipboard.writeText(recovery.link);
+    recovery.copied = true;
+  });
   // Each change waits for the server (see lib/saveFeedback); a checkbox or
   // select goes back to the server's value when refused.
   const saves = {
@@ -185,6 +200,38 @@
     archive: createSave(),
     rules: createSave(),
     homes: createSave(),
+    quality: createSave(),
+  };
+
+  let voiceBitrateDraft = $state(128);
+  let musicBitrateDraft = $state(320);
+  let streamBandwidthDraft = $state(1048576);
+  let streamSideDraft = $state(4096);
+  let streamFpsDraft = $state(60);
+
+  $effect(() => {
+    if (qualityLimits) {
+      voiceBitrateDraft = Math.round(qualityLimits.maxBitrateVoice / 1000);
+      musicBitrateDraft = Math.round(qualityLimits.maxBitrateMusic / 1000);
+      streamBandwidthDraft = qualityLimits.bytesPerSecond;
+      streamSideDraft = qualityLimits.maxSide;
+      streamFpsDraft = qualityLimits.maxFps;
+    }
+  });
+
+  const saveQuality = (e: SubmitEvent) => {
+    e.preventDefault();
+    if (onSaveQualityLimits) {
+      saves.quality.run(() =>
+        onSaveQualityLimits({
+          maxBitrateVoice: Number(voiceBitrateDraft) * 1000,
+          maxBitrateMusic: Number(musicBitrateDraft) * 1000,
+          bytesPerSecond: Number(streamBandwidthDraft),
+          maxSide: Number(streamSideDraft),
+          maxFps: Number(streamFpsDraft),
+        })
+      );
+    }
   };
   const setGuests = (el: HTMLInputElement) =>
     onGuestsReadOnly && saves.guests.run(() => onGuestsReadOnly(el.checked), () => (el.checked = guestsReadOnly === true));
@@ -371,6 +418,55 @@
           <p class="note">{t("admin.homesNote")}</p>
         {/if}
       {/if}
+    {:else if id === "quality"}
+      <form class="rules quality" onsubmit={saveQuality}>
+        <div class="field">
+          <div class="head">
+            <label for="q-voice">{t("admin.qualityMaxVoiceBitrate")}</label>
+            <output for="q-voice">{voiceBitrateDraft} kbps</output>
+          </div>
+          <input id="q-voice" type="range" min="16" max="510" step="1" bind:value={voiceBitrateDraft} />
+          <p class="hint">{t("admin.qualityMaxVoiceBitrateNote")}</p>
+        </div>
+        <div class="field">
+          <div class="head">
+            <label for="q-music">{t("admin.qualityMaxMusicBitrate")}</label>
+            <output for="q-music">{musicBitrateDraft} kbps</output>
+          </div>
+          <input id="q-music" type="range" min="32" max="510" step="8" bind:value={musicBitrateDraft} />
+          <p class="hint">{t("admin.qualityMaxMusicBitrateNote")}</p>
+        </div>
+        <fieldset class="field">
+          <legend>{t("admin.qualityMaxStreamResolution")}</legend>
+          <div class="segments">
+            {#each [[1280, "720p"], [1920, "1080p"], [2560, "1440p"], [4096, "4K"]] as const as [side, name] (side)}
+              <label><input type="radio" name="q-side" value={side} bind:group={streamSideDraft} />{name}</label>
+            {/each}
+          </div>
+          <p class="hint">{t("admin.qualityMaxStreamResolutionNote")}</p>
+        </fieldset>
+        <fieldset class="field">
+          <legend>{t("admin.qualityMaxStreamFramerate")}</legend>
+          <div class="segments">
+            {#each [15, 30, 60, 120] as fps (fps)}
+              <label><input type="radio" name="q-fps" value={fps} bind:group={streamFpsDraft} />{fps} fps</label>
+            {/each}
+          </div>
+          <p class="hint">{t("admin.qualityMaxStreamFramerateNote")}</p>
+        </fieldset>
+        <div class="field">
+          <div class="head">
+            <label for="q-bandwidth">{t("admin.qualityMaxStreamBandwidth")}</label>
+            <output for="q-bandwidth">{((streamBandwidthDraft * 8) / 1_000_000).toFixed(1)} Mbit/s</output>
+          </div>
+          <input id="q-bandwidth" type="range" min={100_000} max={10_000_000} step={100_000} bind:value={streamBandwidthDraft} />
+          <p class="hint">{t("admin.qualityMaxStreamBandwidthNote")}</p>
+        </div>
+        <div class="row">
+          <button type="submit" disabled={saves.quality.busy}>{busyLabel(saves.quality.state, t("common.save"), t("common.saving"))}</button>
+          <SaveStatus save={saves.quality.state} />
+        </div>
+      </form>
     {:else if id === "registration" && inviteOnly !== null && onInviteOnly && onLoadRegistrationInvites && onCreateRegistrationInvite && onDeleteRegistrationInvite}
       <RegistrationSettings on={inviteOnly} invites={registrationInvites} onSet={onInviteOnly} onLoad={onLoadRegistrationInvites} onCreate={onCreateRegistrationInvite} onDelete={onDeleteRegistrationInvite} />
     {:else if id === "guests"}
@@ -533,8 +629,24 @@
                 </button>
                 <button type="button" onclick={() => (confirming = null)}>{t("common.cancel")}</button>
               {:else}
+                {#if onRecoveryLink}
+                  <button
+                    type="button"
+                    disabled={saves.users.busy}
+                    onclick={() => saves.users.run(async () => (recovery = { user: user.userId, link: await onRecoveryLink(user.userId), copied: false }))}
+                  >
+                    {t("admin.recoveryLink")}
+                  </button>
+                {/if}
                 <button type="button" onclick={() => (confirming = user.userId)}>{t("admin.deleteUserAsk")}</button>
               {/if}
+            {/if}
+            {#if recovery?.user === user.userId}
+              <div class="recovery">
+                <input readonly value={recovery.link} aria-label={t("admin.recoveryLink")} onfocus={(e) => e.currentTarget.select()} />
+                <button type="button" onclick={copyRecovery}>{recovery.copied ? t("common.copied") : t("admin.copyLink")}</button>
+                <p class="note">{t("admin.recoveryLinkNote", { name: user.name })}</p>
+              </div>
             {/if}
           </li>
         {/each}
@@ -696,5 +808,113 @@
   }
   td.muffled {
     color: var(--warning, #e0a030);
+  }
+  .quality {
+    gap: 16px;
+  }
+  .quality .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .quality .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .quality label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .quality output {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .quality input[type="range"] {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent);
+  }
+  .quality fieldset {
+    margin: 0;
+    padding: 0;
+    border: none;
+    min-width: 0;
+  }
+  .quality legend {
+    padding: 0;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .segments {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 6px;
+    background: var(--bg-rail);
+  }
+  .quality .segments label {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: none;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .segments label:hover {
+    color: var(--text);
+  }
+  .segments label:has(:checked) {
+    background: var(--bg-hover);
+    color: var(--text-strong);
+  }
+  .segments label:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .segments input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .quality .hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  li:has(.recovery) {
+    flex-wrap: wrap;
+  }
+  .recovery {
+    flex-basis: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .recovery input {
+    flex: 1;
+    min-width: 12rem;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg-rail);
+    color: var(--text);
+    font: inherit;
+  }
+  .recovery .note {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 12px;
   }
 </style>

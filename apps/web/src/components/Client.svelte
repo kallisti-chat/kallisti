@@ -160,6 +160,7 @@
   import { railBadge, tabTitle, type RailBadge } from "../lib/title";
   import { inviteTarget, messageLink, parseMessageLink, plainLink, type ChannelLink } from "../lib/messageLink";
   import { registrationLink } from "../lib/registration";
+  import { recoveryLink } from "../lib/recovery";
   import { inviteLink, inviteOf, invitePlace, parseInviteLink } from "../lib/invites";
   import { webhookPicture, webhookUrl } from "../lib/webhooks";
   import WebhooksDialog from "./WebhooksDialog.svelte";
@@ -357,6 +358,24 @@
   $effect(() => capture?.setEchoCancellation(echoCancellation));
   const musicMode = $derived(prefs.musicMode);
   $effect(() => capture?.setMusicMode(musicMode));
+  const autoGainControl = $derived(prefs.autoGainControl);
+  $effect(() => capture?.setAutoGainControl(autoGainControl));
+  const audioChannels = $derived(prefs.audioChannels);
+  $effect(() => capture?.setAudioChannels(audioChannels));
+  const voiceBitrate = $derived(prefs.voiceBitrate);
+  const musicBitrate = $derived(prefs.musicBitrate);
+  $effect(() => capture?.setBitrates(voiceBitrate, musicBitrate));
+  const qualityLimits = $derived(connection.text.qualityLimits);
+  $effect(() => {
+    if (qualityLimits) {
+      capture?.setLimits(qualityLimits.maxBitrateVoice, qualityLimits.maxBitrateMusic);
+      connection.streams?.setLimits?.({
+        bytesPerSecond: qualityLimits.bytesPerSecond,
+        maxSide: qualityLimits.maxSide,
+        maxFps: qualityLimits.maxFps,
+      });
+    }
+  });
   $effect(() => connection.playback?.setOutputDevice(prefs.outputDeviceId));
   $effect(() => connection.playback?.setBuffer(prefs.playbackBuffer));
   // Opens the microphone while it is used (see micWanted), and reopens it
@@ -2126,6 +2145,7 @@
       return connection.sendAwait([setBans(bans), queryBans()], (s) => s.bans !== before && s.bans?.length === bans.length);
     }}
     mayDelete={(id) => mayDeleteUser(server, text, id)}
+    onRecoveryLink={async (id) => recoveryLink(site, await connection.recoveryLink(id))}
     onUnregister={(id) =>
       connection.sendAwait([unregister(id), queryRegistered()], (s) => !!s.registered && !s.registered.some((u) => u.userId === id))}
     emoji={customEmoji.list}
@@ -2166,13 +2186,15 @@
     recording={text.recording}
     onLoadRecordings={staffRecords ? () => connection.manage({ recordings: true }) : undefined}
     onDownloadRecording={connection.downloadRecording}
+    qualityLimits={text.qualityLimits}
+    onSaveQualityLimits={mayChangeGuests(server, text) ? (q) => connection.request({ qualityLimits: q }) : undefined}
     onClose={() => (showModeration = false)}
     {phone}
   />
 {/if}
 
 {#if showObs && account}
-  <ObsDialog {account} live={goLive.obsLive} onClose={() => (showObs = false)} />
+  <ObsDialog {account} live={goLive.obsLive} qualityLimits={text.qualityLimits} onClose={() => (showObs = false)} />
 {/if}
 
 {#if showSettings}
@@ -2186,6 +2208,7 @@
     noiseRunning={capture?.running ?? null}
     onChange={settings.update}
     onEcho={setEchoTest}
+    qualityLimits={text.qualityLimits}
     {account}
     push={pushName ? { base: connection.httpBase, name: pushName, prefs: pushPrefs } : undefined}
     profile={me && {

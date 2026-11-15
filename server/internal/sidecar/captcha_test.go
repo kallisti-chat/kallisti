@@ -33,6 +33,25 @@ func (f *fakeVoice) SetServerName(session uint32, name string) (string, error) {
 	return strings.TrimSpace(name), nil
 }
 
+func (f *fakeVoice) QualityLimits() QualityLimits {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.limits != nil {
+		return *f.limits
+	}
+	return DefaultQualityLimits()
+}
+
+func (f *fakeVoice) SetQualityLimits(session uint32, q QualityLimits) (QualityLimits, error) {
+	if session != 1 {
+		return QualityLimits{}, errors.New("only admins change this setting")
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.limits = &q
+	return q, nil
+}
+
 // Mumble clients see the root channel renamed; the web also gets an event
 // (the confirmation for the admin).
 func TestServerName(t *testing.T) {

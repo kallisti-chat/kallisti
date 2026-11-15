@@ -4,7 +4,18 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "サーバー設定",
   "admin.sectionOverview": "概要",
-  "admin.sectionEmoji": "絵文字",
+  "admin.sectionQuality": "音声と配信",
+  "admin.qualityMaxVoiceBitrate": "最大音声ビットレート",
+  "admin.qualityMaxVoiceBitrateNote": "ユーザーが選択できる音声ビットレートの上限です（デフォルト: 128 kbps）。",
+  "admin.qualityMaxMusicBitrate": "最大音楽ビットレート",
+  "admin.qualityMaxMusicBitrateNote": "音楽モードのビットレートの上限です（デフォルト: 192 kbps）。どちらの上限も Kallisti アプリに適用されます。Mumble クライアントは自分でビットレートを決めます。",
+  "admin.qualityMaxStreamResolution": "最大配信解像度",
+  "admin.qualityMaxStreamResolutionNote": "画面共有およびカメラ配信の最大解像度です。",
+  "admin.qualityMaxStreamFramerate": "最大配信フレームレート",
+  "admin.qualityMaxStreamFramerateNote": "画面共有およびカメラ配信の最大フレームレート（FPS）です。",
+  "admin.qualityMaxStreamBandwidth": "最大配信帯域幅",
+  "admin.qualityMaxStreamBandwidthNote": "配信ごとの最大アップロード帯域幅です（デフォルト: 1 MiB/s ≈ 8.4 Mbit/s）。",
+"admin.sectionEmoji": "絵文字",
   "admin.sectionStickers": "スタンプ",
   "admin.sectionThreads": "スレッド",
   "admin.sectionRules": "メッセージのルール",
@@ -127,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "アカウントとロールは削除され、メッセージは残ります",
   "admin.deleteUser": "ユーザーを削除",
+  "admin.recoveryLink": "復旧リンク",
+  "admin.recoveryLinkNote": "このリンクを {name} に自分で送ってください。24 時間、1 回だけ使えます。新しいパスワードを設定し、ほかのログインを終了します。",
   "admin.deleteUserAsk": "ユーザーを削除…",
 
   "admin.inviteOnly": "招待制サーバー",

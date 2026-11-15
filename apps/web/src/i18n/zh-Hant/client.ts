@@ -137,7 +137,8 @@ export default {
 
   "client.voiceUnsupported": "語音無法在這個瀏覽器中使用（它沒有 {apis}）。請使用最新版的 Chrome、Firefox 或 Safari。",
   "client.encoderFailed": "語音編碼器發生錯誤：{error}",
-  "client.noiseBrowserFilter": "瀏覽器的濾波器",
+    "client.noiseOff": "關閉",
+"client.noiseBrowserFilter": "瀏覽器的濾波器",
   "client.noiseFailed": "{filter} 無法執行（{reason}）。目前使用：{now}。",
   "client.noiseTooSlow": "這部電腦太慢，無法執行",
   "client.noiseStopped": "它已停止",

@@ -137,7 +137,8 @@ export default {
 
   "client.voiceUnsupported": "La voz no funciona en este navegador (no tiene {apis}). Usa una versión actual de Chrome, Firefox o Safari.",
   "client.encoderFailed": "Error del codificador de voz: {error}",
-  "client.noiseBrowserFilter": "el filtro del navegador",
+    "client.noiseOff": "Desactivado",
+"client.noiseBrowserFilter": "el filtro del navegador",
   "client.noiseFailed": "{filter} no pudo funcionar ({reason}). Ahora se usa: {now}.",
   "client.noiseTooSlow": "este equipo es demasiado lento para ello",
   "client.noiseStopped": "se detuvo",

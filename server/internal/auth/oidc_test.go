@@ -282,7 +282,8 @@ func TestOIDCFirstPasswordReauthAndUnlink(t *testing.T) {
 		if disabled {
 			a.OIDC = nil
 		}
-		if resp, v := b.do("POST", "/api/password", map[string]string{"new": "longpassword"}); resp.StatusCode != 403 || v["code"] != "reauth" {
+		// Without the provider no proof can come: an admin's recovery link.
+		if resp, v := b.do("POST", "/api/password", map[string]string{"new": "longpassword"}); resp.StatusCode != 403 || (v["code"] == "reauth") == disabled {
 			t.Fatalf("password without proof (disabled=%v): %d %v", disabled, resp.StatusCode, v)
 		}
 		a.OIDC = configured

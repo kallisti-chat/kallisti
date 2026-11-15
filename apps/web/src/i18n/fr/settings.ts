@@ -105,6 +105,7 @@ export default {
   "settings.qrNewCode": "Nouveau code",
 
   "settings.voiceInput": "Entrée",
+  "settings.advanced": "Avancé",
   "settings.voiceOutput": "Sortie",
   "settings.inputDevice": "Périphérique d'entrée",
   "settings.deviceDefault": "Par défaut",
@@ -116,7 +117,8 @@ export default {
   "settings.cameraNumbered": "Caméra {number}",
   "settings.cameraListHint": "La liste se remplit une fois que tu as activé la caméra en vocal.",
   "settings.noiseSuppression": "Suppression du bruit",
-  "settings.noiseStandard": "Standard (celle du navigateur)",
+    "settings.noiseOff": "Désactivé (sans réduction de bruit)",
+"settings.noiseStandard": "Standard (celle du navigateur)",
   "settings.noiseStrong": "Forte (RNNoise)",
   "settings.noiseStrongest": "Maximale (DeepFilterNet3)",
   "settings.noiseOffMusic": "Désactivée en mode musique.",
@@ -133,7 +135,16 @@ export default {
   "settings.playbackBuffer": "Tampon de lecture",
   "settings.playbackBufferHint":
     "Combien de temps la voix des autres attend avant d'être jouée. Plus long comble les trous sur une mauvaise connexion, mais ajoute du délai. La musique a toujours au moins 500 ms.",
-  "settings.inputMode": "Mode d'entrée",
+    "settings.voiceBitrate": "Débit vocal",
+  "settings.voiceBitrateHint": "Débit utilisé pour la voix. Un débit plus élevé améliore la clarté mais consomme plus de bande passante.",
+  "settings.musicBitrate": "Débit musical",
+  "settings.musicBitrateHint": "Débit utilisé en mode musique (stéréo).",
+  "settings.audioChannels": "Canaux audio",
+  "settings.audioChannelsAuto": "Automatique (mono pour la voix, stéréo pour la musique)",
+  "settings.audioChannelsMono": "Mono",
+  "settings.audioChannelsStereo": "Stéréo",
+  "settings.audioChannelsHint": "Choisissez si votre micro transmet en mono ou en stéréo.",
+"settings.inputMode": "Mode d'entrée",
   "settings.voiceActivity": "Détection de la voix",
   "settings.pushToTalk": "Appuyer pour parler",
   "settings.pttKey": "Touche Appuyer pour parler",
@@ -152,7 +163,9 @@ export default {
   "settings.echoCancellation": "Annulation de l'écho",
   "settings.echoCancellationHint":
     "Nécessaire avec des haut-parleurs. Avec un casque, tu peux la désactiver : sinon, sur Mac, l'appli de bureau et Safari passent les casques Bluetooth en mode appel, avec un son moins bon.",
-  "settings.musicMode": "Mode musique",
+    "settings.autoGainControl": "Volume automatique (contrôle de gain)",
+  "settings.autoGainControlHint": "Ajuste automatiquement le volume du microphone. Désactivez si le volume varie de façon inattendue.",
+"settings.musicMode": "Mode musique",
   "settings.musicModeHint":
     "Pour jouer de la musique : pas de suppression du bruit, d'annulation de l'écho ni de volume automatique, et un meilleur son (stéréo si le micro a deux canaux). Utilise un casque.",
   "settings.closeMic": "Fermer le micro quand tu es muet",
@@ -167,7 +180,8 @@ export default {
   "settings.obsSteps":
     "OBS 30 ou plus récent peut streamer dans ton salon vocal : il s'affiche comme un partage d'écran. Sois connecté ici et dans un salon vocal où tu peux parler. Dans OBS, Paramètres → Stream : Service « WHIP », Serveur {url}, Bearer Token : ta clé de stream.",
   "settings.obsOutput":
-    "Paramètres → Sortie (Avancé) : vidéo H.264, intervalle d'images clés 1 ou 2 s, profil baseline ou main, 1080p et 8 Mbit/s au maximum.",
+    "Paramètres → Sortie (Avancé) : vidéo H.264, intervalle d'images clés 1 ou 2 s, profil baseline ou main.",
+  "settings.obsLimits": "Limites du serveur : jusqu'à {side}p, {fps} fps, {bitrate} Mbit/s.",
   "settings.obsBFrames":
     "Pas de B-frames (on transmet la vidéo telle quelle ; avec elles, l'image se casse ou devient rose) : avec x264, écris {option} dans « Options x264 » ; avec NVENC, QuickSync ou AMF, mets B-Frames à 0.",
   "settings.obsNewKey": "Ta clé de stream (affichée seulement maintenant) : {key}",

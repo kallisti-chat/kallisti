@@ -4,7 +4,18 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "Servereinstellungen",
   "admin.sectionOverview": "Übersicht",
-  "admin.sectionEmoji": "Emoji",
+  "admin.sectionQuality": "Sprache & Streaming",
+  "admin.qualityMaxVoiceBitrate": "Maximale Sprachbitrate",
+  "admin.qualityMaxVoiceBitrateNote": "Obergrenze für die von Benutzern gewählte Sprachbitrate (Standard: 128 kbit/s).",
+  "admin.qualityMaxMusicBitrate": "Maximale Musikbitrate",
+  "admin.qualityMaxMusicBitrateNote": "Obergrenze für die Bitrate im Musikmodus (Standard: 192 kbit/s). Beide gelten in den Kallisti-Apps; Mumble-Clients wählen ihre Bitrate selbst.",
+  "admin.qualityMaxStreamResolution": "Maximale Stream-Auflösung",
+  "admin.qualityMaxStreamResolutionNote": "Maximal zulässige Auflösung für Bildschirm- und Kamera-Streams.",
+  "admin.qualityMaxStreamFramerate": "Maximale Stream-Bildrate",
+  "admin.qualityMaxStreamFramerateNote": "Maximal zulässige Bildrate (FPS) für Bildschirm- und Kamera-Streams.",
+  "admin.qualityMaxStreamBandwidth": "Maximale Stream-Bandbreite",
+  "admin.qualityMaxStreamBandwidthNote": "Maximale Upload-Bitrate pro Stream (Standard: 1 MiB/s ≈ 8,4 Mbit/s).",
+"admin.sectionEmoji": "Emoji",
   "admin.sectionStickers": "Sticker",
   "admin.sectionThreads": "Threads",
   "admin.sectionRules": "Nachrichtenregeln",
@@ -127,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "Konto und Rollen werden entfernt, Nachrichten bleiben",
   "admin.deleteUser": "Nutzer löschen",
+  "admin.recoveryLink": "Wiederherstellungslink",
+  "admin.recoveryLinkNote": "Schicke diesen Link selbst an {name}. Er gilt einmal und 24 Stunden: Er setzt ein neues Passwort und beendet die anderen Anmeldungen.",
   "admin.deleteUserAsk": "Nutzer löschen…",
 
   "admin.inviteOnly": "Server nur auf Einladung",

@@ -4,7 +4,18 @@ import type { Translation } from "../types";
 export default {
   "admin.serverSettingsTitle": "服务器设置",
   "admin.sectionOverview": "概况",
-  "admin.sectionEmoji": "表情",
+  "admin.sectionQuality": "语音与直播",
+  "admin.qualityMaxVoiceBitrate": "最大语音码率",
+  "admin.qualityMaxVoiceBitrateNote": "用户可选择的语音码率上限（默认 128 kbps）。",
+  "admin.qualityMaxMusicBitrate": "最大音乐码率",
+  "admin.qualityMaxMusicBitrateNote": "音乐模式的码率上限（默认 192 kbps）。两项上限适用于 Kallisti 应用；Mumble 客户端自行决定码率。",
+  "admin.qualityMaxStreamResolution": "最大直播分辨率",
+  "admin.qualityMaxStreamResolutionNote": "屏幕共享和摄像头直播允许的最大分辨率尺寸。",
+  "admin.qualityMaxStreamFramerate": "最大直播帧率",
+  "admin.qualityMaxStreamFramerateNote": "屏幕共享和摄像头直播允许的最大帧率（FPS）。",
+  "admin.qualityMaxStreamBandwidth": "最大直播带宽",
+  "admin.qualityMaxStreamBandwidthNote": "每个直播流的最大上传码率（默认 1 MiB/s ≈ 8.4 Mbit/s）。",
+"admin.sectionEmoji": "表情",
   "admin.sectionStickers": "贴纸",
   "admin.sectionThreads": "子区",
   "admin.sectionRules": "消息规则",
@@ -127,6 +138,8 @@ export default {
 
   "admin.userDeleteNote": "账号和身份组会被删除；消息会保留",
   "admin.deleteUser": "删除用户",
+  "admin.recoveryLink": "恢复链接",
+  "admin.recoveryLinkNote": "请自行把此链接发给 {name}。它在 24 小时内可用一次：设置新密码，并结束其其他登录。",
   "admin.deleteUserAsk": "删除用户…",
 
   "admin.inviteOnly": "仅限邀请的服务器",

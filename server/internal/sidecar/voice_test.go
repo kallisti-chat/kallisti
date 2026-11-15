@@ -72,6 +72,7 @@ type fakeVoice struct {
 	rules   msgrules.Rules
 	checked []msgrules.Message
 	captcha string // "": off
+	limits  *QualityLimits
 	// Channel moderators: the Mumble channel each session moderates, the
 	// list, and channel time-outs (by session and channel).
 	moderates    map[uint32]uint32

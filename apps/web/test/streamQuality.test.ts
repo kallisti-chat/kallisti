@@ -65,13 +65,18 @@ describe("encoding", () => {
 describe("qualityOptions", () => {
   it("are the heights within the server's largest side, and three frame rates", () => {
     expect(qualityOptions(DEFAULT_LIMITS)).toEqual({ heights: [480, 720, 1080], fps: [15, 30, 60] });
-    expect(qualityOptions({ ...DEFAULT_LIMITS, maxSide: 800 }).heights).toEqual([480, 720]);
+    // maxSide is the long side: 720p needs 1280, 1080p 1920; the smallest stays.
+    expect(qualityOptions({ ...DEFAULT_LIMITS, maxSide: 1280 }).heights).toEqual([480, 720]);
+    expect(qualityOptions({ ...DEFAULT_LIMITS, maxSide: 1920 }).heights).toEqual([480, 720, 1080]);
+    expect(qualityOptions({ ...DEFAULT_LIMITS, maxSide: 800 }).heights).toEqual([480]);
+    expect(qualityOptions({ ...DEFAULT_LIMITS, maxFps: 30 }).fps).toEqual([15, 30]);
   });
 });
 
 describe("parseLimits", () => {
   it("takes the server's limits, defaults otherwise", () => {
-    expect(parseLimits({ bytesPerSecond: 500_000, maxSide: 2000 })).toEqual({ bytesPerSecond: 500_000, maxSide: 2000 });
+    expect(parseLimits({ bytesPerSecond: 500_000, maxSide: 2000 })).toEqual({ bytesPerSecond: 500_000, maxSide: 2000, maxFps: 60 });
+    expect(parseLimits({ bytesPerSecond: 500_000, maxSide: 2000, maxFps: 30 })).toEqual({ bytesPerSecond: 500_000, maxSide: 2000, maxFps: 30 });
     expect(parseLimits(undefined)).toEqual(DEFAULT_LIMITS);
     expect(parseLimits({ bytesPerSecond: "x", maxSide: -1 })).toEqual(DEFAULT_LIMITS);
   });

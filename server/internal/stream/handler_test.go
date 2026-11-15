@@ -78,3 +78,43 @@ func TestHandlerForwardsFrames(t *testing.T) {
 		t.Fatal("a bad token was let in")
 	}
 }
+
+func TestHandlerDynamicLimits(t *testing.T) {
+	hub := New(&fakeVoice{channels: map[uint32]uint32{1: 5}})
+	tokens := NewTokens()
+	srv := httptest.NewServer(&Handler{
+		Hub:            hub,
+		Redeem:         tokens.Redeem,
+		AllowedOrigins: []string{"*"},
+		BytesPerSecond: 1 << 20,
+		Limits: func() (int, int, int) {
+			return 2_000_000, 1080, 30
+		},
+	})
+	defer srv.Close()
+	ws := dialStream(t, srv, tokens.Issue(1))
+	ready := readText(t, ws, "ready")
+	limits, ok := ready["limits"].(map[string]any)
+	if !ok || limits["bytesPerSecond"] != float64(2_000_000) || limits["maxSide"] != float64(1080) || limits["maxFps"] != float64(30) {
+		t.Fatalf("expected dynamic limits, got %v", ready)
+	}
+}
+
+// The admins' largest side holds on the server too, not only in our client.
+func TestHandlerRefusesAPictureAboveTheLimit(t *testing.T) {
+	hub := New(&fakeVoice{channels: map[uint32]uint32{1: 5}})
+	tokens := NewTokens()
+	srv := httptest.NewServer(&Handler{
+		Hub: hub, Redeem: tokens.Redeem, AllowedOrigins: []string{"*"}, BytesPerSecond: 1 << 20,
+		Limits: func() (int, int, int) { return 1 << 20, 1280, 30 },
+	})
+	defer srv.Close()
+	ws := dialStream(t, srv, tokens.Issue(1))
+	ctx := context.Background()
+	ws.Write(ctx, websocket.MessageText, []byte(`{"type":"start","codec":"vp8","width":1920,"height":1080}`))
+	if m := readText(t, ws, "error"); !strings.Contains(m["message"].(string), "1280") {
+		t.Fatalf("got %v", m)
+	}
+	ws.Write(ctx, websocket.MessageText, []byte(`{"type":"start","codec":"vp8","width":1280,"height":720}`))
+	readText(t, ws, "started")
+}

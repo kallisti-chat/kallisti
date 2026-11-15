@@ -34,3 +34,4 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)
+- [ ] [OIDC login (PR #28): finish and merge](issues/oidc-login-pr28.md)

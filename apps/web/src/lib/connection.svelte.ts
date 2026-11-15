@@ -430,6 +430,13 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       const confirms = (ev: ServerEvent) => ev.type === "registration-invite-created" && ((token = ev.token), true);
       return wait({ via: "text", confirms }, () => ws.send(manageRequest({ createRegistrationInvite: true, seconds, uses }))).then(() => token);
     },
+    // An admin's recovery link for a registered user: its token (shown
+    // once), from the answer to this request only.
+    recoveryLink: (user: number) => {
+      let token = "";
+      const confirms = (ev: ServerEvent) => ev.type === "recovery-link" && ev.user === user && ((token = ev.token), true);
+      return wait({ via: "text", confirms }, () => ws.send(manageRequest({ recoveryLink: user }))).then(() => token);
+    },
     // A private channel's invite link: its token (shown once), from the
     // answer to this request only.
     createInvite: (voice: number, seconds: number, uses: number) => {

@@ -17,7 +17,9 @@
   import { outputDeviceSupported } from "../lib/voice/support";
   import { deviceChoices } from "../lib/mediaDevices";
   import { noiseLabel, type NoiseMode } from "../lib/voice/noise";
-  import { BUFFERS, bufferLabel, type PlaybackBuffer } from "../lib/voice/buffer";
+  import { MAX_BUFFER_MS, MIN_BUFFER_MS, toBufferMs } from "../lib/voice/buffer";
+  import type { AudioChannels } from "../lib/voice/opus";
+  import type { QualityLimits } from "../lib/textChannels";
   import { busyLabel } from "../lib/saveFeedback";
   import { createSave } from "../lib/saveFeedback.svelte";
   import SaveStatus from "./SaveStatus.svelte";
@@ -45,6 +47,7 @@
     emoji,
     phone = false,
     start,
+    qualityLimits,
   }: {
     settings: Settings;
     level: number;
@@ -75,6 +78,8 @@
     phone?: boolean;
     // The category to open at (for example the account's, to set a password).
     start?: SectionId;
+    // Quality limits from the server.
+    qualityLimits?: QualityLimits;
   } = $props();
 
   // The categories (see CategoryDialog), and the one open.
@@ -371,7 +376,6 @@
         </label>
       {/if}
 
-
       <h4 class="group">{t("settings.voiceInput")}</h4>
       <fieldset>
         <legend>{t("settings.inputMode")}</legend>
@@ -457,6 +461,7 @@
           disabled={settings.musicMode}
           onchange={(e) => onChange({ noiseSuppression: e.currentTarget.value as NoiseMode })}
         >
+          <option value="off">{t("settings.noiseOff")}</option>
           <option value="browser">{t("settings.noiseStandard")}</option>
           <option value="strong">{t("settings.noiseStrong")}</option>
           <option value="strongest">{t("settings.noiseStrongest")}</option>
@@ -484,6 +489,16 @@
         <span class="hint">{t("settings.echoCancellationHint")}</span>
       </label>
       <label class="check">
+        <input
+          type="checkbox"
+          checked={settings.autoGainControl && !settings.musicMode}
+          disabled={settings.musicMode}
+          onchange={(e) => onChange({ autoGainControl: e.currentTarget.checked })}
+        />
+        <span>{t("settings.autoGainControl")}</span>
+        <span class="hint">{t("settings.autoGainControlHint")}</span>
+      </label>
+      <label class="check">
         <input type="checkbox" checked={settings.musicMode} onchange={(e) => onChange({ musicMode: e.currentTarget.checked })} />
         <span>{t("settings.musicMode")}</span>
         <span class="hint">{t("settings.musicModeHint")}</span>
@@ -497,20 +512,79 @@
         <span>{t("settings.closeMic")}</span>
         <span class="hint">{t("settings.closeMicHint")}</span>
       </label>
+      <details class="advanced">
+        <summary>{t("settings.advanced")}</summary>
+        <label>
+          {t("settings.audioChannels")}
+          <select
+            value={settings.audioChannels ?? "auto"}
+            onchange={(e) => onChange({ audioChannels: e.currentTarget.value as AudioChannels })}
+          >
+            <option value="auto">{t("settings.audioChannelsAuto")}</option>
+            <option value="mono">{t("settings.audioChannelsMono")}</option>
+            <option value="stereo">{t("settings.audioChannelsStereo")}</option>
+          </select>
+          <span class="hint">{t("settings.audioChannelsHint")}</span>
+        </label>
+
+        <div class="row">
+          <div class="header-with-value">
+            <span class="label">{t("settings.voiceBitrate")}</span>
+            <span class="value-readout">{Math.round((settings.voiceBitrate ?? 40_000) / 1000)} kbps</span>
+          </div>
+          <input
+            type="range"
+            min="16"
+            max={Math.round((qualityLimits?.maxBitrateVoice ?? 128_000) / 1000)}
+            step="1"
+            value={Math.round((settings.voiceBitrate ?? 40_000) / 1000)}
+            oninput={(e) => onChange({ voiceBitrate: Number(e.currentTarget.value) * 1000 })}
+            aria-label={t("settings.voiceBitrate")}
+          />
+          <p class="hint">{t("settings.voiceBitrateHint")}</p>
+        </div>
+
+        <div class="row">
+          <div class="header-with-value">
+            <span class="label">{t("settings.musicBitrate")}</span>
+            <span class="value-readout">{Math.round((settings.musicBitrate ?? 128_000) / 1000)} kbps</span>
+          </div>
+          <input
+            type="range"
+            min="32"
+            max={Math.round((qualityLimits?.maxBitrateMusic ?? 192_000) / 1000)}
+            step="8"
+            value={Math.round((settings.musicBitrate ?? 128_000) / 1000)}
+            oninput={(e) => onChange({ musicBitrate: Number(e.currentTarget.value) * 1000 })}
+            aria-label={t("settings.musicBitrate")}
+          />
+          <p class="hint">{t("settings.musicBitrateHint")}</p>
+        </div>
+      </details>
 
       <h4 class="group">{t("settings.voiceOutput")}</h4>
-      <label>
-        {t("settings.playbackBuffer")}
-        <select
-          value={settings.playbackBuffer}
-          onchange={(e) => onChange({ playbackBuffer: e.currentTarget.value as PlaybackBuffer })}
-        >
-          {#each BUFFERS as b (b)}
-            <option value={b}>{bufferLabel(b)}</option>
-          {/each}
-        </select>
-        <span class="hint">{t("settings.playbackBufferHint")}</span>
-      </label>
+      <div class="row">
+        <div class="header-with-value">
+          <span class="label">{t("settings.playbackBuffer")}</span>
+          <span class="value-readout">{toBufferMs(settings.playbackBuffer)} ms</span>
+        </div>
+        <input
+          type="range"
+          min={MIN_BUFFER_MS}
+          max={MAX_BUFFER_MS}
+          step="10"
+          list="buffer-ticks"
+          value={toBufferMs(settings.playbackBuffer)}
+          oninput={(e) => onChange({ playbackBuffer: Number(e.currentTarget.value) })}
+          aria-label={t("settings.playbackBuffer")}
+        />
+        <datalist id="buffer-ticks">
+          <option value="60" label="60 ms"></option>
+          <option value="120" label="120 ms"></option>
+          <option value="250" label="250 ms"></option>
+        </datalist>
+        <p class="hint">{t("settings.playbackBufferHint")}</p>
+      </div>
     {:else if id === "notifications"}
       <label class="check">
         <input
@@ -835,5 +909,26 @@
   .my-emoji h4 {
     margin: 0;
     font-size: 14px;
+  }
+  .header-with-value {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .value-readout {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .advanced summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  .advanced[open] {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
 </style>
