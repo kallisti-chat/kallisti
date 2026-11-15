@@ -652,54 +652,54 @@ func (h *Hub) toWireFor(m store.Message, viewer *uint32) wireMessage {
 }
 
 type request struct {
-	RequestID   string           `json:"requestId"` // optional edit correlation (not a send nonce)
-	Type        string           `json:"type"`
-	Name        string           `json:"name"`       // create-channel, rename-channel; emoji-token, delete-emoji; the user-emoji requests
-	To          string           `json:"to"`         // rename-user-emoji: the new name
-	Channels    []int64          `json:"channels"`   // order-channels
-	Category    int64            `json:"category"`   // create-channel, set-category, rename-category, delete-category
-	Cats        []int64          `json:"categories"` // order-categories
-	Voice       uint32           `json:"voice"`      // voice-chat, start-recording, stop-recording: the Mumble channel; create-private-voice: the parent
-	Channel     int64            `json:"channel"`
-	Before      int64            `json:"before"`
-	Text        string           `json:"text"`
-	Uploads     []wireAttachment `json:"uploads"` // send: the uploads to attach, in order
-	Count       int              `json:"count"`   // upload-token: how many (the files of one message)
-	Remove      []string         `json:"remove"`  // edit-message: the keys of files to take off
-	Poll        *wirePollRequest `json:"poll"`    // send: a poll message
-	Answers     []int            `json:"answers"` // vote: the answers (none: the vote taken back)
-	Mic         *wireMic         `json:"mic"`     // mic-info
-	poll        *store.Poll      // send: the checked Poll
-	Upload      string           `json:"upload"`      // send: one upload's key (older clients)
-	Message     int64            `json:"message"`     // edit-message, delete-message, create-thread
-	Reply       int64            `json:"reply"`       // send: the message it answers
-	NoPing      bool             `json:"noPing"`      // send: the reply does not ping
-	Nonce       string           `json:"nonce"`       // send: the client's id for it, the same on a retry (see store.MessageByNonce)
-	Author      string           `json:"author"`      // search: only this author
-	User        uint32           `json:"user"`        // set-moderator, set-admin, dm, bio, delete-messages: registered user id
-	Moderator   bool             `json:"moderator"`   // set-moderator
-	Admin       bool             `json:"admin"`       // set-admin
-	Users       []uint32         `json:"users"`       // set-listen-only: who may speak
-	Messages    []int64          `json:"messages"`    // previews, file-links
-	Emoji       string           `json:"emoji"`       // react; add-user-emoji, remove-emoji-image; sticker-token, rename-sticker: the related emoji
-	Sticker     int64            `json:"sticker"`     // send: a sticker message; rename-sticker, delete-sticker
-	Description string           `json:"description"` // sticker-token, rename-sticker
-	Pack        string           `json:"pack"`        // sticker-token, rename-sticker
-	On          bool             `json:"on"`          // react: add (or remove); pin; away; set-guests-read-only
-	Status      string           `json:"status"`      // set-status: "online", "idle" or "dnd"
-	Level       string           `json:"level"`       // set-captcha
-	Until       int64            `json:"until"`       // set-status: end of the custom status (Unix ms)
-	Session     uint32           `json:"session"`     // ban, time-out, delete-messages: the user's voice server session
-	Seconds     int64            `json:"seconds"`     // ban (0: forever), time-out (0: end it), delete-messages (the last seconds), set-slow-mode (0: off)
-	Private     bool             `json:"private"`     // create-channel, create-category: a private one
-	List        *channelList     `json:"list"`        // set-channel-list
-	Uses        int              `json:"uses"`        // create-invite (0: unlimited; seconds 0: for ever)
-	Invite      int64            `json:"invite"`      // delete-invite
-	Webhook     int64            `json:"webhook"`     // rename-webhook, delete-webhook
-	Token       string           `json:"token"`       // redeem-invite
-	Rules       *msgrules.Rules  `json:"rules"`       // set-message-rules
-	Homes       *homes.Rules     `json:"homes"`       // set-home-servers
-	QualityLimits *QualityLimits `json:"qualityLimits,omitempty"` // set-quality-limits
+	RequestID     string           `json:"requestId"` // optional edit correlation (not a send nonce)
+	Type          string           `json:"type"`
+	Name          string           `json:"name"`       // create-channel, rename-channel; emoji-token, delete-emoji; the user-emoji requests
+	To            string           `json:"to"`         // rename-user-emoji: the new name
+	Channels      []int64          `json:"channels"`   // order-channels
+	Category      int64            `json:"category"`   // create-channel, set-category, rename-category, delete-category
+	Cats          []int64          `json:"categories"` // order-categories
+	Voice         uint32           `json:"voice"`      // voice-chat, start-recording, stop-recording: the Mumble channel; create-private-voice: the parent
+	Channel       int64            `json:"channel"`
+	Before        int64            `json:"before"`
+	Text          string           `json:"text"`
+	Uploads       []wireAttachment `json:"uploads"` // send: the uploads to attach, in order
+	Count         int              `json:"count"`   // upload-token: how many (the files of one message)
+	Remove        []string         `json:"remove"`  // edit-message: the keys of files to take off
+	Poll          *wirePollRequest `json:"poll"`    // send: a poll message
+	Answers       []int            `json:"answers"` // vote: the answers (none: the vote taken back)
+	Mic           *wireMic         `json:"mic"`     // mic-info
+	poll          *store.Poll      // send: the checked Poll
+	Upload        string           `json:"upload"`                  // send: one upload's key (older clients)
+	Message       int64            `json:"message"`                 // edit-message, delete-message, create-thread
+	Reply         int64            `json:"reply"`                   // send: the message it answers
+	NoPing        bool             `json:"noPing"`                  // send: the reply does not ping
+	Nonce         string           `json:"nonce"`                   // send: the client's id for it, the same on a retry (see store.MessageByNonce)
+	Author        string           `json:"author"`                  // search: only this author
+	User          uint32           `json:"user"`                    // set-moderator, set-admin, dm, bio, delete-messages: registered user id
+	Moderator     bool             `json:"moderator"`               // set-moderator
+	Admin         bool             `json:"admin"`                   // set-admin
+	Users         []uint32         `json:"users"`                   // set-listen-only: who may speak
+	Messages      []int64          `json:"messages"`                // previews, file-links
+	Emoji         string           `json:"emoji"`                   // react; add-user-emoji, remove-emoji-image; sticker-token, rename-sticker: the related emoji
+	Sticker       int64            `json:"sticker"`                 // send: a sticker message; rename-sticker, delete-sticker
+	Description   string           `json:"description"`             // sticker-token, rename-sticker
+	Pack          string           `json:"pack"`                    // sticker-token, rename-sticker
+	On            bool             `json:"on"`                      // react: add (or remove); pin; away; set-guests-read-only
+	Status        string           `json:"status"`                  // set-status: "online", "idle" or "dnd"
+	Level         string           `json:"level"`                   // set-captcha
+	Until         int64            `json:"until"`                   // set-status: end of the custom status (Unix ms)
+	Session       uint32           `json:"session"`                 // ban, time-out, delete-messages: the user's voice server session
+	Seconds       int64            `json:"seconds"`                 // ban (0: forever), time-out (0: end it), delete-messages (the last seconds), set-slow-mode (0: off)
+	Private       bool             `json:"private"`                 // create-channel, create-category: a private one
+	List          *channelList     `json:"list"`                    // set-channel-list
+	Uses          int              `json:"uses"`                    // create-invite (0: unlimited; seconds 0: for ever)
+	Invite        int64            `json:"invite"`                  // delete-invite
+	Webhook       int64            `json:"webhook"`                 // rename-webhook, delete-webhook
+	Token         string           `json:"token"`                   // redeem-invite
+	Rules         *msgrules.Rules  `json:"rules"`                   // set-message-rules
+	Homes         *homes.Rules     `json:"homes"`                   // set-home-servers
+	QualityLimits *QualityLimits   `json:"qualityLimits,omitempty"` // set-quality-limits
 }
 
 // Handle answers one request from the browser.
