@@ -8,6 +8,7 @@ import {
   clipboardImage,
   emptyPaste,
   pastedFiles,
+  refuseFileDrop,
   refusedDraft,
   switchDraft,
   keepDraft,
@@ -204,5 +205,28 @@ describe("editOutcome", () => {
   it("asks to delete a message left with no text and no file, as in Discord", () => {
     expect(editOutcome({ old: "x", text: "", files: [], removed: [] })).toEqual({ save: false, remove: [], delete: true });
     expect(editOutcome({ old: "", text: "", files, removed: files })).toEqual({ save: false, remove: [], delete: true });
+  });
+});
+
+describe("refuseFileDrop", () => {
+  const drag = (over: { types?: string[]; defaultPrevented?: boolean; target?: object }) => {
+    const e = {
+      defaultPrevented: over.defaultPrevented ?? false,
+      target: (over.target ?? {}) as EventTarget,
+      dataTransfer: { types: over.types ?? ["Files"], dropEffect: "copy" },
+      preventDefault: () => void (e.defaultPrevented = true),
+    };
+    refuseFileDrop(e);
+    return { prevented: e.defaultPrevented, effect: e.dataTransfer.dropEffect };
+  };
+
+  it("refuses a file outside a chat, so the browser does not open it", () => {
+    expect(drag({})).toEqual({ prevented: true, effect: "none" });
+  });
+
+  it("leaves a drop the chat took, file inputs and dragged text alone", () => {
+    expect(drag({ defaultPrevented: true }).effect).toBe("copy");
+    expect(drag({ target: { type: "file" } })).toEqual({ prevented: false, effect: "copy" });
+    expect(drag({ types: ["text/plain"] })).toEqual({ prevented: false, effect: "copy" });
   });
 });

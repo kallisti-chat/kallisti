@@ -3008,3 +3008,9 @@ feld asked for it: a reply to a message with media showed only the quoted text. 
 The report blamed the recordings list, but the answer only replaces `text.recordings`. The effect read the prop `recording`, passed as `text.recording`: the child's effect then depends on the parent's whole `text`, which every event replaces, so each answer (and any chat event) asked again; the rate limit then refused the download token. It now depends on the recorded channels by value. A harness test that replaces its text state like Client asked 22 times before the fix and once after (and once more when a recording starts).
 
 Follow-up: a download whose token request hit the rate limit failed silently after 10 s. Rate errors now name the refused request (`request`, additive), and a pending stream or recording token fails at once with the server's message, which the Recordings panel shows. Tests: the server's rate error carries the type; a client token request fails on its own refusal, not on another request's (both red first).
+
+## 2026-11-14: Dropped files in the desktop app
+
+The chat has taken dropped files since uploads came (`ChatPane`'s `ondrop`, the same path as the picker and a paste), but only in browsers: Tauri's own drop handler is on by default and swallows the drop before the page sees it (tauri-runtime-wry's handler returns `true`), and nothing here listened to Tauri's event. The main window now has `dragDropEnabled: false`, so the page's handler gets the files.
+
+With that, a file dropped beside the chat (the channel list, a dialog, the login) would open in the WebView in place of the app, as it always did in a browser tab (ending a call there). `refuseFileDrop` on the window refuses such a drop (`dropEffect` none); file inputs (emoji, stickers, pictures) still take theirs. Not checked: a real drop into the built app on each desktop system.
