@@ -93,6 +93,7 @@ export default {
   "settings.qrNewCode": "Código nuevo",
 
   "settings.voiceInput": "Entrada",
+  "settings.advanced": "Avanzado",
   "settings.voiceOutput": "Salida",
   "settings.inputDevice": "Dispositivo de entrada",
   "settings.deviceDefault": "Predeterminado",
@@ -157,11 +158,7 @@ export default {
   "settings.closeMic": "Cerrar el micrófono al silenciarte",
   "settings.closeMicHint": "Así el navegador deja de mostrar que graba, pero el sonido se corta un momento al silenciarte o dejar de silenciarte.",
 
-    "settings.streamQualityScreen": "Calidad predeterminada de pantalla compartida",
-  "settings.streamQualityScreenHint": "Resolución y tasa de fotogramas al compartir pantalla.",
-  "settings.streamQualityCamera": "Calidad predeterminada de cámara",
-  "settings.streamQualityCameraHint": "Resolución y tasa de fotogramas al transmitir con cámara.",
-"settings.qualityLabel": "{height}p {fps} fps",
+  "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Pantalla de {name}",
   "settings.streamCamera": "Cámara de {name}",
   "settings.obsTitle": "Transmitir desde OBS",

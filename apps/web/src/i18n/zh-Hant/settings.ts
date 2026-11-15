@@ -93,6 +93,7 @@ export default {
   "settings.qrNewCode": "新代碼",
 
   "settings.voiceInput": "輸入",
+  "settings.advanced": "進階",
   "settings.voiceOutput": "輸出",
   "settings.inputDevice": "輸入裝置",
   "settings.deviceDefault": "預設",
@@ -157,11 +158,7 @@ export default {
   "settings.closeMic": "靜音時關閉麥克風",
   "settings.closeMicHint": "瀏覽器就不會再顯示正在錄音，但在你靜音或取消靜音時，聲音會短暫中斷。",
 
-    "settings.streamQualityScreen": "螢幕共享預設品質",
-  "settings.streamQualityScreenHint": "開始螢幕共享時使用的解析度和畫面播放速率。",
-  "settings.streamQualityCamera": "攝影機預設品質",
-  "settings.streamQualityCameraHint": "開始攝影機直播時使用的解析度和畫面播放速率。",
-"settings.qualityLabel": "{height}p {fps} fps",
+  "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的螢幕",
   "settings.streamCamera": "{name} 的相機",
   "settings.obsTitle": "從 OBS 直播",

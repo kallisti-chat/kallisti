@@ -93,6 +93,7 @@ export default {
   "settings.qrNewCode": "新しいコード",
 
   "settings.voiceInput": "入力",
+  "settings.advanced": "詳細設定",
   "settings.voiceOutput": "出力",
   "settings.inputDevice": "入力デバイス",
   "settings.deviceDefault": "デフォルト",
@@ -157,11 +158,7 @@ export default {
   "settings.closeMic": "ミュート中はマイクを閉じる",
   "settings.closeMicHint": "ブラウザーに録音中と表示されなくなりますが、ミュートやミュート解除のときに音が一瞬途切れます。",
 
-    "settings.streamQualityScreen": "画面共有のデフォルト品質",
-  "settings.streamQualityScreenHint": "画面共有開始時の解像度とフレームレートです。",
-  "settings.streamQualityCamera": "カメラのデフォルト品質",
-  "settings.streamQualityCameraHint": "カメラ配信開始時の解像度とフレームレートです。",
-"settings.qualityLabel": "{height}p {fps} fps",
+  "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} の画面",
   "settings.streamCamera": "{name} のカメラ",
   "settings.obsTitle": "OBS から配信",

@@ -99,6 +99,7 @@ export default {
 
   // Voice & video.
   "settings.voiceInput": "Input",
+  "settings.advanced": "Advanced",
   "settings.voiceOutput": "Output",
   "settings.inputDevice": "Input device",
   "settings.deviceDefault": "Default",
@@ -162,10 +163,6 @@ export default {
     "For playing music: no noise suppression, echo cancellation or automatic volume, and better sound (stereo if the microphone has two channels). Use a headset.",
   "settings.closeMic": "Close the microphone when muted",
   "settings.closeMicHint": "The browser then stops showing it as recording, but the sound stops for a moment when you mute or unmute.",
-  "settings.streamQualityScreen": "Default screen share quality",
-  "settings.streamQualityScreenHint": "Resolution and framerate used when starting a screen share.",
-  "settings.streamQualityCamera": "Default camera quality",
-  "settings.streamQualityCameraHint": "Resolution and framerate used when starting a camera stream.",
 
   // Streams (lib/stream/quality) and OBS.
   "settings.qualityLabel": "{height}p {fps} fps",

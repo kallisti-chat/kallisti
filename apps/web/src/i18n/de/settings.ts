@@ -93,6 +93,7 @@ export default {
   "settings.qrNewCode": "Neuer Code",
 
   "settings.voiceInput": "Eingabe",
+  "settings.advanced": "Erweitert",
   "settings.voiceOutput": "Ausgabe",
   "settings.inputDevice": "Eingabegerät",
   "settings.deviceDefault": "Standard",
@@ -157,11 +158,7 @@ export default {
   "settings.closeMic": "Mikrofon schließen, wenn stummgeschaltet",
   "settings.closeMicHint": "Der Browser zeigt dann keine Aufnahme mehr an, aber der Ton setzt kurz aus, wenn du die Stummschaltung ein- oder ausschaltest.",
 
-    "settings.streamQualityScreen": "Standardqualität für Bildschirmübertragung",
-  "settings.streamQualityScreenHint": "Auflösung und Bildrate beim Starten einer Bildschirmübertragung.",
-  "settings.streamQualityCamera": "Standardqualität für Kamera",
-  "settings.streamQualityCameraHint": "Auflösung und Bildrate beim Starten einer Kameraübertragung.",
-"settings.qualityLabel": "{height}p {fps} fps",
+  "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Bildschirm von {name}",
   "settings.streamCamera": "Kamera von {name}",
   "settings.obsTitle": "Von OBS streamen",

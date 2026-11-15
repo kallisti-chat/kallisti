@@ -98,6 +98,7 @@ export default {
   "settings.qrNewCode": "Nouveau code",
 
   "settings.voiceInput": "Entrée",
+  "settings.advanced": "Avancé",
   "settings.voiceOutput": "Sortie",
   "settings.inputDevice": "Périphérique d'entrée",
   "settings.deviceDefault": "Par défaut",
@@ -164,11 +165,7 @@ export default {
   "settings.closeMicHint":
     "Le navigateur n'indique alors plus qu'il enregistre, mais le son se coupe un instant quand tu coupes ou réactives le micro.",
 
-    "settings.streamQualityScreen": "Qualité par défaut du partage d'écran",
-  "settings.streamQualityScreenHint": "Résolution et fréquence d'images lors du démarrage d'un partage d'écran.",
-  "settings.streamQualityCamera": "Qualité par défaut de la caméra",
-  "settings.streamQualityCameraHint": "Résolution et fréquence d'images lors du démarrage de la caméra.",
-"settings.qualityLabel": "{height}p {fps} fps",
+  "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "Écran de {name}",
   "settings.streamCamera": "Caméra de {name}",
   "settings.obsTitle": "Streamer depuis OBS",

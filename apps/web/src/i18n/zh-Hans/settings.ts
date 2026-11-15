@@ -93,6 +93,7 @@ export default {
   "settings.qrNewCode": "新的登录码",
 
   "settings.voiceInput": "输入",
+  "settings.advanced": "高级",
   "settings.voiceOutput": "输出",
   "settings.inputDevice": "输入设备",
   "settings.deviceDefault": "默认",
@@ -157,11 +158,7 @@ export default {
   "settings.closeMic": "静音时关闭麦克风",
   "settings.closeMicHint": "浏览器便不再显示正在录音，但静音或取消静音时声音会短暂中断。",
 
-    "settings.streamQualityScreen": "屏幕共享默认质量",
-  "settings.streamQualityScreenHint": "开始屏幕共享时使用的分辨率和帧率。",
-  "settings.streamQualityCamera": "摄像头默认质量",
-  "settings.streamQualityCameraHint": "开始摄像头推流时使用的分辨率和帧率。",
-"settings.qualityLabel": "{height}p {fps} fps",
+  "settings.qualityLabel": "{height}p {fps} fps",
   "settings.streamScreen": "{name} 的屏幕",
   "settings.streamCamera": "{name} 的摄像头",
   "settings.obsTitle": "从 OBS 直播",

@@ -17,7 +17,7 @@
   import { outputDeviceSupported } from "../lib/voice/support";
   import { deviceChoices } from "../lib/mediaDevices";
   import { noiseLabel, type NoiseMode } from "../lib/voice/noise";
-  import { BUFFER_MS, BUFFERS, bufferLabel, MAX_BUFFER_MS, MIN_BUFFER_MS, toBufferMs } from "../lib/voice/buffer";
+  import { MAX_BUFFER_MS, MIN_BUFFER_MS, toBufferMs } from "../lib/voice/buffer";
   import type { AudioChannels } from "../lib/voice/opus";
   import type { QualityLimits } from "../lib/textChannels";
   import { busyLabel } from "../lib/saveFeedback";
@@ -365,79 +365,6 @@
           {#if !cameras.length}<span class="hint">{t("settings.cameraListHint")}</span>{/if}
         </label>
       {/if}
-      <div class="row">
-        <span class="label">{t("settings.streamQualityScreen")}</span>
-        <div class="quality-selects">
-          <select
-            aria-label={t("media.screenResolution")}
-            value={settings.streamQuality.screen.height}
-            onchange={(e) =>
-              onChange({
-                streamQuality: {
-                  ...settings.streamQuality,
-                  screen: { ...settings.streamQuality.screen, height: Number(e.currentTarget.value) },
-                },
-              })}
-          >
-            {#each [480, 720, 1080].filter((h) => !qualityLimits?.maxSide || h <= qualityLimits.maxSide) as h (h)}
-              <option value={h}>{h}p</option>
-            {/each}
-          </select>
-          <select
-            aria-label={t("media.screenFrameRate")}
-            value={settings.streamQuality.screen.fps}
-            onchange={(e) =>
-              onChange({
-                streamQuality: {
-                  ...settings.streamQuality,
-                  screen: { ...settings.streamQuality.screen, fps: Number(e.currentTarget.value) },
-                },
-              })}
-          >
-            {#each [15, 30, 60, 120].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
-              <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
-            {/each}
-          </select>
-        </div>
-        <p class="hint">{t("settings.streamQualityScreenHint")}</p>
-      </div>
-
-      <div class="row">
-        <span class="label">{t("settings.streamQualityCamera")}</span>
-        <div class="quality-selects">
-          <select
-            aria-label={t("media.cameraResolution")}
-            value={settings.streamQuality.camera.height}
-            onchange={(e) =>
-              onChange({
-                streamQuality: {
-                  ...settings.streamQuality,
-                  camera: { ...settings.streamQuality.camera, height: Number(e.currentTarget.value) },
-                },
-              })}
-          >
-            {#each [480, 720, 1080].filter((h) => !qualityLimits?.maxSide || h <= qualityLimits.maxSide) as h (h)}
-              <option value={h}>{h}p</option>
-            {/each}
-          </select>
-          <select
-            aria-label={t("media.cameraFrameRate")}
-            value={settings.streamQuality.camera.fps}
-            onchange={(e) =>
-              onChange({
-                streamQuality: {
-                  ...settings.streamQuality,
-                  camera: { ...settings.streamQuality.camera, fps: Number(e.currentTarget.value) },
-                },
-              })}
-          >
-            {#each [15, 30, 60, 120].filter((f) => !qualityLimits?.maxFps || f <= qualityLimits.maxFps) as f (f)}
-              <option value={f}>{t("media.framesPerSecond", { fps: f })}</option>
-            {/each}
-          </select>
-        </div>
-        <p class="hint">{t("settings.streamQualityCameraHint")}</p>
-      </div>
 
       <h4 class="group">{t("settings.voiceInput")}</h4>
       <fieldset>
@@ -575,52 +502,55 @@
         <span>{t("settings.closeMic")}</span>
         <span class="hint">{t("settings.closeMicHint")}</span>
       </label>
-      <label>
-        {t("settings.audioChannels")}
-        <select
-          value={settings.audioChannels ?? "auto"}
-          onchange={(e) => onChange({ audioChannels: e.currentTarget.value as AudioChannels })}
-        >
-          <option value="auto">{t("settings.audioChannelsAuto")}</option>
-          <option value="mono">{t("settings.audioChannelsMono")}</option>
-          <option value="stereo">{t("settings.audioChannelsStereo")}</option>
-        </select>
-        <span class="hint">{t("settings.audioChannelsHint")}</span>
-      </label>
+      <details class="advanced">
+        <summary>{t("settings.advanced")}</summary>
+        <label>
+          {t("settings.audioChannels")}
+          <select
+            value={settings.audioChannels ?? "auto"}
+            onchange={(e) => onChange({ audioChannels: e.currentTarget.value as AudioChannels })}
+          >
+            <option value="auto">{t("settings.audioChannelsAuto")}</option>
+            <option value="mono">{t("settings.audioChannelsMono")}</option>
+            <option value="stereo">{t("settings.audioChannelsStereo")}</option>
+          </select>
+          <span class="hint">{t("settings.audioChannelsHint")}</span>
+        </label>
 
-      <div class="row">
-        <div class="header-with-value">
-          <span class="label">{t("settings.voiceBitrate")}</span>
-          <span class="value-readout">{Math.round((settings.voiceBitrate ?? 40_000) / 1000)} kbps</span>
+        <div class="row">
+          <div class="header-with-value">
+            <span class="label">{t("settings.voiceBitrate")}</span>
+            <span class="value-readout">{Math.round((settings.voiceBitrate ?? 40_000) / 1000)} kbps</span>
+          </div>
+          <input
+            type="range"
+            min="16"
+            max={Math.round((qualityLimits?.maxBitrateVoice ?? 128_000) / 1000)}
+            step="1"
+            value={Math.round((settings.voiceBitrate ?? 40_000) / 1000)}
+            oninput={(e) => onChange({ voiceBitrate: Number(e.currentTarget.value) * 1000 })}
+            aria-label={t("settings.voiceBitrate")}
+          />
+          <p class="hint">{t("settings.voiceBitrateHint")}</p>
         </div>
-        <input
-          type="range"
-          min="16"
-          max={Math.round((qualityLimits?.maxBitrateVoice ?? 128_000) / 1000)}
-          step="1"
-          value={Math.round((settings.voiceBitrate ?? 40_000) / 1000)}
-          oninput={(e) => onChange({ voiceBitrate: Number(e.currentTarget.value) * 1000 })}
-          aria-label={t("settings.voiceBitrate")}
-        />
-        <p class="hint">{t("settings.voiceBitrateHint")}</p>
-      </div>
 
-      <div class="row">
-        <div class="header-with-value">
-          <span class="label">{t("settings.musicBitrate")}</span>
-          <span class="value-readout">{Math.round((settings.musicBitrate ?? 128_000) / 1000)} kbps</span>
+        <div class="row">
+          <div class="header-with-value">
+            <span class="label">{t("settings.musicBitrate")}</span>
+            <span class="value-readout">{Math.round((settings.musicBitrate ?? 128_000) / 1000)} kbps</span>
+          </div>
+          <input
+            type="range"
+            min="32"
+            max={Math.round((qualityLimits?.maxBitrateMusic ?? 192_000) / 1000)}
+            step="8"
+            value={Math.round((settings.musicBitrate ?? 128_000) / 1000)}
+            oninput={(e) => onChange({ musicBitrate: Number(e.currentTarget.value) * 1000 })}
+            aria-label={t("settings.musicBitrate")}
+          />
+          <p class="hint">{t("settings.musicBitrateHint")}</p>
         </div>
-        <input
-          type="range"
-          min="32"
-          max={Math.round((qualityLimits?.maxBitrateMusic ?? 320_000) / 1000)}
-          step="8"
-          value={Math.round((settings.musicBitrate ?? 128_000) / 1000)}
-          oninput={(e) => onChange({ musicBitrate: Number(e.currentTarget.value) * 1000 })}
-          aria-label={t("settings.musicBitrate")}
-        />
-        <p class="hint">{t("settings.musicBitrateHint")}</p>
-      </div>
+      </details>
 
       <h4 class="group">{t("settings.voiceOutput")}</h4>
       <div class="row">
@@ -643,18 +573,6 @@
           <option value="120" label="120 ms"></option>
           <option value="250" label="250 ms"></option>
         </datalist>
-        <div class="presets">
-          {#each BUFFERS as b (b)}
-            <button
-              type="button"
-              class="preset-btn"
-              class:selected={toBufferMs(settings.playbackBuffer) === BUFFER_MS[b]}
-              onclick={() => onChange({ playbackBuffer: b })}
-            >
-              {bufferLabel(b)}
-            </button>
-          {/each}
-        </div>
         <p class="hint">{t("settings.playbackBufferHint")}</p>
       </div>
     {:else if id === "notifications"}
@@ -993,35 +911,14 @@
     color: var(--accent-strong);
     font-variant-numeric: tabular-nums;
   }
-  .presets {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-  }
-  .preset-btn {
-    flex: 1;
-    padding: 6px 10px;
-    font-size: 12px;
-    background: var(--bg-rail);
-    border: 1px solid transparent;
-    border-radius: 4px;
-    color: var(--text);
+  .advanced summary {
     cursor: pointer;
-    text-align: center;
+    font-size: 14px;
+    color: var(--text-muted);
   }
-  .preset-btn:hover {
-    background: var(--bg-hover);
-  }
-  .preset-btn.selected {
-    border-color: var(--accent);
-    color: var(--accent-strong);
-    font-weight: 600;
-  }
-  .quality-selects {
+  .advanced[open] {
     display: flex;
-    gap: 8px;
-  }
-  .quality-selects select {
-    flex: 1;
+    flex-direction: column;
+    gap: 16px;
   }
 </style>
