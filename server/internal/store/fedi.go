@@ -142,8 +142,10 @@ func (s *Store) LinkFedi(accountID int64, session string, id FediIdentity, at ti
 // UnlinkFedi removes an account's remote account, but not its last way to
 // log in (ErrLastLogin: it has no password).
 func (s *Store) UnlinkFedi(accountID int64) error {
+	// Another way in stays: a password or a linked OIDC login.
 	res, err := s.db.Exec(`DELETE FROM fedi_identities WHERE account_id = ?
-		AND EXISTS (SELECT 1 FROM accounts WHERE id = ? AND password_hash != '')`, accountID, accountID)
+		AND (EXISTS (SELECT 1 FROM accounts WHERE id = ? AND password_hash != '')
+			OR EXISTS (SELECT 1 FROM oidc_identities WHERE account_id = ?))`, accountID, accountID, accountID)
 	if err != nil {
 		return err
 	}

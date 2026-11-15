@@ -192,3 +192,21 @@ func TestOIDCSchemaUpgradePreservesAccountsAndSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// A linked OIDC login is another way in: the Fedi link may go without a
+// password.
+func TestUnlinkFediKeepsOIDC(t *testing.T) {
+	s := open(t)
+	now := time.UnixMilli(1_700_000_000_000)
+	acc, err := s.CreateOIDCAccount(Account{Name: "olga", CertPEM: []byte("c"), KeyPEM: []byte("k")}, OIDCIdentity{Issuer: "https://id.example", Subject: "1"}, now, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.CreateSession("tok", acc.ID, now.Add(time.Hour))
+	if err := s.LinkFedi(acc.ID, "tok", FediIdentity{Host: "x.example", RemoteID: "1", Handle: "@olga@x.example"}, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UnlinkFedi(acc.ID); err != nil {
+		t.Fatalf("unlink with OIDC left: %v", err)
+	}
+}
