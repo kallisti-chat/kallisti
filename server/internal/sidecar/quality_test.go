@@ -34,18 +34,12 @@ func TestQualityLimits(t *testing.T) {
 
 	// Admin sets limits
 	admin.Handle([]byte(`{"type":"set-quality-limits","qualityLimits":{"maxBitrateVoice":64000,"maxBitrateMusic":192000,"bytesPerSecond":2000000,"maxSide":1080,"maxFps":30}}`))
-	h.QualityLimitsChanged(QualityLimits{
-		MaxBitrateVoice: 64_000,
-		MaxBitrateMusic: 192_000,
-		BytesPerSecond:  2_000_000,
-		MaxSide:         1080,
-		MaxFps:          30,
-	})
 
 	for _, conn := range []*Conn{admin, bob} {
 		msg := next(t, conn)
 		if msg["type"] != "quality-limits" {
 			t.Fatalf("expected quality-limits, got %v", msg)
 		}
+		empty(t, conn) // once
 	}
 }

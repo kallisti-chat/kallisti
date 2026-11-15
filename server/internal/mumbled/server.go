@@ -68,8 +68,6 @@ type Config struct {
 	GuestAccount func(name string) bool
 	// OnGuestsReadOnlyChanged runs after an admin changed the setting.
 	OnGuestsReadOnlyChanged func()
-	// OnQualityLimitsChanged runs after an admin changed voice or stream quality limits.
-	OnQualityLimitsChanged func(QualityLimits)
 	// OnRolesChanged runs after admins or moderators changed (see Roles).
 	OnRolesChanged func()
 	// OnUserChanged hears registrations made or renamed (name), or removed
@@ -185,6 +183,8 @@ type Server struct {
 
 	// Read at every accept: not under mu, which the voice path uses.
 	bans atomic.Pointer[[]BanEntry]
+	// Read for every stream frame (see QualityLimits): not under mu either.
+	quality atomic.Pointer[QualityLimits]
 
 	mu      sync.Mutex
 	state   *State
@@ -275,6 +275,7 @@ func New(cfg Config) (*Server, error) {
 	state.SetLastChannelID(lastID)
 	var rules msgrules.Rules
 	var homeRules homes.Rules
+	quality := DefaultQualityLimits()
 	if cfg.DB != nil {
 		var err error
 		if _, err = cfg.DB.setting("home_servers", &homeRules); err != nil {
@@ -290,11 +291,10 @@ func New(cfg Config) (*Server, error) {
 			return nil, err
 		}
 		state.Captcha = min(state.Captcha, uint32(len(CaptchaLevels)-1))
-		if state.QualityLimits, err = cfg.DB.QualityLimits(); err != nil {
+		if quality, err = cfg.DB.QualityLimits(); err != nil {
 			return nil, err
 		}
 	} else {
-		state.QualityLimits = DefaultQualityLimits()
 		state.Channels[0].ACLs, state.Channels[0].Groups = DefaultRootACL()
 	}
 	srv := &Server{
@@ -311,6 +311,7 @@ func New(cfg Config) (*Server, error) {
 		pick:     rand.IntN,
 	}
 	srv.bans.Store(&bans)
+	srv.quality.Store(&quality)
 	if err := srv.loadTimeouts(); err != nil {
 		return nil, err
 	}

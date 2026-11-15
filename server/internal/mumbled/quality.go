@@ -82,9 +82,7 @@ func validateQualityLimits(q QualityLimits) error {
 
 // QualityLimits returns the current quality limits.
 func (s *Server) QualityLimits() QualityLimits {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.state.QualityLimits
+	return *s.quality.Load()
 }
 
 // SetQualityLimits updates the server's quality limits (admins only).
@@ -107,12 +105,6 @@ func (s *Server) SetQualityLimits(actor uint32, q QualityLimits) (QualityLimits,
 			return QualityLimits{}, err
 		}
 	}
-	s.mu.Lock()
-	s.state.QualityLimits = q
-	s.mu.Unlock()
-
-	if s.cfg.OnQualityLimitsChanged != nil {
-		s.cfg.OnQualityLimitsChanged(q)
-	}
+	s.quality.Store(&q)
 	return q, nil
 }

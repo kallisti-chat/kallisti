@@ -48,13 +48,9 @@ func TestQualityLimitsServerAndDB(t *testing.T) {
 		t.Fatalf("expected default voice bitrate, got %d", initial.MaxBitrateVoice)
 	}
 
-	var changed QualityLimits
 	s, addr := startServerAndListen(t, "127.0.0.1", Config{
 		DB:       db,
 		RootName: "Root",
-		OnQualityLimitsChanged: func(q QualityLimits) {
-			changed = q
-		},
 	}, nil)
 
 	su := superUser(t, addr)
@@ -80,9 +76,6 @@ func TestQualityLimitsServerAndDB(t *testing.T) {
 	}
 	if saved != newLimits || s.QualityLimits() != newLimits {
 		t.Fatalf("limits mismatch: saved=%+v, current=%+v", saved, s.QualityLimits())
-	}
-	if changed != newLimits {
-		t.Fatalf("callback not invoked with new limits: %+v", changed)
 	}
 
 	// Reopen DB to verify persistence
