@@ -3040,3 +3040,16 @@ Changes across client and server:
   - Stream handler and WHIP (OBS) ingest dynamically enforce bandwidth and framerate limits on media streams.
   - Updated OBS stream dialog and instructions to align with server limits.
 - Full parity across web and desktop (Tauri v2) with complete translations for all 7 supported languages.
+
+## 2026-11-15: Quality settings: review follow-ups
+
+Merged #20 (ElRizeru) with changes on top:
+- **User settings:** channels and bitrates are in a closed "Advanced" block. The buffer is a slider only. The stream quality defaults are removed: the stream preview's quality bar already sets the same value. The default music cap is 192 kbps (Opus stereo gains little above that).
+- **Server limits:**
+  - `maxSide` is the long side; the admin options store 1280/1920/2560/4096. Before, "1080p" stored 1080 and gave 1080×608.
+  - The stream handler now refuses a larger picture; before, only our client held it (test red first). The WHIP warning names the long side.
+  - A change goes out once, not twice.
+  - The limits are an `atomic.Pointer`, read per frame without the Mumble server's lock.
+  - The browser stream burst is back to twice the rate.
+  - Caps are at most 510 kbps (Opus), and the admin note says they apply in Kallisti apps only.
+- **Admin layout:** the admin section has the settings' look: the value is beside the label, so the sliders no longer move with its width. Resolution and frame rate are segmented radio buttons. Checked in headless Chromium: a click and an arrow key change them, and Save stores `maxSide` 1920.
