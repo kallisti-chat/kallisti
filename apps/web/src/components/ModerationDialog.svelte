@@ -409,47 +409,53 @@
         {/if}
       {/if}
     {:else if id === "quality"}
-      <form class="rules" onsubmit={saveQuality}>
-        <label>
-          {t("admin.qualityMaxVoiceBitrate")} ({voiceBitrateDraft} kbps)
-          <input type="range" min="16" max="510" step="1" bind:value={voiceBitrateDraft} />
-        </label>
-        <p class="note">{t("admin.qualityMaxVoiceBitrateNote")}</p>
-
-        <label>
-          {t("admin.qualityMaxMusicBitrate")} ({musicBitrateDraft} kbps)
-          <input type="range" min="32" max="510" step="8" bind:value={musicBitrateDraft} />
-        </label>
-        <p class="note">{t("admin.qualityMaxMusicBitrateNote")}</p>
-
-        <label>
-          {t("admin.qualityMaxStreamResolution")}
-          <select bind:value={streamSideDraft}>
-            <option value={1280}>720p (1280×720)</option>
-            <option value={1920}>1080p (1920×1080)</option>
-            <option value={2560}>1440p (2560×1440)</option>
-            <option value={4096}>4K (4096×2160)</option>
-          </select>
-        </label>
-        <p class="note">{t("admin.qualityMaxStreamResolutionNote")}</p>
-
-        <label>
-          {t("admin.qualityMaxStreamFramerate")}
-          <select bind:value={streamFpsDraft}>
-            <option value={15}>15 fps</option>
-            <option value={30}>30 fps</option>
-            <option value={60}>60 fps</option>
-            <option value={120}>120 fps</option>
-          </select>
-        </label>
-        <p class="note">{t("admin.qualityMaxStreamFramerateNote")}</p>
-
-        <label>
-          {t("admin.qualityMaxStreamBandwidth")} ({((streamBandwidthDraft * 8) / 1_000_000).toFixed(1)} Mbit/s)
-          <input type="range" min={100_000} max={10_000_000} step={100_000} bind:value={streamBandwidthDraft} />
-        </label>
-        <p class="note">{t("admin.qualityMaxStreamBandwidthNote")}</p>
-
+      <form class="rules quality" onsubmit={saveQuality}>
+        <div class="field">
+          <div class="head">
+            <label for="q-voice">{t("admin.qualityMaxVoiceBitrate")}</label>
+            <output for="q-voice">{voiceBitrateDraft} kbps</output>
+          </div>
+          <input id="q-voice" type="range" min="16" max="510" step="1" bind:value={voiceBitrateDraft} />
+          <p class="hint">{t("admin.qualityMaxVoiceBitrateNote")}</p>
+        </div>
+        <div class="field">
+          <div class="head">
+            <label for="q-music">{t("admin.qualityMaxMusicBitrate")}</label>
+            <output for="q-music">{musicBitrateDraft} kbps</output>
+          </div>
+          <input id="q-music" type="range" min="32" max="510" step="8" bind:value={musicBitrateDraft} />
+          <p class="hint">{t("admin.qualityMaxMusicBitrateNote")}</p>
+        </div>
+        <div class="pair">
+          <div class="field">
+            <label for="q-side">{t("admin.qualityMaxStreamResolution")}</label>
+            <select id="q-side" bind:value={streamSideDraft}>
+              <option value={1280}>720p (1280×720)</option>
+              <option value={1920}>1080p (1920×1080)</option>
+              <option value={2560}>1440p (2560×1440)</option>
+              <option value={4096}>4K (4096×2160)</option>
+            </select>
+            <p class="hint">{t("admin.qualityMaxStreamResolutionNote")}</p>
+          </div>
+          <div class="field">
+            <label for="q-fps">{t("admin.qualityMaxStreamFramerate")}</label>
+            <select id="q-fps" bind:value={streamFpsDraft}>
+              <option value={15}>15 fps</option>
+              <option value={30}>30 fps</option>
+              <option value={60}>60 fps</option>
+              <option value={120}>120 fps</option>
+            </select>
+            <p class="hint">{t("admin.qualityMaxStreamFramerateNote")}</p>
+          </div>
+        </div>
+        <div class="field">
+          <div class="head">
+            <label for="q-bandwidth">{t("admin.qualityMaxStreamBandwidth")}</label>
+            <output for="q-bandwidth">{((streamBandwidthDraft * 8) / 1_000_000).toFixed(1)} Mbit/s</output>
+          </div>
+          <input id="q-bandwidth" type="range" min={100_000} max={10_000_000} step={100_000} bind:value={streamBandwidthDraft} />
+          <p class="hint">{t("admin.qualityMaxStreamBandwidthNote")}</p>
+        </div>
         <div class="row">
           <button type="submit" disabled={saves.quality.busy}>{busyLabel(saves.quality.state, t("common.save"), t("common.saving"))}</button>
           <SaveStatus save={saves.quality.state} />
@@ -780,5 +786,54 @@
   }
   td.muffled {
     color: var(--warning, #e0a030);
+  }
+  .quality {
+    gap: 16px;
+  }
+  .quality .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .quality .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .quality label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .quality output {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .quality input[type="range"] {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--accent);
+  }
+  .quality select {
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg-rail);
+    color: var(--text);
+    font: inherit;
+  }
+  .quality .pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: 16px;
+  }
+  .quality .hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-faint);
   }
 </style>
