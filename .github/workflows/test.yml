@@ -1,5 +1,5 @@
 # Unit tests and type checks: the web client and the protocol package
-# (vitest, svelte-check, tsc), the server (go vet, go test with -race),
+# (vitest, svelte-check, tsc), the server (gofmt, go vet, go test with -race),
 # the desktop app's Rust code (cargo test, on Linux).
 name: test
 
@@ -42,6 +42,8 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; echo "run gofmt on these files"; exit 1; }
       - run: go vet ./...
       - run: go test -race ./...
 
