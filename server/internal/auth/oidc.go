@@ -202,6 +202,11 @@ func (a *Service) oidcStart(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+			// One identity per account: refused now, not after the provider.
+			if _, err := a.Store.OIDCIdentityOf(acc.ID); err == nil {
+				writeJSON(w, 409, map[string]string{"error": "this account has a linked login already: unlink it first"})
+				return
+			}
 		} else {
 			id, err := a.Store.OIDCIdentityOf(acc.ID)
 			if err != nil || id.Issuer != a.OIDC.issuer {
@@ -410,6 +415,10 @@ func (a *Service) oidcUnlink(w http.ResponseWriter, r *http.Request) {
 	}
 	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
 		writeJSON(w, 400, map[string]string{"error": "invalid request"})
+		return
+	}
+	if _, err := a.Store.OIDCIdentityOf(acc.ID); errors.Is(err, store.ErrNotFound) {
+		writeJSON(w, 404, map[string]string{"error": "no login is linked to this account"})
 		return
 	}
 	if acc.PasswordHash == "" {

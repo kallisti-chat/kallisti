@@ -668,3 +668,20 @@ func TestOIDCPermanentHookPanicReleasesLock(t *testing.T) {
 		t.Fatal("hook panic lost committed link")
 	}
 }
+
+// A second link is refused before the provider round-trip; unlinking
+// without a link says so.
+func TestOIDCLinkTwiceAndUnlinkNothing(t *testing.T) {
+	_, srv, p := setupOIDC(t)
+	b := newOIDCBrowser(t, srv)
+	if resp, v := b.do("POST", "/api/accounts", map[string]string{"name": "alice", "password": "longpassword"}); resp.StatusCode/100 != 2 {
+		t.Fatalf("signup: %d %v", resp.StatusCode, v)
+	}
+	if resp, _ := b.do("DELETE", "/api/oidc/link", map[string]string{"password": "longpassword"}); resp.StatusCode != 404 {
+		t.Fatalf("unlink without a link: %d", resp.StatusCode)
+	}
+	oidcFinish(t, b, oidcBegin(t, b, p, "link", "subject"), "linked", "")
+	if resp, _ := b.do("POST", "/api/oidc/start", map[string]string{"mode": "link", "password": "longpassword"}); resp.StatusCode != 409 {
+		t.Fatalf("second link: %d", resp.StatusCode)
+	}
+}
