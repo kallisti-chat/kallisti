@@ -69,9 +69,13 @@ set a local password through its current provider's reauthentication flow.
 An OIDC-only account must authenticate with its linked provider again before
 setting its first local password. Unlinking requires a confirmed local password
 so the account retains a login method. Unlinking ends all other Kallisti sessions
-and their active connections, retaining only the password-confirmed session. Changing the configured issuer does not
-transfer identities: arrange another login method before replacing or removing
-a provider.
+and their active connections, retaining only the password-confirmed session.
+
+Changing the configured issuer does not transfer identities. An account without
+a local password whose provider is removed or whose issuer changes cannot log
+in or set a password by itself anymore: ask such users to set a password first,
+or make each of them a recovery link (Server settings → Registered users →
+Recovery link; one use, 24 hours, ends their other sessions).
 
 The initial OIDC flow is available in the web app. Existing desktop/mobile QR
 login and password login remain available; an OIDC account can set a local
@@ -109,7 +113,8 @@ first-password reauthentication, and continued password/guest/Fediverse access
 with the deployed provider. First-password reauthentication is a required live
 acceptance check: the provider must honor `prompt=login` and `max_age=0` and
 return a fresh `auth_time` claim. Missing or stale authentication times fail
-closed; without this support an OIDC-only user cannot set a password or unlink.
+closed; without this support an OIDC-only user cannot set a password or unlink
+(only an admin's recovery link helps then).
 Verify this with the deployed Pocket ID version before admitting users.
 
 Pocket ID v2.9.0 supports ordinary login but does not return `auth_time`, so
