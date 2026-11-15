@@ -426,28 +426,24 @@
           <input id="q-music" type="range" min="32" max="510" step="8" bind:value={musicBitrateDraft} />
           <p class="hint">{t("admin.qualityMaxMusicBitrateNote")}</p>
         </div>
-        <div class="pair">
-          <div class="field">
-            <label for="q-side">{t("admin.qualityMaxStreamResolution")}</label>
-            <select id="q-side" bind:value={streamSideDraft}>
-              <option value={1280}>720p (1280×720)</option>
-              <option value={1920}>1080p (1920×1080)</option>
-              <option value={2560}>1440p (2560×1440)</option>
-              <option value={4096}>4K (4096×2160)</option>
-            </select>
-            <p class="hint">{t("admin.qualityMaxStreamResolutionNote")}</p>
+        <fieldset class="field">
+          <legend>{t("admin.qualityMaxStreamResolution")}</legend>
+          <div class="segments">
+            {#each [[1280, "720p"], [1920, "1080p"], [2560, "1440p"], [4096, "4K"]] as const as [side, name] (side)}
+              <label><input type="radio" name="q-side" value={side} bind:group={streamSideDraft} />{name}</label>
+            {/each}
           </div>
-          <div class="field">
-            <label for="q-fps">{t("admin.qualityMaxStreamFramerate")}</label>
-            <select id="q-fps" bind:value={streamFpsDraft}>
-              <option value={15}>15 fps</option>
-              <option value={30}>30 fps</option>
-              <option value={60}>60 fps</option>
-              <option value={120}>120 fps</option>
-            </select>
-            <p class="hint">{t("admin.qualityMaxStreamFramerateNote")}</p>
+          <p class="hint">{t("admin.qualityMaxStreamResolutionNote")}</p>
+        </fieldset>
+        <fieldset class="field">
+          <legend>{t("admin.qualityMaxStreamFramerate")}</legend>
+          <div class="segments">
+            {#each [15, 30, 60, 120] as fps (fps)}
+              <label><input type="radio" name="q-fps" value={fps} bind:group={streamFpsDraft} />{fps} fps</label>
+            {/each}
           </div>
-        </div>
+          <p class="hint">{t("admin.qualityMaxStreamFramerateNote")}</p>
+        </fieldset>
         <div class="field">
           <div class="head">
             <label for="q-bandwidth">{t("admin.qualityMaxStreamBandwidth")}</label>
@@ -818,18 +814,53 @@
     margin: 0;
     accent-color: var(--accent);
   }
-  .quality select {
-    padding: 10px;
+  .quality fieldset {
+    margin: 0;
+    padding: 0;
     border: none;
-    border-radius: 4px;
-    background: var(--bg-rail);
-    color: var(--text);
-    font: inherit;
+    min-width: 0;
   }
-  .quality .pair {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
-    gap: 16px;
+  .quality legend {
+    padding: 0;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .segments {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 6px;
+    background: var(--bg-rail);
+  }
+  .quality .segments label {
+    flex: 1;
+    padding: 8px 4px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: none;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .segments label:hover {
+    color: var(--text);
+  }
+  .segments label:has(:checked) {
+    background: var(--bg-hover);
+    color: var(--text-strong);
+  }
+  .segments label:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .segments input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
   }
   .quality .hint {
     margin: 0;
