@@ -33,7 +33,7 @@ type OIDCLogin struct {
 	mu                   sync.Mutex // identity changes, signup redemption, session creation and revocation
 	flows                pending[oidcFlow]
 	signups              pending[oidcSignup]
-	proofs               map[string]pendingEntry[store.OIDCIdentity]
+	proofs               proofs[store.OIDCIdentity]
 }
 
 type oidcFlow struct {
@@ -77,7 +77,6 @@ func newOIDCLogin(issuer, clientID, clientSecret, redirectURL, name string, tran
 	return &OIDCLogin{issuer: issuer, name: name, origin: redirect.Scheme + "://" + redirect.Host,
 		config: oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, RedirectURL: redirectURL, Scopes: []string{oidc.ScopeOpenID, "profile"}},
 		client: &http.Client{Timeout: 10 * time.Second, Transport: oidcTransport{transport}, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("oidc redirects are not allowed") }},
-		proofs: make(map[string]pendingEntry[store.OIDCIdentity]),
 	}, nil
 }
 
@@ -114,14 +113,6 @@ func (o *OIDCLogin) home(result, reason string) string {
 		q.Set("reason", reason)
 	}
 	return o.origin + "/?" + q.Encode()
-}
-
-func (a *Service) setOIDCCookie(w http.ResponseWriter, r *http.Request, name, value string, life time.Duration) {
-	if value == "" {
-		a.clearCookie(w, r, name)
-		return
-	}
-	http.SetCookie(w, &http.Cookie{Name: a.cookieName(r, name), Value: value, Path: "/", MaxAge: int(life.Seconds()), HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode})
 }
 
 func (a *Service) serveOIDC(w http.ResponseWriter, r *http.Request) bool {
@@ -229,7 +220,7 @@ func (a *Service) oidcStart(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 503, map[string]string{"error": "too many pending logins"})
 		return
 	}
-	a.setOIDCCookie(w, r, oidcStateCookie, state, flowLifetime)
+	a.setFlowCookie(w, r, oidcStateCookie, state, flowLifetime)
 	opts := []oauth2.AuthCodeOption{oidc.Nonce(flow.nonce), oauth2.S256ChallengeOption(flow.verifier)}
 	if flow.mode == "reauth" {
 		opts = append(opts, oauth2.SetAuthURLParam("prompt", "login"), oauth2.SetAuthURLParam("max_age", "0"))
@@ -252,7 +243,7 @@ func (a *Service) oidcCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	flow, ok := o.flows.get(state, a.Now(), true)
-	a.setOIDCCookie(w, r, oidcStateCookie, "", 0)
+	a.setFlowCookie(w, r, oidcStateCookie, "", 0)
 	if !ok || len(q["code"]) > 1 || len(q["error"]) > 1 || (q.Has("iss") && (len(q["iss"]) != 1 || q.Get("iss") != o.issuer)) {
 		back("error", "expired")
 		return
@@ -319,16 +310,10 @@ func (a *Service) oidcCallback(w http.ResponseWriter, r *http.Request) {
 				back("error", "other")
 				return
 			}
-			for key, e := range o.proofs {
-				if !a.Now().Before(e.expires) {
-					delete(o.proofs, key)
-				}
-			}
-			if len(o.proofs) >= maxFediPending {
+			if !o.proofs.put(flow.session, id, a.Now()) {
 				back("error", "failed")
 				return
 			}
-			o.proofs[flow.session] = pendingEntry[store.OIDCIdentity]{id, a.Now().Add(reauthLifetime)}
 			back("reauth", "")
 			return
 		}
@@ -369,7 +354,7 @@ func (a *Service) oidcCallback(w http.ResponseWriter, r *http.Request) {
 		back("error", "failed")
 		return
 	}
-	a.setOIDCCookie(w, r, oidcSignupCookie, key, signupLifetime)
+	a.setFlowCookie(w, r, oidcSignupCookie, key, signupLifetime)
 	back("register", "")
 }
 
@@ -406,7 +391,7 @@ func (a *Service) oidcSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	o.signups.get(key, a.Now(), true)
-	a.setOIDCCookie(w, r, oidcSignupCookie, "", 0)
+	a.setFlowCookie(w, r, oidcSignupCookie, "", 0)
 	writeJSON(w, 201, withToken(map[string]any{"name": acc.Name}, token))
 }
 
@@ -444,7 +429,7 @@ func (a *Service) oidcUnlink(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if a.OIDC != nil {
-			delete(a.OIDC.proofs, keep)
+			a.OIDC.proofs.take(keep, a.Now())
 		}
 		return nil
 	}); err != nil {
@@ -472,15 +457,14 @@ func (a *Service) takeOIDCProof(session string, account int64) bool {
 		return false
 	}
 	o := a.OIDC
-	o.mu.Lock()
+	o.mu.Lock() // not while the identity changes
 	defer o.mu.Unlock()
-	proof, ok := o.proofs[session]
-	delete(o.proofs, session)
-	if !ok || !a.Now().Before(proof.expires) {
+	proof, ok := o.proofs.take(session, a.Now())
+	if !ok {
 		return false
 	}
 	id, err := a.Store.OIDCIdentityOf(account)
-	return err == nil && id == proof.v && id.Issuer == o.issuer
+	return err == nil && id == proof && id.Issuer == o.issuer
 }
 
 // firstPasswordProof: a fresh login with a provider linked to the account,

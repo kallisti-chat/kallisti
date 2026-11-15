@@ -354,11 +354,11 @@ func TestOIDCReauthFreshnessAndSingleUse(t *testing.T) {
 					t.Fatal("missing proof")
 				}
 				if kind == "expired-proof" {
-					a.OIDC.mu.Lock()
-					entry := a.OIDC.proofs[session]
+					a.OIDC.proofs.mu.Lock()
+					entry := a.OIDC.proofs.m[session]
 					entry.expires = time.Now().Add(-time.Second)
-					a.OIDC.proofs[session] = entry
-					a.OIDC.mu.Unlock()
+					a.OIDC.proofs.m[session] = entry
+					a.OIDC.proofs.mu.Unlock()
 				}
 			}
 			if resp, _ := b.do("POST", "/api/password", map[string]string{"new": "longpassword"}); resp.StatusCode != 403 {

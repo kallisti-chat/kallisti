@@ -75,39 +75,19 @@ type FediLogin struct {
 	// revocation, including their store changes. Never held by hooks.
 	handoffMu sync.Mutex
 	// Fresh logins (reauth flows) by session key: the account's id.
-	proofMu sync.Mutex
-	proofs  map[string]pendingEntry[int64]
+	proofs  proofs[int64]
 	avatars sync.WaitGroup // downloads (tests wait for them)
 }
 
 // prove records a fresh login of the account in this session; false: full.
 func (f *FediLogin) prove(session string, account int64, now time.Time) bool {
-	f.proofMu.Lock()
-	defer f.proofMu.Unlock()
-	if f.proofs == nil {
-		f.proofs = map[string]pendingEntry[int64]{}
-	}
-	if len(f.proofs) >= maxFediPending {
-		for k, e := range f.proofs {
-			if !now.Before(e.expires) {
-				delete(f.proofs, k)
-			}
-		}
-		if len(f.proofs) >= maxFediPending {
-			return false
-		}
-	}
-	f.proofs[session] = pendingEntry[int64]{account, now.Add(reauthLifetime)}
-	return true
+	return f.proofs.put(session, account, now)
 }
 
 // takeProof uses up the session's fresh login of the account.
 func (f *FediLogin) takeProof(session string, account int64, now time.Time) bool {
-	f.proofMu.Lock()
-	defer f.proofMu.Unlock()
-	e, ok := f.proofs[session]
-	delete(f.proofs, session)
-	return ok && e.v == account && now.Before(e.expires)
+	v, ok := f.proofs.take(session, now)
+	return ok && v == account
 }
 
 type fediFlow struct {
@@ -162,6 +142,43 @@ type pending[T any] struct {
 type pendingEntry[T any] struct {
 	v       T
 	expires time.Time
+}
+
+// proofs are fresh logins with a provider (Fedi, OIDC), by session, until
+// taken once (see firstPasswordProof).
+type proofs[T any] struct {
+	mu sync.Mutex
+	m  map[string]pendingEntry[T]
+}
+
+// put records v for the session; false: full.
+func (p *proofs[T]) put(session string, v T, now time.Time) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.m == nil {
+		p.m = map[string]pendingEntry[T]{}
+	}
+	if len(p.m) >= maxFediPending {
+		for k, e := range p.m {
+			if !now.Before(e.expires) {
+				delete(p.m, k)
+			}
+		}
+		if len(p.m) >= maxFediPending {
+			return false
+		}
+	}
+	p.m[session] = pendingEntry[T]{v, now.Add(reauthLifetime)}
+	return true
+}
+
+// take uses up the session's proof, if valid.
+func (p *proofs[T]) take(session string, now time.Time) (T, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	e, ok := p.m[session]
+	delete(p.m, session)
+	return e.v, ok && now.Before(e.expires)
 }
 
 // put stores v until expires; its key, "" when full.
@@ -277,13 +294,17 @@ func (a *Service) setFediCookie(w http.ResponseWriter, r *http.Request, name, va
 	for _, old := range []string{stateCookie, signupCookie} {
 		http.SetCookie(w, &http.Cookie{Name: old, Value: "", Path: fediPath, MaxAge: -1, HttpOnly: true})
 	}
+	a.setFlowCookie(w, r, name, value, life)
+}
+
+// setFlowCookie keeps a login flow's value in this browser ("": removes
+// it). Path "/": __Host- cookies need it (see cookieName).
+func (a *Service) setFlowCookie(w http.ResponseWriter, r *http.Request, name, value string, life time.Duration) {
 	if value == "" {
 		a.clearCookie(w, r, name)
 		return
 	}
-	maxAge := int(life.Seconds())
-	// Path "/": __Host- cookies need it (see cookieName).
-	http.SetCookie(w, &http.Cookie{Name: a.cookieName(r, name), Value: value, Path: "/", MaxAge: maxAge, HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: a.cookieName(r, name), Value: value, Path: "/", MaxAge: int(life.Seconds()), HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode})
 }
 
 // serveFedi answers /api/fedi and below (POSTs are checked as JSON and
