@@ -3014,3 +3014,7 @@ Follow-up: a download whose token request hit the rate limit failed silently aft
 The chat has taken dropped files since uploads came (`ChatPane`'s `ondrop`, the same path as the picker and a paste), but only in browsers: Tauri's own drop handler is on by default and swallows the drop before the page sees it (tauri-runtime-wry's handler returns `true`), and nothing here listened to Tauri's event. The main window now has `dragDropEnabled: false`, so the page's handler gets the files.
 
 With that, a file dropped beside the chat (the channel list, a dialog, the login) would open in the WebView in place of the app, as it always did in a browser tab (ending a call there). `refuseFileDrop` on the window refuses such a drop (`dropEffect` none); file inputs (emoji, stickers, pictures) still take theirs. Not checked: a real drop into the built app on each desktop system.
+
+## 2026-11-09: Standard Mac settings shortcut
+
+Cmd+, opens settings on Mac through the existing active-client keyboard handler. Other platforms and modified combinations remain unchanged; like other navigation shortcuts, it does not open over an existing dialog.
