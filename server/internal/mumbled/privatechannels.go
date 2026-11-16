@@ -281,7 +281,7 @@ func (s *Server) CreatePrivateChannel(actor, parent uint32, name string) (uint32
 func (s *Server) Sees(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Channels[channel] != nil && s.state.Sees(u, channel)
 }
 

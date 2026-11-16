@@ -185,6 +185,9 @@ type Server struct {
 	bans atomic.Pointer[[]BanEntry]
 	// Read for every stream frame (see QualityLimits): not under mu either.
 	quality atomic.Pointer[QualityLimits]
+	// The agent API's sessions' registrations, by session (see
+	// apisession.go). Under mu.
+	apiUsers map[uint32]*Registered
 
 	mu      sync.Mutex
 	state   *State
@@ -307,6 +310,7 @@ func New(cfg Config) (*Server, error) {
 		rules:    rules,
 		homes:    homeRules,
 		lastPost: map[timeoutKey]time.Time{},
+		apiUsers: map[uint32]*Registered{},
 		now:      time.Now,
 		pick:     rand.IntN,
 	}

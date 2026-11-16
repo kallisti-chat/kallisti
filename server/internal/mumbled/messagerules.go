@@ -56,7 +56,7 @@ func (s *Server) SetMessageRules(actor uint32, r msgrules.Rules) (msgrules.Rules
 func (s *Server) CheckMessage(session uint32, m msgrules.Message) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	if u == nil {
 		return "", errors.New("not connected")
 	}

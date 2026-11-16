@@ -16,7 +16,7 @@ import (
 func (s *Server) MayRead(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Channels[channel] != nil && (u.Channel == channel || s.state.Has(u, channel, Enter))
 }
 
@@ -43,7 +43,7 @@ func (s *Server) MaySpeak(session, channel uint32) bool {
 func (s *Server) MayWrite(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Channels[channel] != nil && s.state.Has(u, channel, TextMessage)
 }
 
@@ -113,7 +113,7 @@ func (s *Server) SendPrivateText(from uint32, fromName string, toUser uint32, te
 func (s *Server) MayManage(session uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Has(u, 0, MakeChannel) // admins and moderators
 }
 
