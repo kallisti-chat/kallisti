@@ -206,7 +206,14 @@ func TestUnlinkFediKeepsOIDC(t *testing.T) {
 	if err := s.LinkFedi(acc.ID, "tok", FediIdentity{Host: "x.example", RemoteID: "1", Handle: "@olga@x.example"}, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.UnlinkFedi(acc.ID); err != nil {
+	// Not with a provider that is gone or changed (no other way in then).
+	if err := s.UnlinkFedi(acc.ID, ""); !errors.Is(err, ErrLastLogin) {
+		t.Fatalf("unlink with OIDC off: %v", err)
+	}
+	if err := s.UnlinkFedi(acc.ID, "https://other.example"); !errors.Is(err, ErrLastLogin) {
+		t.Fatalf("unlink with another issuer: %v", err)
+	}
+	if err := s.UnlinkFedi(acc.ID, "https://id.example"); err != nil {
 		t.Fatalf("unlink with OIDC left: %v", err)
 	}
 }

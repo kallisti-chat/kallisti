@@ -68,7 +68,7 @@ func TestFediIdentities(t *testing.T) {
 	}
 
 	// The last way to log in stays.
-	if err := s.UnlinkFedi(acc.ID); !errors.Is(err, ErrLastLogin) {
+	if err := s.UnlinkFedi(acc.ID, ""); !errors.Is(err, ErrLastLogin) {
 		t.Fatalf("unlink the only login: %v", err)
 	}
 	if err := s.ChangePassword(acc.ID, "", "", "hash", now); err != ErrNotFound {
@@ -78,10 +78,10 @@ func TestFediIdentities(t *testing.T) {
 	if err := s.ChangePassword(acc.ID, "tok", "", "hash", now); err != nil {
 		t.Fatalf("first password: %v", err)
 	}
-	if err := s.UnlinkFedi(acc.ID); err != nil {
+	if err := s.UnlinkFedi(acc.ID, ""); err != nil {
 		t.Fatalf("unlink: %v", err)
 	}
-	if err := s.UnlinkFedi(acc.ID); err != ErrNotFound {
+	if err := s.UnlinkFedi(acc.ID, ""); err != ErrNotFound {
 		t.Fatalf("unlink twice: %v", err)
 	}
 

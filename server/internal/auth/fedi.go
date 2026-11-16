@@ -796,7 +796,11 @@ func (a *Service) fediUnlink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err := a.revokeHandoffs(acc.ID, func() error {
-		err := a.Store.UnlinkFedi(acc.ID)
+		issuer := ""
+		if a.OIDC != nil {
+			issuer = a.OIDC.issuer
+		}
+		err := a.Store.UnlinkFedi(acc.ID, issuer)
 		if errors.Is(err, store.ErrNotFound) {
 			return nil
 		}

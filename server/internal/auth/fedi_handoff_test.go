@@ -153,7 +153,7 @@ func TestFediHandoffExpiry(t *testing.T) {
 func TestFediHandoffRechecksIdentity(t *testing.T) {
 	a, srv, acc, owner, cookie := handoffSetup(t, false)
 	// Even a store-level unlink, outside the HTTP invalidation path, fails closed.
-	if err := a.Store.UnlinkFedi(acc.ID); err != nil {
+	if err := a.Store.UnlinkFedi(acc.ID, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := a.Store.LinkFedi(acc.ID, tokenHash(owner.Value), store.FediIdentity{Host: "other.example", RemoteID: "other", Handle: "@alice@other.example"}, a.Now()); err != nil {
