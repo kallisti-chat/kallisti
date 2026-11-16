@@ -1126,21 +1126,31 @@ func (h *Hub) channelExists(id int64) bool {
 }
 
 func (c *Conn) history(req request) {
-	// One extra row tells whether there are older messages.
-	msgs, err := c.hub.store.History(req.Channel, req.Before, pageSize+1)
+	wire, more, err := c.hub.historyPage(req.Channel, req.Before, pageSize, c.viewer())
 	if err != nil {
 		c.sendError("cannot load history")
 		return
 	}
-	more := len(msgs) > pageSize
+	c.send(map[string]any{"type": "history", "channel": req.Channel, "messages": wire, "more": more})
+}
+
+// historyPage: up to limit messages before a message (0: the newest),
+// oldest first, and whether there are older ones.
+func (h *Hub) historyPage(channel, before int64, limit int, viewer *uint32) ([]wireMessage, bool, error) {
+	// One extra row tells whether there are older messages.
+	msgs, err := h.store.History(channel, before, limit+1)
+	if err != nil {
+		return nil, false, err
+	}
+	more := len(msgs) > limit
 	if more {
 		msgs = msgs[1:]
 	}
 	wire := make([]wireMessage, len(msgs))
 	for i, m := range msgs {
-		wire[i] = c.hub.toWireFor(m, c.viewer())
+		wire[i] = h.toWireFor(m, viewer)
 	}
-	c.send(map[string]any{"type": "history", "channel": req.Channel, "messages": wire, "more": more})
+	return wire, more, nil
 }
 
 func (c *Conn) post(id mumble.Identity, req request, ch chat) {

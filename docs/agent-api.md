@@ -35,7 +35,7 @@ Authorization: Bearer kallisti_pat_…
 All answers are JSON; errors are `{"error": "…"}` with an HTTP status
 (401: no valid token, 403: a read token posts, 404: unknown channel or one
 the account cannot see, 400: the post was refused, with the reason, 429:
-too many requests).
+too many requests or slow mode: wait and try again).
 
 ### `GET /api/agent/channels`
 
@@ -61,8 +61,9 @@ token; files are in `uploads` (URLs relative to the server).
 
 ### `POST /api/agent/channels/{id}/messages`
 
-Needs a token that may post. Body: `{"text": "…", "reply": 12017}`
-(`reply` is optional: the message to answer, in the same channel). The
+Needs a token that may post. Body: `{"text": "…", "reply": 12017, "nonce": "…"}`
+(`reply` is optional: the message to answer, in the same channel; `nonce`
+is optional: send the same one on a retry and the post is stored once). The
 answer is `201` with the stored message: `{"message": {…}}`. Others see it
 at once, as any message.
 

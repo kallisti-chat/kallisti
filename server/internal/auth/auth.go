@@ -449,8 +449,8 @@ func (a *Service) endLogins(acc store.Account, keep string, end func() error) er
 		return err
 	}
 	a.revoke(func(id int64, session string) bool { return id == acc.ID && (keep == "" || session != keep) })
-	// Access tokens too: after a recovery or a password change none made
-	// with the old login may stay.
+	// Access tokens too: after a recovery, a password change or a log out
+	// everywhere none made with the old login may stay.
 	if err := a.Store.DeleteAPITokens(acc.ID); err != nil {
 		slog.Error("end access tokens", "account", acc.Name, "err", err)
 	}

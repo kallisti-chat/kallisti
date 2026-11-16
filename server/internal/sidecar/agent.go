@@ -86,7 +86,7 @@ func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
 				agentError(w, http.StatusForbidden, "this token may only read")
 				return
 			}
-			h.agentPost(w, r, id, ch, channel)
+			h.agentPost(w, r, id, channel)
 		default:
 			agentError(w, http.StatusMethodNotAllowed, "GET or POST")
 		}
@@ -99,21 +99,13 @@ func (h *Hub) agentHistory(w http.ResponseWriter, r *http.Request, id mumble.Ide
 	q := r.URL.Query()
 	before, _ := strconv.ParseInt(q.Get("before"), 10, 64)
 	limit, err := strconv.Atoi(q.Get("limit"))
-	if err != nil || limit < 1 || limit > agentPageSize {
+	if err != nil || limit < 1 {
 		limit = pageSize
 	}
-	msgs, err := h.store.History(channel, before, limit+1)
+	wire, more, err := h.historyPage(channel, before, min(limit, agentPageSize), viewerOf(id))
 	if err != nil {
 		agentError(w, http.StatusInternalServerError, "cannot load history")
 		return
-	}
-	more := len(msgs) > limit
-	if more {
-		msgs = msgs[1:]
-	}
-	wire := make([]wireMessage, len(msgs))
-	for i, m := range msgs {
-		wire[i] = h.toWireFor(m, viewerOf(id))
 	}
 	agentJSON(w, http.StatusOK, map[string]any{"messages": wire, "more": more})
 }
@@ -125,14 +117,19 @@ func (h *Hub) agentPost(w http.ResponseWriter, r *http.Request, id mumble.Identi
 	var body struct {
 		Text  string `json:"text"`
 		Reply int64  `json:"reply"`
+		// The same on a retry: the post is stored once (see store.MessageByNonce).
+		Nonce string `json:"nonce"`
 	}
 	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body) != nil {
 		agentError(w, http.StatusBadRequest, "send JSON: {\"text\": ..., \"reply\": message id}")
 		return
 	}
-	var nonce [12]byte
-	rand.Read(nonce[:])
-	req := request{Type: "send", Channel: channel, Text: body.Text, Reply: body.Reply, Nonce: hex.EncodeToString(nonce[:]), bot: true}
+	if body.Nonce == "" {
+		var nonce [12]byte
+		rand.Read(nonce[:])
+		body.Nonce = hex.EncodeToString(nonce[:])
+	}
+	req := request{Type: "send", Channel: channel, Text: body.Text, Reply: body.Reply, Nonce: body.Nonce, bot: true}
 	c := h.Connect()
 	defer c.Close()
 	c.mu.Lock()
@@ -147,9 +144,13 @@ func (h *Hub) agentPost(w http.ResponseWriter, r *http.Request, id mumble.Identi
 	for {
 		select {
 		case raw := <-c.Outbox():
-			var ev struct{ Type, Message string }
+			var ev struct{ Type, Message, About string }
 			if json.Unmarshal(raw, &ev) == nil && ev.Type == "error" {
-				agentError(w, http.StatusBadRequest, ev.Message)
+				code := http.StatusBadRequest
+				if ev.About == "slow-mode" || ev.About == "rate" {
+					code = http.StatusTooManyRequests // back off and try again
+				}
+				agentError(w, code, ev.Message)
 				return
 			}
 		default:
