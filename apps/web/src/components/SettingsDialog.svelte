@@ -26,6 +26,7 @@
   import OidcAccount from "./OidcAccount.svelte";
   import FediAccount from "./FediAccount.svelte";
   import AllowedSites from "./AllowedSites.svelte";
+  import AccessTokens from "./AccessTokens.svelte";
   import QrShowDialog from "./QrShowDialog.svelte";
   import { webGPU } from "../lib/translate/llm";
 
@@ -296,6 +297,7 @@
         <OidcAccount {account} />
         <FediAccount {account} />
         {#if account.sites && !account.temporary}<AllowedSites sites={account.sites} />{/if}
+        {#if account.tokens && !account.temporary}<AccessTokens tokens={account.tokens} />{/if}
         {#if account.qr && !account.temporary}
           <div class="account">
             <span class="label">{t("settings.otherDevice")}</span>

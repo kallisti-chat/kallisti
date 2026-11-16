@@ -329,6 +329,7 @@
     removeStreamKey: () => api.removeStreamKey(),
     // Only on the own site (not the desktop app: see the server's consentSite).
     sites: isDesktop() ? undefined : { list: () => api.allowedSites(), revoke: (redirect) => api.revokeSite(redirect) },
+    tokens: { list: () => api.accessTokens(), make: (name, write) => api.makeAccessToken(name, write), revoke: (id) => api.revokeAccessToken(id) },
     get qr() {
       return qrLogin();
     },

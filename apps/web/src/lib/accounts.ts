@@ -162,6 +162,11 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     // site); one taken back asks again next time.
     allowedSites: async () => ((await call("/api/oauth/grants")) as { sites?: AllowedSite[] }).sites ?? [],
     revokeSite: async (redirect: string) => void (await call("/api/oauth/grants", { redirect }, "DELETE")),
+    // Access tokens for the agent API (programs that read and post as this
+    // account; see docs/agent-api.md). The token itself shows once.
+    accessTokens: async () => ((await call("/api/tokens")) as { tokens?: AccessToken[] }).tokens ?? [],
+    makeAccessToken: async (name: string, write: boolean) => (await call("/api/tokens", { name, write })) as AccessToken & { token: string },
+    revokeAccessToken: async (id: number) => void (await call("/api/tokens", { id }, "DELETE")),
     // A new key (the old one stops working): shown this once.
     newStreamKey: async () => (await call("/api/stream-key", {})).key ?? "",
     removeStreamKey: async () => {
@@ -278,6 +283,8 @@ export const modeForError = (error: string | null): "guest" | "login" =>
 // A site the account allowed (Kallisti as a login provider): its origin,
 // the redirect URI it was allowed for, since when (RFC 3339).
 export type AllowedSite = { site: string; redirect: string; since: string };
+// An access token (agent API): write: may post, else read only.
+export type AccessToken = { id: number; name: string; write: boolean; created: string };
 
 export type AccountActions = {
   temporary: boolean;
@@ -313,6 +320,12 @@ export type AccountActions = {
   // The sites allowed to log in with this account (undefined: not here,
   // only on its home server's own site).
   sites?: { list: () => Promise<AllowedSite[]>; revoke: (redirect: string) => Promise<void> };
+  // Access tokens for the agent API (undefined: not here).
+  tokens?: {
+    list: () => Promise<AccessToken[]>;
+    make: (name: string, write: boolean) => Promise<AccessToken & { token: string }>;
+    revoke: (id: number) => Promise<void>;
+  };
   // Log in on another device with a QR code (see lib/qrLogin): the API,
   // the server's address (in the code), this device's name.
   qr?: QrLogin;
