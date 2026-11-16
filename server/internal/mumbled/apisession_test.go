@@ -16,9 +16,9 @@ func TestAPISessionHasTheUsersRights(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sess, err := s.APISession(r.CertHash)
-	if err != nil {
-		t.Fatal(err)
+	sess, id, err := s.APISession(r.CertHash)
+	if err != nil || id != aliceID {
+		t.Fatal(id, err)
 	}
 	if !s.Sees(sess, 0) || !s.MayWrite(sess, 0) || !s.MayRead(sess, 0) {
 		t.Fatal("no chat rights in root")
@@ -33,7 +33,7 @@ func TestAPISessionHasTheUsersRights(t *testing.T) {
 	if !s.MayManage(sess) {
 		t.Fatal("a moderator's API session cannot manage")
 	}
-	if _, err := s.APISession("no such hash"); err == nil {
+	if _, _, err := s.APISession("no such hash"); err == nil {
 		t.Fatal("an API session for nobody")
 	}
 }

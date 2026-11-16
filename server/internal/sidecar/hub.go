@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
@@ -294,6 +295,10 @@ type Hub struct {
 	LiveStreams func() []LiveStream
 	// Channel recordings (built-in server; nil: none).
 	Recorder Recorder
+	// Agent: a request's access token as an identity (an API session, see
+	// agent.go) and whether it may write; false: no valid token.
+	Agent       func(r *http.Request) (id mumble.Identity, write, ok bool)
+	agentLimits agentLimits
 	// SaveFile stores a picture from a Mumble message as an upload.
 	SaveFile func(author, name, ctype string, data []byte) (store.Upload, error)
 	// OnHomesChanged runs after admins changed which home servers' accounts

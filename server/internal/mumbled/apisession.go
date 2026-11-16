@@ -9,20 +9,20 @@ const apiSessionBit = 1 << 31
 
 // APISession is the API session of the registration with this certificate
 // hash (a Kallisti account's), for the chat checks (Sees, MayRead,
-// MayWrite, MayManage, CheckMessage).
-func (s *Server) APISession(certHash string) (uint32, error) {
+// MayWrite, MayManage, CheckMessage), and the registration's id.
+func (s *Server) APISession(certHash string) (session, userID uint32, err error) {
 	if s.cfg.DB == nil || certHash == "" {
-		return 0, errors.New("no registration")
+		return 0, 0, errors.New("no registration")
 	}
 	r, err := s.cfg.DB.UserByHash(certHash)
 	if err != nil || r == nil {
-		return 0, errors.New("no registration: connect once with the account")
+		return 0, 0, errors.New("no registration: connect once with the account")
 	}
-	session := apiSessionBit | r.ID
+	session = apiSessionBit | r.ID
 	s.mu.Lock()
 	s.apiUsers[session] = r
 	s.mu.Unlock()
-	return session, nil
+	return session, r.ID, nil
 }
 
 // userLocked is a session's user: online, or an API session's registered

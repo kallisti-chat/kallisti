@@ -233,6 +233,7 @@ func run() error {
 		}
 		accounts.ServerName = mumble.srv.ServerName
 		accounts.EndPasswordLogins = func(acc store.Account) { mumble.srv.EndPasswordLogins(accountCertHash(acc)) }
+		hub.Agent = agentIdentity(accounts, mumble.srv)
 		accounts.SetAvatar = func(acc store.Account, avatar []byte, onlyIfNone bool) {
 			if _, err := mumble.srv.SetAccountAvatar(acc.Name, accountCertHash(acc), avatar, onlyIfNone); err != nil {
 				slog.Error("set an account's avatar", "account", acc.Name, "err", err)
@@ -296,6 +297,7 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.Handle("/api/upload", fileHandler)
 	mux.HandleFunc("/api/webhooks/", hub.ServeWebhook) // see sidecar/webhookpost.go
+	mux.HandleFunc("/api/agent/", hub.ServeAgent)      // see sidecar/agent.go
 	for _, path := range auth.Paths {
 		mux.Handle(path, accounts)
 	}
