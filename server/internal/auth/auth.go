@@ -233,7 +233,7 @@ type credentials struct {
 }
 
 // Paths: what ServeHTTP answers (for the server's router).
-var Paths = []string{"/api/server", "/api/challenge", "/api/accounts", "/api/guest", "/api/login", "/api/logout", "/api/logout-all", "/api/password", "/api/recover", "/api/me", "/api/servers", "/api/friends", "/api/stream-key", "/api/fedi", "/api/fedi/",
+var Paths = []string{"/api/server", "/api/challenge", "/api/accounts", "/api/guest", "/api/login", "/api/logout", "/api/logout-all", "/api/password", "/api/recover", "/api/tokens", "/api/me", "/api/servers", "/api/friends", "/api/stream-key", "/api/fedi", "/api/fedi/",
 	"/api/oidc", "/api/oidc/", "/api/v1/", "/oauth/", "/.well-known/webfinger", "/api/oauth/", "/api/qr/"}
 
 func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -304,6 +304,8 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.changePassword(w, r)
 	case r.URL.Path == "/api/recover" && r.Method == http.MethodPost:
 		a.recover(w, r)
+	case r.URL.Path == "/api/tokens":
+		a.apiTokens(w, r)
 	case r.URL.Path == "/api/qr/start" && r.Method == http.MethodPost:
 		a.qrStart(w, r)
 	case r.URL.Path == "/api/qr/scan" && r.Method == http.MethodPost:
@@ -447,6 +449,11 @@ func (a *Service) endLogins(acc store.Account, keep string, end func() error) er
 		return err
 	}
 	a.revoke(func(id int64, session string) bool { return id == acc.ID && (keep == "" || session != keep) })
+	// Access tokens too: after a recovery or a password change none made
+	// with the old login may stay.
+	if err := a.Store.DeleteAPITokens(acc.ID); err != nil {
+		slog.Error("end access tokens", "account", acc.Name, "err", err)
+	}
 	a.endStreamKey(acc)
 	a.endPasswordLogins(acc)
 	return nil
