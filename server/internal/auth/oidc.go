@@ -438,7 +438,7 @@ func (a *Service) oidcUnlink(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if a.OIDC != nil {
-			a.OIDC.proofs.take(keep, a.Now())
+			a.OIDC.proofs.drop(keep)
 		}
 		return nil
 	}); err != nil {

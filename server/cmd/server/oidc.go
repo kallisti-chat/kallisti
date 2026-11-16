@@ -28,7 +28,7 @@ func oidcLogin(cfg *config.OIDC) (*auth.OIDCLogin, error) {
 		}
 		secret = strings.TrimRight(string(b), "\r\n")
 	}
-	if secret == "" {
+	if strings.TrimSpace(secret) == "" {
 		return nil, errors.New("OIDC client secret is empty")
 	}
 	login, err := auth.NewOIDCLogin(cfg.Issuer, cfg.ClientID, secret, cfg.RedirectURL, cfg.Name)

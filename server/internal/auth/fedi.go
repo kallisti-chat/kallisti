@@ -172,6 +172,13 @@ func (p *proofs[T]) put(session string, v T, now time.Time) bool {
 	return true
 }
 
+// drop ends the session's proof (unused).
+func (p *proofs[T]) drop(session string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.m, session)
+}
+
 // take uses up the session's proof, if valid.
 func (p *proofs[T]) take(session string, now time.Time) (T, bool) {
 	p.mu.Lock()

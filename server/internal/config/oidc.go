@@ -22,7 +22,7 @@ func parseOIDC(getenv func(string) string, origins []string) (*OIDC, error) {
 	if *c == (OIDC{}) {
 		return nil, nil
 	}
-	if c.Issuer == "" || c.ClientID == "" || (c.ClientSecret == "" && c.ClientSecretFile == "") {
+	if c.Issuer == "" || strings.TrimSpace(c.ClientID) == "" || (strings.TrimSpace(c.ClientSecret) == "" && c.ClientSecretFile == "") {
 		return nil, errors.New("OIDC requires OIDC_ISSUER, OIDC_CLIENT_ID, and OIDC_CLIENT_SECRET or OIDC_CLIENT_SECRET_FILE")
 	}
 	if c.ClientSecret != "" && c.ClientSecretFile != "" {
