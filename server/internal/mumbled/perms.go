@@ -519,7 +519,7 @@ func (s *Server) registeredLocked(r *Registered) *User {
 			return u
 		}
 	}
-	return &User{Registered: true, UserID: r.ID, Hash: r.CertHash}
+	return &User{Registered: true, UserID: r.ID, Hash: r.CertHash, Since: r.Since}
 }
 
 // registrationChangedLocked updates an online user after a rename (name

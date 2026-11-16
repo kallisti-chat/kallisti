@@ -55,7 +55,7 @@ func (s *Server) SetGuestsReadOnly(actor uint32, on bool) error {
 func (s *Server) ReadOnly(session uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.readOnly(u)
 }
 

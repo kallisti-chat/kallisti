@@ -62,6 +62,8 @@ func (s *Server) SendChannelText(from, channel uint32, text string) {
 		msg.Actor = proto.Uint32(actor)
 	} else if u := s.state.Users[from]; u != nil {
 		msg.Actor, msg.Message = nil, proto.String(mumbleHTML(u.Name+": "+text))
+	} else if r := s.apiUsers[from]; r != nil { // the agent API: no session to name
+		msg.Actor, msg.Message = nil, proto.String(mumbleHTML(r.Name+": "+text))
 	} else if from == 0 {
 		msg.Actor = nil
 	}

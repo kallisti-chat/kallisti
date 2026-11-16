@@ -264,7 +264,7 @@ func (s *Server) timedOutInLocked(u *User, channel uint32) (time.Time, bool) {
 func (s *Server) TimedOut(session uint32) (time.Time, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if u := s.state.Users[session]; u != nil {
+	if u := s.userLocked(session); u != nil {
 		return s.timedOutLocked(u)
 	}
 	return time.Time{}, false
@@ -275,7 +275,7 @@ func (s *Server) TimedOut(session uint32) (time.Time, bool) {
 func (s *Server) ChannelTimedOut(session, channel uint32) (time.Time, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if u := s.state.Users[session]; u != nil {
+	if u := s.userLocked(session); u != nil {
 		return s.timedOutInLocked(u, channel)
 	}
 	return time.Time{}, false
