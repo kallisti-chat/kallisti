@@ -34,4 +34,3 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)
-- [ ] [Agent API: read, post and reply with an access token](issues/agent-api.md)
