@@ -3065,3 +3065,13 @@ An account without a usable login was lost: a forgotten password, or (with #28) 
 From the reviews (subagent, Astra): open links go when roles change (a link for a user promoted meanwhile); a login that checked a password replaced meanwhile gets no session (`CreateSessionChecked`: a recovery or change ended the sessions before it, and an attacker with the old password could otherwise keep one); a recovery link opened in a logged-in browser shows its form instead of connecting. Left: the provider's 10-minute identity tokens stay valid after a recovery (they cannot be renewed without a session).
 
 Checked in headless Chromium: link made as SuperUser, password set through the page (also in a browser still logged in), second use 404, other sessions ended, new password works.
+
+## 2026-11-16: OIDC login (#28) merged
+
+cortexobscura's #28 (GitHub #26): one operator-configured OpenID Connect provider beside password, guest and Fediverse logins (see docs/oidc.md). The review found no blocker; we fixed the points ourselves:
+- A first password needs a fresh proof from a linked login that works here now; else an admin's recovery link (the PR let Fedi-off accounts set one without proof).
+- Settings checked once (config); Fedi and OIDC share one-time proofs and flow cookies; a second link is refused before the provider; unlinking without a link says so; unlinking Fedi counts only a working OIDC login as another way in (a removed or changed provider is none).
+- No Makefile: CI checks gofmt instead. The captcha worker fix and the voice diagnostics came to main earlier.
+- Docs: accounts that lose their provider need a recovery link.
+
+Live check against Dex (podman, both sides over HTTPS through eosrift): signup, returning login, and the recovery link for the OIDC-only account (then unlinking Dex with the new password). Dex sends no `auth_time`, so its first-password reauth fails closed, as documented for Pocket ID before 2.10. Reviews: subagent and Astra (one should-fix, the unlink rule, fixed).
