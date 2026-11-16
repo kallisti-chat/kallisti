@@ -774,6 +774,14 @@ func (c *Conn) Handle(raw []byte) {
 		c.overLimit(*id, req)
 		return
 	}
+	c.dispatch(*id, req)
+}
+
+// dispatch answers a request of a ready user (Handle), or of the agent API
+// (agent.go): the same gates for both (read-only guests, message rules,
+// time-outs, the channel's rights).
+func (c *Conn) dispatch(user mumble.Identity, req request) {
+	id := &user
 	if c.readOnly(*id, req) || (req.Type != "send" && c.refused(*id, &req)) {
 		return
 	}

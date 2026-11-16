@@ -118,10 +118,10 @@ func (h *Hub) agentHistory(w http.ResponseWriter, r *http.Request, id mumble.Ide
 	agentJSON(w, http.StatusOK, map[string]any{"messages": wire, "more": more})
 }
 
-// agentPost sends through Conn.post (rules, slow mode, time-outs, delivery)
+// agentPost sends through Conn.dispatch (the client's gates and delivery)
 // on a connection of its own that never gets ready: it receives only its
 // own answers.
-func (h *Hub) agentPost(w http.ResponseWriter, r *http.Request, id mumble.Identity, ch chat, channel int64) {
+func (h *Hub) agentPost(w http.ResponseWriter, r *http.Request, id mumble.Identity, channel int64) {
 	var body struct {
 		Text  string `json:"text"`
 		Reply int64  `json:"reply"`
@@ -138,7 +138,7 @@ func (h *Hub) agentPost(w http.ResponseWriter, r *http.Request, id mumble.Identi
 	c.mu.Lock()
 	c.identity = &id
 	c.mu.Unlock()
-	c.post(id, req, ch)
+	c.dispatch(id, req)
 	m, err := h.store.MessageByNonce(store.NewMessage{ChannelID: channel, Author: id.Name, Verified: id.Registered, AuthorID: id.UserID, Nonce: req.Nonce, At: h.now()})
 	if err == nil {
 		agentJSON(w, http.StatusCreated, map[string]any{"message": h.toWireFor(m, viewerOf(id))})

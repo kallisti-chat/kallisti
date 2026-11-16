@@ -92,3 +92,14 @@ func TestAgentAPI(t *testing.T) {
 		t.Fatalf("unknown channel: %d", code)
 	}
 }
+
+// A token posts through the client's gates: here read-only guests.
+func TestAgentPostsThroughTheGates(t *testing.T) {
+	h := newHub(t, "general")
+	h.SetVoice(&fakeVoice{guests: map[uint32]bool{5: true}, guestsReadOnly: true}, "")
+	srv := agentServer(t, h)
+	path := fmt.Sprintf("/api/agent/channels/%d/messages", h.channels[0].ID)
+	if code, v := agentCall(t, srv, "POST", path, "w", map[string]any{"text": "hi"}); code != http.StatusBadRequest {
+		t.Fatalf("read-only guest posted: %d %v", code, v)
+	}
+}
