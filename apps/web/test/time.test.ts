@@ -65,6 +65,11 @@ describe("groupMessages across midnight", () => {
     const hook = (t: number): DisplayMessage => ({ ...msg(1, t), webhook: 3 });
     expect(groupMessages([msg(1, t), hook(t + 1000), hook(t + 2000)])).toHaveLength(2);
   });
+  it("keeps a token's posts apart from the account's own (the Bot badge is the header's)", () => {
+    const t = at(2026, 10, 14, 12, 0);
+    const bot = (t: number): DisplayMessage => ({ ...msg(1, t), bot: true });
+    expect(groupMessages([bot(t), bot(t + 1000), msg(1, t + 2000)])).toHaveLength(2);
+  });
 });
 
 describe("chatItems", () => {
