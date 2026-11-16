@@ -38,8 +38,9 @@ func TestAPITokens(t *testing.T) {
 	cookie := sessionCookie(resp)
 
 	code, v := call2(t, srv, "POST", "/api/tokens", map[string]any{"name": "agent", "write": true}, cookie, "")
-	token, _ := v["token"].(string)
-	if code != http.StatusCreated || len(token) < 40 {
+	// Not "token": the desktop app keeps a "token" as its login session.
+	token, _ := v["accessToken"].(string)
+	if code != http.StatusCreated || len(token) < 40 || v["token"] != nil {
 		t.Fatalf("create: %d %v", code, v)
 	}
 	r := httptest.NewRequest("GET", "/api/agent/channels", nil)
@@ -67,7 +68,7 @@ func TestAPITokens(t *testing.T) {
 	}
 
 	_, v = call2(t, srv, "POST", "/api/tokens", map[string]any{"name": "again"}, cookie, "")
-	r.Header.Set("Authorization", "Bearer "+v["token"].(string))
+	r.Header.Set("Authorization", "Bearer "+v["accessToken"].(string))
 	if _, write, ok := a.APIAccount(r); !ok || write {
 		t.Fatalf("read token: %v %v", write, ok)
 	}

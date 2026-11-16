@@ -28,19 +28,40 @@ type APIToken struct {
 	Created time.Time `json:"created"`
 }
 
-// CreateAPIToken: at most maxAPITokens per account (ErrTooManyTokens).
-func (s *Store) CreateAPIToken(accountID int64, name, tokenHash string, write bool, now time.Time) (APIToken, error) {
-	res, err := s.db.Exec(`INSERT INTO api_tokens (account_id, name, token_hash, write, created_at)
-		SELECT ?, ?, ?, ?, ? WHERE (SELECT count(*) FROM api_tokens WHERE account_id = ?) < ?`,
-		accountID, name, tokenHash, write, now.UnixMilli(), accountID, maxAPITokens)
+// CreateAPIToken: only while the making session is valid (a recovery or a
+// log out everywhere meanwhile: ErrNotFound), at most maxAPITokens per
+// account (ErrTooManyTokens).
+func (s *Store) CreateAPIToken(accountID int64, session, name, tokenHash string, write bool, now time.Time) (APIToken, error) {
+	tx, err := s.db.Begin()
 	if err != nil {
 		return APIToken{}, err
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
+	defer tx.Rollback()
+	var valid bool
+	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM sessions WHERE token_hash = ? AND account_id = ? AND expires_at > ?)`,
+		session, accountID, now.UnixMilli()).Scan(&valid); err != nil {
+		return APIToken{}, err
+	}
+	if !valid {
+		return APIToken{}, ErrNotFound
+	}
+	var n int
+	if err := tx.QueryRow(`SELECT count(*) FROM api_tokens WHERE account_id = ?`, accountID).Scan(&n); err != nil {
+		return APIToken{}, err
+	}
+	if n >= maxAPITokens {
 		return APIToken{}, ErrTooManyTokens
 	}
+	res, err := tx.Exec(`INSERT INTO api_tokens (account_id, name, token_hash, write, created_at) VALUES (?, ?, ?, ?, ?)`,
+		accountID, name, tokenHash, write, now.UnixMilli())
+	if err != nil {
+		return APIToken{}, err
+	}
 	id, err := res.LastInsertId()
-	return APIToken{ID: id, Name: name, Write: write, Created: now.UTC()}, err
+	if err != nil {
+		return APIToken{}, err
+	}
+	return APIToken{ID: id, Name: name, Write: write, Created: now.UTC()}, tx.Commit()
 }
 
 // APITokens are an account's tokens, oldest first.

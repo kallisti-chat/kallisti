@@ -65,9 +65,13 @@ func (a *Service) apiTokens(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		token := apiTokenPrefix + randomHex(32)
-		t, err := a.Store.CreateAPIToken(acc.ID, name, tokenHash(token), c.Write, a.Now())
+		t, err := a.Store.CreateAPIToken(acc.ID, a.SessionKey(r), name, tokenHash(token), c.Write, a.Now())
 		if errors.Is(err, store.ErrTooManyTokens) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "too many tokens: revoke one first"})
+			return
+		}
+		if errors.Is(err, store.ErrNotFound) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "the session ended meanwhile"})
 			return
 		}
 		if err != nil {
@@ -75,7 +79,8 @@ func (a *Service) apiTokens(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.Info("access token made", "account", acc.Name, "token", t.ID, "write", t.Write)
-		writeJSON(w, http.StatusCreated, map[string]any{"token": token, "id": t.ID, "name": t.Name, "write": t.Write, "created": t.Created})
+		// Not "token": the desktop app keeps that as its login session.
+		writeJSON(w, http.StatusCreated, map[string]any{"accessToken": token, "id": t.ID, "name": t.Name, "write": t.Write, "created": t.Created})
 	case http.MethodDelete:
 		if err := a.Store.DeleteAPIToken(acc.ID, c.ID); err != nil {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such token"})

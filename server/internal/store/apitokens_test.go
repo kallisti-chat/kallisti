@@ -12,11 +12,18 @@ func TestAPITokens(t *testing.T) {
 	acc, _ := s.CreateAccount(Account{Name: "alice", PasswordHash: "x", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
 	bob, _ := s.CreateAccount(Account{Name: "bob", PasswordHash: "x", CertPEM: []byte("c2"), KeyPEM: []byte("k2")}, now, "")
 
-	tok, err := s.CreateAPIToken(acc.ID, "my agent", "hash1", true, now)
+	s.CreateSession("sa", acc.ID, now.Add(time.Hour))
+	s.CreateSession("sb", bob.ID, now.Add(time.Hour))
+	// Only with a session that is still valid (a recovery may end it while
+	// the request is under way).
+	if _, err := s.CreateAPIToken(acc.ID, "gone", "x", "hash0", true, now); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("without the session: %v", err)
+	}
+	tok, err := s.CreateAPIToken(acc.ID, "sa", "my agent", "hash1", true, now)
 	if err != nil || tok.Name != "my agent" || !tok.Write {
 		t.Fatalf("create: %+v %v", tok, err)
 	}
-	s.CreateAPIToken(acc.ID, "reader", "hash2", false, now)
+	s.CreateAPIToken(acc.ID, "sa", "reader", "hash2", false, now)
 	if got, w, err := s.AccountByAPIToken("hash1"); err != nil || got.ID != acc.ID || !w {
 		t.Fatalf("lookup: %v %v %v", got.Name, w, err)
 	}
@@ -42,11 +49,11 @@ func TestAPITokens(t *testing.T) {
 	}
 	// At most maxAPITokens per account.
 	for i := range maxAPITokens {
-		if _, err := s.CreateAPIToken(bob.ID, "t", "b"+string(rune('a'+i)), false, now); err != nil {
+		if _, err := s.CreateAPIToken(bob.ID, "sb", "t", "b"+string(rune('a'+i)), false, now); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := s.CreateAPIToken(bob.ID, "one more", "bz", false, now); !errors.Is(err, ErrTooManyTokens) {
+	if _, err := s.CreateAPIToken(bob.ID, "sb", "one more", "bz", false, now); !errors.Is(err, ErrTooManyTokens) {
 		t.Fatalf("over the limit: %v", err)
 	}
 }

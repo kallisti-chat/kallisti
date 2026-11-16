@@ -165,7 +165,7 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
     // Access tokens for the agent API (programs that read and post as this
     // account; see docs/agent-api.md). The token itself shows once.
     accessTokens: async () => ((await call("/api/tokens")) as { tokens?: AccessToken[] }).tokens ?? [],
-    makeAccessToken: async (name: string, write: boolean) => (await call("/api/tokens", { name, write })) as AccessToken & { token: string },
+    makeAccessToken: async (name: string, write: boolean) => (await call("/api/tokens", { name, write })) as unknown as AccessToken & { accessToken: string },
     revokeAccessToken: async (id: number) => void (await call("/api/tokens", { id }, "DELETE")),
     // A new key (the old one stops working): shown this once.
     newStreamKey: async () => (await call("/api/stream-key", {})).key ?? "",
@@ -323,7 +323,7 @@ export type AccountActions = {
   // Access tokens for the agent API (undefined: not here).
   tokens?: {
     list: () => Promise<AccessToken[]>;
-    make: (name: string, write: boolean) => Promise<AccessToken & { token: string }>;
+    make: (name: string, write: boolean) => Promise<AccessToken & { accessToken: string }>;
     revoke: (id: number) => Promise<void>;
   };
   // Log in on another device with a QR code (see lib/qrLogin): the API,

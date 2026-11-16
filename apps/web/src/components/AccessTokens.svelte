@@ -37,9 +37,9 @@
   const make = (event: SubmitEvent) => {
     event.preventDefault();
     void run(async () => {
-      const { token, ...entry } = await tokens.make(name.trim(), write);
+      const { accessToken, ...entry } = await tokens.make(name.trim(), write);
       list = [...list, entry];
-      made = { token, copied: false };
+      made = { token: accessToken, copied: false };
       name = "";
       write = false;
     });
