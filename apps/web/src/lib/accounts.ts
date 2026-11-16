@@ -3,6 +3,7 @@
 // development). The desktop app (session given) cannot use the cookie (it
 // is third-party there): it keeps the server's token and sends it.
 import type { Challenge, Proof } from "./captcha";
+import type { OidcLink, OidcProvider } from "./oidc";
 import type { FediLink } from "./fedi";
 import { type SavedServer, savedServers } from "./serverList";
 import { parseFriends, type Friend } from "./friends";
@@ -13,7 +14,7 @@ import { t } from "./i18n.svelte";
 // with a fediverse login, no password yet (undefined: not known). fedi:
 // the linked fediverse account.
 // session: a short name of this login (see the server's sessionID).
-export type Account = { name: string; temporary: boolean; password?: boolean; fedi?: FediLink | null; session?: string };
+export type Account = { name: string; temporary: boolean; password?: boolean; fedi?: FediLink | null; oidc?: OidcLink | null; session?: string };
 
 // An answer the server refused, with its status.
 class ApiError extends Error {
@@ -41,7 +42,7 @@ export const memoryStore = (token: string | null = null): SessionStore => ({ get
 
 export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, session?: SessionStore) => {
   type Answer = Partial<QrStart> & { state?: string; claim?: string; device?: string } & { name?: string; mumble?: boolean; temporary?: boolean; token?: string } & Partial<Challenge> &
-    Partial<StreamKey> & { key?: string; url?: string; handle?: string; password?: boolean; fedi?: FediLink; session?: string };
+    Partial<StreamKey> & { key?: string; url?: string; handle?: string; password?: boolean; fedi?: FediLink; oidc?: OidcLink; session?: string };
   const clearIf = (token: string | null | undefined) => {
     if (session && session.get() === token) session.set(null);
   };
@@ -70,7 +71,7 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
   const check = async (): Promise<Account | null | "unknown"> => {
     try {
       const data = await call("/api/me");
-      return data.name ? { name: data.name, temporary: data.temporary === true, password: data.password, fedi: data.fedi, session: data.session } : null;
+      return data.name ? { name: data.name, temporary: data.temporary === true, password: data.password, fedi: data.fedi, oidc: data.oidc, session: data.session } : null;
     } catch (err) {
       return err instanceof ApiError && err.status === 401 ? null : "unknown";
     }
@@ -182,6 +183,23 @@ export const createAccountsApi = (base: string, fetchFn: typeof fetch = fetch, s
         ...(port !== null && { udpPort: port }),
       };
     },
+    // a single administrator-configured identity provider; older servers have none.
+    oidcProvider: async (): Promise<OidcProvider> => {
+      const data = await call("/api/oidc").catch(() => ({})) as { enabled?: boolean; name?: string };
+      return { enabled: data.enabled === true, name: typeof data.name === "string" && data.name ? data.name : "OpenID Connect" };
+    },
+    oidcStart: async (mode: "login" | "link" | "reauth" = "login", password?: string) => {
+      const { url } = await call("/api/oidc/start", { mode, ...(password !== undefined && { password }) });
+      if (!url) throw new Error(t("login.noAnswer"));
+      return url;
+    },
+    oidcSignup: async (): Promise<{ name: string; provider: string } | null> => {
+      const data = await call("/api/oidc/signup").catch(() => null) as { name?: string; provider?: string } | null;
+      return data ? { name: data.name ?? "", provider: data.provider ?? "OpenID Connect" } : null;
+    },
+    oidcCreate: async (name: string, proof?: Proof, invite?: string) =>
+      (await call("/api/oidc/signup", { name, ...proof, ...(invite && { invite }) })).name ?? name,
+    oidcUnlink: async (password: string) => void await call("/api/oidc/link", { password }, "DELETE"),
     // Fediverse logins (see lib/fedi): on for this server?
     fediEnabled: async () => (await call("/api/fedi").catch(() => ({}) as Answer & { enabled?: boolean })).enabled === true,
     // The instance's page to go to, for a login (or a link: with the
@@ -284,6 +302,14 @@ export type AccountActions = {
   // A fresh login with the linked account (goes to the instance, and back
   // to the settings), needed for the first password.
   fediReauth: () => Promise<void>;
+  // identity-provider settings are available on the home server's web app.
+  oidc?: {
+    linked: OidcLink | null;
+    provider: () => Promise<OidcProvider>;
+    link: (password: string) => Promise<void>;
+    unlink: (password: string) => Promise<void>;
+    reauth: () => Promise<void>;
+  };
   // The sites allowed to log in with this account (undefined: not here,
   // only on its home server's own site).
   sites?: { list: () => Promise<AllowedSite[]>; revoke: (redirect: string) => Promise<void> };

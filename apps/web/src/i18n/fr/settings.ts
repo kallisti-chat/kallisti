@@ -2,6 +2,13 @@ import type en from "../en/settings";
 import type { Translation } from "../types";
 
 export default {
+  "settings.oidcAccount": "Fournisseur d'identité",
+  "settings.oidcLinkHint": "Confirmez votre mot de passe actuel pour lier votre compte auprès du fournisseur d'identité.",
+  "settings.oidcLink": "Lier {provider}",
+  "settings.oidcUnlink": "Dissocier {provider}",
+  "settings.oidcPasswordFirst": "Définissez un mot de passe avant de lier ou de dissocier un fournisseur d'identité.",
+  "settings.oidcOnlyHint": "Vous vous connectez avec votre fournisseur d'identité. Confirmez cette connexion avant de définir votre premier mot de passe.",
+  "settings.oidcUnavailable": "Ce fournisseur de connexion est indisponible. Demandez à l'administrateur du serveur de le rétablir.",
   "settings.language": "Langue",
   "settings.languageAuto": "Comme le navigateur",
   "settings.translationIntro": "Les messages sont traduits sur cet appareil. Ils ne sont envoyés à aucun service de traduction.",

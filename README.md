@@ -67,6 +67,7 @@ of building it, Compose can pull the published image
 - [Installing without containers](docs/install-binary.md) (the program,
   systemd, Caddy)
 - [Configuration](docs/configuration.md): all settings
+- [OpenID Connect login](docs/oidc.md): optional identity provider setup
 - [Updating](docs/updating.md), with upgrade notes
 - [Backups](docs/backups.md)
 - [Moving from Murmur](docs/migrating-from-murmur.md): channels, users,

@@ -1,6 +1,13 @@
 import type { Messages } from "../../lib/i18n";
 
 export default {
+  "settings.oidcAccount": "Identity provider",
+  "settings.oidcUnavailable": "This login provider is unavailable. Ask the server administrator to restore it.",
+  "settings.oidcLinkHint": "Confirm your current password to link your identity provider account.",
+  "settings.oidcLink": "Link {provider}",
+  "settings.oidcUnlink": "Unlink {provider}",
+  "settings.oidcPasswordFirst": "Set a password before linking or unlinking an identity provider.",
+  "settings.oidcOnlyHint": "You log in with your identity provider. Confirm that login before setting your first password.",
   "settings.language": "Language",
   "settings.languageAuto": "As the browser",
   "settings.translationIntro": "Messages are translated on this device. They are not sent to any translation service.",

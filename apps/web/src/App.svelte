@@ -54,6 +54,7 @@
   import { swapContext } from "./lib/voice/restart";
   import { settings } from "./lib/settings.svelte";
   import { themeOf } from "./lib/settings";
+  import { oidcResult, withoutOidcResult } from "./lib/oidc";
   import { fediResult, reauthInstance, withoutFediResult } from "./lib/fedi";
   import Toast from "./components/Toast.svelte";
 
@@ -147,6 +148,7 @@
   let loginNote = $state<string | null>(null);
   // Back from a fediverse login (see lib/fedi): its result, once (a reload
   // must not show it again).
+  const oidcBack = isDesktop() ? null : oidcResult(location.search);
   const fediBack = isDesktop() ? null : fediResult(location.search);
   // Another server asks who you are (see Authorize): after the login here.
   // (authorizeQuery: read after a kept address is restored, below.)
@@ -181,16 +183,18 @@
   const restore = !explicit && /^\/(invite\/|\?(join|authorize)=)/.test(keptInvite ?? "") ? keptInvite : null;
   if (restore) history.replaceState(history.state, "", restore);
   else if (fediBack) history.replaceState(history.state, "", withoutFediResult(location.pathname + location.search + location.hash));
+  if (!restore && oidcBack) history.replaceState(history.state, "", withoutOidcResult(location.pathname + location.search + location.hash));
   const authorizeQuery = isDesktop() ? null : new URLSearchParams(location.search).get("authorize");
   // A login code opened (a phone's camera, see lib/qrLogin): answered over
   // whatever shows, the address cleaned.
   const openedCode = isDesktop() ? null : (parseQrLink(location.href)?.token ?? null);
   if (openedCode) history.replaceState(history.state, "", "/");
   let qrToken = $state(openedCode);
+  let oidcSignup = $state(oidcBack?.kind === "register");
   let fediSignup = $state(fediBack?.kind === "register" || popup.resumed);
   let fediNotice = $state<string | null>(null);
   // Back from a fresh login for the first password: to the settings again.
-  let reopenSettings = $state(fediBack?.kind === "reauth");
+  let reopenSettings = $state(fediBack?.kind === "reauth" || oidcBack?.kind === "reauth" || oidcBack?.kind === "linked");
   if (!isDesktop())
     void untrack(() => api)
       .check()
@@ -204,7 +208,11 @@
         const acc = answer === "unknown" ? null : answer;
         // Logged in: a notice over the app (and no name step); else errors
         // on the login screen.
-        if (acc) fediSignup = false;
+        if (acc) { fediSignup = false; oidcSignup = false; }
+        if (oidcBack && "text" in oidcBack) {
+          if (acc) fediNotice = oidcBack.text;
+          else if (oidcBack.kind === "error") loginNote = oidcBack.text;
+        }
         if (fediBack && "text" in fediBack) {
           if (acc) fediNotice = fediBack.text;
           else if (fediBack.kind === "error") loginNote = fediBack.text;
@@ -302,6 +310,16 @@
     fediReauth: async () => {
       if (!account?.fedi) return;
       location.assign(await api.fediReauth(reauthInstance(account.fedi.handle, safeGet(localStore(), "fediInstance")))); // back with ?fedi=reauth
+    },
+    oidc: isDesktop() ? undefined : {
+      get linked() { return account?.oidc ?? null; },
+      provider: () => api.oidcProvider(),
+      link: async (password) => { location.assign(await api.oidcStart("link", password)); },
+      unlink: async (password) => {
+        await api.oidcUnlink(password);
+        if (account) account = { ...account, oidc: null };
+      },
+      reauth: async () => { location.assign(await api.oidcStart("reauth")); },
     },
     get whipUrl() {
       return api.whipUrl;
@@ -845,6 +863,8 @@
         }}
         onConnect={start}
         onScan={qrLogin().scan}
+        {oidcSignup}
+        onOidcSignupDone={() => (oidcSignup = false)}
         {fediSignup}
         onFediSignupDone={() => (connectHome ? window.close() : (fediSignup = false))}
         onHandoff={() => (connectPhase = "deliver")}

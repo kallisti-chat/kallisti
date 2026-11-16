@@ -2,6 +2,15 @@ import type { Messages } from "../../lib/i18n";
 
 // The login screens, adding servers, QR logins, invites.
 export default {
+  "login.oidcContinue": "Continue with {provider}",
+  "login.oidcChooseName": "Choose a name for your account on this server. You will log in with {provider}.",
+  "login.oidcExpired": "This login expired. Please start again.",
+  "login.oidcDenied": "The login was not approved. Please try again.",
+  "login.oidcTaken": "This identity is already linked to another account.",
+  "login.oidcOther": "Please confirm with the identity linked to this account.",
+  "login.oidcLinked": "Identity provider linked: you can log in with it now.",
+  "login.oidcFailed": "The identity provider login did not work. Please try again.",
+  "login.oidcStorage": "Allow session storage to keep your invitation during login.",
   // Login: tabs and buttons
   "login.modeLogin": "Log in",
   "login.modeCreate": "Create account",

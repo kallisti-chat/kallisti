@@ -2,6 +2,15 @@ import type en from "../en/login";
 import type { Translation } from "../types";
 
 export default {
+  "login.oidcContinue": "使用 {provider} 继续",
+  "login.oidcChooseName": "为你在此服务器上的账号选择一个名称。你将使用 {provider} 登录。",
+  "login.oidcExpired": "此次登录已过期，请重新开始。",
+  "login.oidcDenied": "登录未获批准，请重试。",
+  "login.oidcTaken": "此身份已关联到另一个账号。",
+  "login.oidcOther": "请使用与此账号关联的身份进行确认。",
+  "login.oidcLinked": "身份提供商已关联：现在可以用它登录。",
+  "login.oidcFailed": "通过身份提供商登录失败，请重试。",
+  "login.oidcStorage": "请允许会话存储，以便在登录期间保留你的邀请信息。",
   "login.modeLogin": "登录",
   "login.modeCreate": "创建账号",
   "login.modeGuest": "访客",

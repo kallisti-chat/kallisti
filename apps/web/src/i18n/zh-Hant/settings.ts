@@ -2,6 +2,13 @@ import type en from "../en/settings";
 import type { Translation } from "../types";
 
 export default {
+  "settings.oidcAccount": "身分提供者",
+  "settings.oidcLinkHint": "請確認目前的密碼，以連結你的身分提供者帳號。",
+  "settings.oidcLink": "連結 {provider}",
+  "settings.oidcUnlink": "取消連結 {provider}",
+  "settings.oidcPasswordFirst": "請先設定密碼，再連結或取消連結身分提供者。",
+  "settings.oidcOnlyHint": "你使用身分提供者登入。首次設定密碼前，請確認該登入。",
+  "settings.oidcUnavailable": "此登入提供者無法使用。請聯絡伺服器管理員恢復。",
   "settings.language": "語言",
   "settings.languageAuto": "與瀏覽器相同",
   "settings.translationIntro": "訊息在此裝置上翻譯，不會傳送給任何翻譯服務。",

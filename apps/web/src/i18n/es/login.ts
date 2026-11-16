@@ -2,6 +2,15 @@ import type en from "../en/login";
 import type { Translation } from "../types";
 
 export default {
+  "login.oidcContinue": "Continuar con {provider}",
+  "login.oidcChooseName": "Elige un nombre para tu cuenta en este servidor. Iniciarás sesión con {provider}.",
+  "login.oidcExpired": "Este inicio de sesión ha caducado. Vuelve a empezar.",
+  "login.oidcDenied": "No se aprobó el inicio de sesión. Inténtalo de nuevo.",
+  "login.oidcTaken": "Esta identidad ya está vinculada a otra cuenta.",
+  "login.oidcOther": "Confirma con la identidad vinculada a esta cuenta.",
+  "login.oidcLinked": "Proveedor de identidad vinculado: ya puedes iniciar sesión con él.",
+  "login.oidcFailed": "El inicio de sesión con el proveedor de identidad no funcionó. Inténtalo de nuevo.",
+  "login.oidcStorage": "Permite el almacenamiento de sesión para conservar tu invitación durante el inicio de sesión.",
   "login.modeLogin": "Iniciar sesión",
   "login.modeCreate": "Crear cuenta",
   "login.modeGuest": "Invitado",

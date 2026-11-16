@@ -127,6 +127,10 @@ func run() error {
 		ServerPassword:    cfg.Builtin == nil || cfg.Builtin.Password != "",
 	}
 	accounts.Fedi = fediLogin(cfg)
+	accounts.OIDC, err = oidcLogin(cfg.OIDC)
+	if err != nil {
+		return err
+	}
 	// Other Kallisti servers log in with accounts here (it needs the
 	// public address: the issuer).
 	if public := publicBase(cfg.AllowedOrigins); public != "" {

@@ -53,7 +53,7 @@
       <p class="hint">{t("settings.fediOnlyLogin")}</p>
     {/if}
   </div>
-{:else if enabled}
+{:else if enabled && (!account.oidc?.linked || account.hasPassword)}
   <form class="account" onsubmit={link}>
     <span class="label">{t("settings.fediAccount")}</span>
     <p class="hint">{t("settings.fediLinkHint")}</p>

@@ -2,6 +2,13 @@ import type en from "../en/settings";
 import type { Translation } from "../types";
 
 export default {
+  "settings.oidcAccount": "認証プロバイダー",
+  "settings.oidcLinkHint": "認証プロバイダーのアカウントを連携するには、現在のパスワードを確認してください。",
+  "settings.oidcLink": "{provider}を連携",
+  "settings.oidcUnlink": "{provider}の連携を解除",
+  "settings.oidcPasswordFirst": "認証プロバイダーの連携または解除を行う前に、パスワードを設定してください。",
+  "settings.oidcOnlyHint": "認証プロバイダーでログインしています。初めてパスワードを設定するには、そのログインを確認してください。",
+  "settings.oidcUnavailable": "このログインプロバイダーは利用できません。復旧をサーバー管理者に依頼してください。",
   "settings.language": "言語",
   "settings.languageAuto": "ブラウザーに合わせる",
   "settings.translationIntro": "メッセージはこの端末上で翻訳されます。翻訳サービスには送信されません。",

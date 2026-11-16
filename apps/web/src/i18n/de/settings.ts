@@ -2,6 +2,13 @@ import type en from "../en/settings";
 import type { Translation } from "../types";
 
 export default {
+  "settings.oidcAccount": "Identitätsanbieter",
+  "settings.oidcLinkHint": "Bestätige dein aktuelles Passwort, um dein Konto beim Identitätsanbieter zu verknüpfen.",
+  "settings.oidcLink": "{provider} verknüpfen",
+  "settings.oidcUnlink": "Verknüpfung mit {provider} aufheben",
+  "settings.oidcPasswordFirst": "Lege ein Passwort fest, bevor du einen Identitätsanbieter verknüpfst oder die Verknüpfung aufhebst.",
+  "settings.oidcOnlyHint": "Du meldest dich über deinen Identitätsanbieter an. Bestätige diese Anmeldung, bevor du dein erstes Passwort festlegst.",
+  "settings.oidcUnavailable": "Dieser Anmeldeanbieter ist nicht verfügbar. Bitte den Serveradministrator, ihn wiederherzustellen.",
   "settings.language": "Sprache",
   "settings.languageAuto": "Wie der Browser",
   "settings.translationIntro": "Nachrichten werden auf diesem Gerät übersetzt. Sie gehen an keinen Übersetzungsdienst.",

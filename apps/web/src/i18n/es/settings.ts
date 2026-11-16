@@ -2,6 +2,13 @@ import type en from "../en/settings";
 import type { Translation } from "../types";
 
 export default {
+  "settings.oidcAccount": "Proveedor de identidad",
+  "settings.oidcLinkHint": "Confirma tu contraseña actual para vincular tu cuenta del proveedor de identidad.",
+  "settings.oidcLink": "Vincular {provider}",
+  "settings.oidcUnlink": "Desvincular {provider}",
+  "settings.oidcPasswordFirst": "Establece una contraseña antes de vincular o desvincular un proveedor de identidad.",
+  "settings.oidcOnlyHint": "Inicias sesión con tu proveedor de identidad. Confirma ese inicio de sesión antes de establecer tu primera contraseña.",
+  "settings.oidcUnavailable": "Este proveedor de inicio de sesión no está disponible. Pide al administrador del servidor que lo restablezca.",
   "settings.language": "Idioma",
   "settings.languageAuto": "Como el navegador",
   "settings.translationIntro": "Los mensajes se traducen en este dispositivo. No se envían a ningún servicio de traducción.",

@@ -93,6 +93,7 @@ type Service struct {
 	StreamKeyChanged func(name string)
 	// Fedi: logins with fediverse accounts (see fedi.go). Nil: off.
 	Fedi *FediLogin
+	OIDC *OIDCLogin
 	// Provider: other Kallisti servers log in with accounts here (see
 	// provider.go); nil: off.
 	Provider *Provider
@@ -233,7 +234,7 @@ type credentials struct {
 
 // Paths: what ServeHTTP answers (for the server's router).
 var Paths = []string{"/api/server", "/api/challenge", "/api/accounts", "/api/guest", "/api/login", "/api/logout", "/api/logout-all", "/api/password", "/api/recover", "/api/me", "/api/servers", "/api/friends", "/api/stream-key", "/api/fedi", "/api/fedi/",
-	"/api/v1/", "/oauth/", "/.well-known/webfinger", "/api/oauth/", "/api/qr/"}
+	"/api/oidc", "/api/oidc/", "/api/v1/", "/oauth/", "/.well-known/webfinger", "/api/oauth/", "/api/qr/"}
 
 func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.cors(w, r)
@@ -264,6 +265,9 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "cross-site requests are not allowed"})
 			return
 		}
+	}
+	if a.serveOIDC(w, r) {
+		return
 	}
 	if a.serveFedi(w, r) {
 		return
@@ -329,6 +333,9 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			me := map[string]any{"name": acc.Name, "temporary": acc.Temporary, "password": acc.PasswordHash != "", "session": sessionID(a.SessionKey(r))}
 			if f := a.fediMe(acc); f != nil {
 				me["fedi"] = f
+			}
+			if o := a.oidcMe(acc); o != nil {
+				me["oidc"] = o
 			}
 			writeJSON(w, http.StatusOK, me)
 		} else {
@@ -430,7 +437,13 @@ func (a *Service) revoke(match func(accountID int64, session string) bool) {
 // its logins but the session keep ("": none). The store change and handoff
 // revocation are serialized with handoff redemption; hooks run unlocked.
 func (a *Service) endLogins(acc store.Account, keep string, end func() error) error {
-	if err := a.revokeHandoffs(acc.ID, end); err != nil {
+	if err := a.revokeHandoffs(acc.ID, func() error {
+		if a.OIDC != nil {
+			a.OIDC.mu.Lock()
+			defer a.OIDC.mu.Unlock()
+		}
+		return end()
+	}); err != nil {
 		return err
 	}
 	a.revoke(func(id int64, session string) bool { return id == acc.ID && (keep == "" || session != keep) })
@@ -595,6 +608,10 @@ func (a *Service) newAccount(w http.ResponseWriter, r *http.Request, acc store.A
 	}
 	if errors.Is(err, store.ErrNameTaken) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "this name is already taken"})
+		return store.Account{}, "", false
+	}
+	if errors.Is(err, store.ErrOIDCTaken) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "this provider account is linked already: log in with it"})
 		return store.Account{}, "", false
 	}
 	if errors.Is(err, store.ErrFediTaken) {
@@ -776,14 +793,14 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 	// one too (for Mumble apps, or to unlink), after a fresh login with its
 	// fediverse account in this session: a stolen session cannot set one and
 	// lock the owner out (the change ends the other sessions). With
-	// fediverse logins off there is no proof: an admin's recovery link
-	// (see recovery.go) sets the password then.
-	if acc.PasswordHash == "" && !acc.Temporary && a.Fedi == nil {
+	// fediverse or OIDC logins off (or the provider changed) there is no
+	// proof: an admin's recovery link (see recovery.go) sets it then.
+	if acc.PasswordHash == "" && !acc.Temporary && !a.mayProve(acc) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ask an admin for a recovery link to set a password"})
 		return
 	}
-	if acc.PasswordHash == "" && !acc.Temporary && !a.Fedi.takeProof(a.SessionKey(r), acc.ID, a.Now()) {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "confirm with your fediverse account first", "code": "reauth"})
+	if acc.PasswordHash == "" && !acc.Temporary && !a.firstPasswordProof(acc, r) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "confirm with your linked login provider first", "code": "reauth"})
 		return
 	}
 	release := password.Limit()

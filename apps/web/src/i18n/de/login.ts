@@ -2,6 +2,15 @@ import type en from "../en/login";
 import type { Translation } from "../types";
 
 export default {
+  "login.oidcContinue": "Weiter mit {provider}",
+  "login.oidcChooseName": "Wähle einen Namen für dein Konto auf diesem Server. Du meldest dich mit {provider} an.",
+  "login.oidcExpired": "Diese Anmeldung ist abgelaufen. Bitte beginne erneut.",
+  "login.oidcDenied": "Die Anmeldung wurde nicht genehmigt. Bitte versuche es erneut.",
+  "login.oidcTaken": "Diese Identität ist bereits mit einem anderen Konto verknüpft.",
+  "login.oidcOther": "Bitte bestätige mit der Identität, die mit diesem Konto verknüpft ist.",
+  "login.oidcLinked": "Identitätsanbieter verknüpft: Du kannst dich jetzt damit anmelden.",
+  "login.oidcFailed": "Die Anmeldung beim Identitätsanbieter hat nicht funktioniert. Bitte versuche es erneut.",
+  "login.oidcStorage": "Erlaube Sitzungsspeicher, damit deine Einladung während der Anmeldung erhalten bleibt.",
   "login.modeLogin": "Anmelden",
   "login.modeCreate": "Konto erstellen",
   "login.modeGuest": "Gast",

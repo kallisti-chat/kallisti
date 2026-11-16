@@ -2,6 +2,15 @@ import type en from "../en/login";
 import type { Translation } from "../types";
 
 export default {
+  "login.oidcContinue": "{provider}で続ける",
+  "login.oidcChooseName": "このサーバーで使うアカウント名を選んでください。ログインには{provider}を使います。",
+  "login.oidcExpired": "このログインは期限切れです。最初からやり直してください。",
+  "login.oidcDenied": "ログインが承認されませんでした。もう一度お試しください。",
+  "login.oidcTaken": "この認証情報はすでに別のアカウントに連携されています。",
+  "login.oidcOther": "このアカウントに連携されている認証情報で確認してください。",
+  "login.oidcLinked": "認証プロバイダーを連携しました。このプロバイダーでログインできます。",
+  "login.oidcFailed": "認証プロバイダーでのログインに失敗しました。もう一度お試しください。",
+  "login.oidcStorage": "ログイン中に招待情報を保持できるよう、セッションストレージを許可してください。",
   "login.modeLogin": "ログイン",
   "login.modeCreate": "アカウント作成",
   "login.modeGuest": "ゲスト",
