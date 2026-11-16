@@ -52,6 +52,8 @@ export default {
   "chat.registered": "已註冊",
   "chat.webhookTitle": "由 Webhook 發布",
   "chat.appTag": "應用程式",
+  "chat.botTag": "機器人",
+  "chat.botTitle": "由程式使用此帳號的存取權杖發布",
   "chat.quoteBlocked": "一則來自已封鎖使用者的訊息。",
   "chat.quoteDeleted": "原始訊息已被刪除。",
   "chat.edited": "（已編輯）",

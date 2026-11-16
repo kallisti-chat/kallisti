@@ -50,6 +50,7 @@ type Message struct {
 	MentionAll string
 	NoPing     bool    // a reply that does not ping the original's author
 	Webhook    int64   // posted by this webhook (0: by a user; see Webhook)
+	Bot        bool    // posted with an access token (the agent API)
 	Thread     *Thread // the thread started from it
 	Poll       *Poll   // a poll message (its Text: the poll as text)
 }
@@ -101,6 +102,7 @@ type NewMessage struct {
 	NoPing     bool         // see Message
 	Poll       *Poll        // a poll (answers without voters)
 	Webhook    int64        // see Message
+	Bot        bool         // see Message
 	// The sender's id for this send ("": none), the same on each retry: a
 	// second send with it finds the first (see MessageByNonce).
 	Nonce string
@@ -459,6 +461,7 @@ func migrate(db *sql.DB) error {
 		{"nonce", "TEXT"},                            // the sender's id for the send (see MessageByNonce)
 		{"nonce_author", "TEXT"},                     // see nonceAuthor
 		{"sticker_id", "INTEGER"},
+		{"bot", "INTEGER NOT NULL DEFAULT 0"}, // see Message.Bot
 	}); err != nil {
 		return err
 	}
@@ -849,8 +852,8 @@ func (s *Store) AddMessage(n NewMessage) (Message, error) {
 			return Message{}, err
 		}
 	}
-	if _, err := tx.Exec(`INSERT INTO messages (id, channel_id, author, verified, author_id, text, created_at, sticker_id, reply_to, mention_all, no_ping, nonce, nonce_author, webhook_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, n.ChannelID, n.Author, n.Verified, authorID, n.Text, n.At.UnixMilli(), sticker, reply, n.MentionAll, n.NoPing, nonce, nonceBy, n.Webhook); err != nil {
+	if _, err := tx.Exec(`INSERT INTO messages (id, channel_id, author, verified, author_id, text, created_at, sticker_id, reply_to, mention_all, no_ping, nonce, nonce_author, webhook_id, bot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, n.ChannelID, n.Author, n.Verified, authorID, n.Text, n.At.UnixMilli(), sticker, reply, n.MentionAll, n.NoPing, nonce, nonceBy, n.Webhook, n.Bot); err != nil {
 		return Message{}, err
 	}
 	// An upload attached once is used: the same one twice fails too.
@@ -869,7 +872,7 @@ func (s *Store) AddMessage(n NewMessage) (Message, error) {
 			return Message{}, err
 		}
 	}
-	msgs := []Message{{ID: id, ChannelID: n.ChannelID, Author: n.Author, Verified: n.Verified, AuthorID: authorID, Text: n.Text, CreatedAt: n.At, Sticker: ms, Reply: quote, MentionAll: n.MentionAll, NoPing: n.NoPing, Webhook: n.Webhook}}
+	msgs := []Message{{ID: id, ChannelID: n.ChannelID, Author: n.Author, Verified: n.Verified, AuthorID: authorID, Text: n.Text, CreatedAt: n.At, Sticker: ms, Reply: quote, MentionAll: n.MentionAll, NoPing: n.NoPing, Webhook: n.Webhook, Bot: n.Bot}}
 	if err := withUploads(tx, msgs); err != nil {
 		return Message{}, err
 	}
@@ -1060,7 +1063,7 @@ func withUploads(q interface {
 }
 
 const messageSelect = `SELECT m.id, m.channel_id, m.author, m.verified, m.author_id, m.text, m.created_at, m.edited_at, m.pinned_at,
-		m.reply_to, r.author, r.text, COALESCE(r.webhook_id, 0) != 0, m.mention_all, m.no_ping, m.sticker_id, st.name, m.webhook_id
+		m.reply_to, r.author, r.text, COALESCE(r.webhook_id, 0) != 0, m.mention_all, m.no_ping, m.sticker_id, st.name, m.webhook_id, m.bot
 	FROM messages m LEFT JOIN messages r ON r.id = m.reply_to LEFT JOIN stickers st ON st.id = m.sticker_id `
 
 func scanMessage(row interface{ Scan(...any) error }) (Message, error) {
@@ -1072,7 +1075,7 @@ func scanMessage(row interface{ Scan(...any) error }) (Message, error) {
 	var replyWebhook bool
 	var stickerID sql.NullInt64
 	if err := row.Scan(&m.ID, &m.ChannelID, &m.Author, &m.Verified, &authorID, &m.Text, &at, &edited, &pinned,
-		&replyTo, &replyAuthor, &replyText, &replyWebhook, &m.MentionAll, &m.NoPing, &stickerID, &stickerName, &m.Webhook); err != nil {
+		&replyTo, &replyAuthor, &replyText, &replyWebhook, &m.MentionAll, &m.NoPing, &stickerID, &stickerName, &m.Webhook, &m.Bot); err != nil {
 		return Message{}, err
 	}
 	if authorID.Valid {

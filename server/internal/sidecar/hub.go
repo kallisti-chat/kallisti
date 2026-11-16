@@ -505,6 +505,7 @@ type wireMessage struct {
 	MentionAll string          `json:"mentionAll,omitempty"` // "here" or "everyone"
 	NoPing     bool            `json:"noPing,omitempty"`     // a reply that does not ping
 	Webhook    int64           `json:"webhook,omitempty"`    // posted by this webhook (see webhooks.go)
+	Bot        bool            `json:"bot,omitempty"`        // posted with an access token (see agent.go)
 	Thread     *wireThread     `json:"thread,omitempty"`     // the thread started from it
 	Poll       *wirePoll       `json:"poll,omitempty"`       // a poll message (text: the poll as text)
 }
@@ -624,7 +625,7 @@ func (h *Hub) toWire(m store.Message) wireMessage { return h.toWireFor(m, nil) }
 
 // toWireFor: for one reader (see toWirePoll).
 func (h *Hub) toWireFor(m store.Message, viewer *uint32) wireMessage {
-	w := wireMessage{ID: m.ID, Channel: m.ChannelID, Author: m.Author, Text: m.Text, At: m.CreatedAt.UnixMilli(), Verified: m.Verified, AuthorID: m.AuthorID, Webhook: m.Webhook}
+	w := wireMessage{ID: m.ID, Channel: m.ChannelID, Author: m.Author, Text: m.Text, At: m.CreatedAt.UnixMilli(), Verified: m.Verified, AuthorID: m.AuthorID, Webhook: m.Webhook, Bot: m.Bot}
 	if !m.EditedAt.IsZero() {
 		w.Edited = m.EditedAt.UnixMilli()
 	}
@@ -678,6 +679,7 @@ type request struct {
 	Answers       []int            `json:"answers"` // vote: the answers (none: the vote taken back)
 	Mic           *wireMic         `json:"mic"`     // mic-info
 	poll          *store.Poll      // send: the checked Poll
+	bot           bool             // send: through the agent API (see agent.go)
 	Upload        string           `json:"upload"`                  // send: one upload's key (older clients)
 	Message       int64            `json:"message"`                 // edit-message, delete-message, create-thread
 	Reply         int64            `json:"reply"`                   // send: the message it answers
@@ -1138,7 +1140,7 @@ func (c *Conn) post(id mumble.Identity, req request, ch chat) {
 		c.sendError("invalid nonce")
 		return
 	}
-	n := store.NewMessage{ChannelID: req.Channel, Thread: ch.parent != 0, Author: id.Name, Verified: id.Registered, AuthorID: id.UserID, At: c.hub.now(), StickerID: req.Sticker, ReplyTo: req.Reply, NoPing: req.NoPing && req.Reply != 0, Nonce: req.Nonce}
+	n := store.NewMessage{ChannelID: req.Channel, Thread: ch.parent != 0, Author: id.Name, Verified: id.Registered, AuthorID: id.UserID, At: c.hub.now(), StickerID: req.Sticker, ReplyTo: req.Reply, NoPing: req.NoPing && req.Reply != 0, Nonce: req.Nonce, Bot: req.bot}
 	// A retry of a stored send: its message again, to the sender only.
 	stored := func() bool {
 		m, err := c.hub.store.MessageByNonce(n)

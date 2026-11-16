@@ -52,6 +52,8 @@ export default {
   "chat.registered": "登録済み",
   "chat.webhookTitle": "Webhook による投稿",
   "chat.appTag": "アプリ",
+  "chat.botTag": "ボット",
+  "chat.botTitle": "このアカウントのアクセストークンでプログラムが投稿",
   "chat.quoteBlocked": "ブロック中のユーザーからのメッセージです。",
   "chat.quoteDeleted": "元のメッセージは削除されました。",
   "chat.edited": "(編集済み)",

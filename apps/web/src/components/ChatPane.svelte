@@ -1773,6 +1773,10 @@
               <!-- Posted from outside (see lib/webhooks): the name may be anyone's. -->
               <span class="app-tag" title={t("chat.webhookTitle")}>{t("chat.appTag")}</span>
             {/if}
+            {#if "bot" in m && m.bot}
+              <!-- Posted with an access token (the agent API): a program, not the person. -->
+              <span class="app-tag" title={t("chat.botTitle")}>{t("chat.botTag")}</span>
+            {/if}
             <time datetime={new Date(m.at).toISOString()}>{formatTimestamp(m.at, now, i18n.locale, settings.value.timeFormat)}</time>
           </div>
           {@render body(m)}

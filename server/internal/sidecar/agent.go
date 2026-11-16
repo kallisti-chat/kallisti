@@ -132,7 +132,7 @@ func (h *Hub) agentPost(w http.ResponseWriter, r *http.Request, id mumble.Identi
 	}
 	var nonce [12]byte
 	rand.Read(nonce[:])
-	req := request{Type: "send", Channel: channel, Text: body.Text, Reply: body.Reply, Nonce: hex.EncodeToString(nonce[:])}
+	req := request{Type: "send", Channel: channel, Text: body.Text, Reply: body.Reply, Nonce: hex.EncodeToString(nonce[:]), bot: true}
 	c := h.Connect()
 	defer c.Close()
 	c.mu.Lock()

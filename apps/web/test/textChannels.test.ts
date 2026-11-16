@@ -767,3 +767,11 @@ describe("webhooks", () => {
     expect(parseServerEvent(JSON.stringify({ type: "message", message: { ...msg(1), webhook: "3" } }))).toBeNull();
   });
 });
+
+describe("bot messages", () => {
+  it("keep the mark a post with an access token has", () => {
+    const ev = parseServerEvent('{"type":"message","message":{"id":1,"channel":1,"author":"alice","text":"beep","at":1,"bot":true}}');
+    expect(ev?.type === "message" && toChatMessage(ev.message).bot).toBe(true);
+    expect(parseServerEvent('{"type":"message","message":{"id":1,"channel":1,"author":"alice","text":"beep","at":1,"bot":"yes"}}')).toBeNull();
+  });
+});

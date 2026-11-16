@@ -52,6 +52,8 @@ export default {
   "chat.registered": "已注册",
   "chat.webhookTitle": "由 Webhook 发布",
   "chat.appTag": "应用",
+  "chat.botTag": "机器人",
+  "chat.botTitle": "由程序使用此账号的访问令牌发布",
   "chat.quoteBlocked": "一条来自已屏蔽用户的消息。",
   "chat.quoteDeleted": "原消息已被删除。",
   "chat.edited": "（已编辑）",

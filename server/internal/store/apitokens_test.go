@@ -50,3 +50,19 @@ func TestAPITokens(t *testing.T) {
 		t.Fatalf("over the limit: %v", err)
 	}
 }
+
+// Messages posted with an access token keep their bot mark.
+func TestBotMessages(t *testing.T) {
+	s := open(t)
+	s.EnsureChannels([]string{"general"})
+	cs, _ := s.Channels()
+	now := time.UnixMilli(1_700_000_000_000)
+	m, err := s.AddMessage(NewMessage{ChannelID: cs[0].ID, Author: "alice", Text: "beep", At: now, Bot: true})
+	if err != nil || !m.Bot {
+		t.Fatalf("add: %+v %v", m.Bot, err)
+	}
+	h, _ := s.History(cs[0].ID, 0, 10)
+	if len(h) != 1 || !h[0].Bot {
+		t.Fatalf("history: %+v", h)
+	}
+}

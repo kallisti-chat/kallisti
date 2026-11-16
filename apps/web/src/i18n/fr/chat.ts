@@ -68,6 +68,8 @@ export default {
   "chat.registered": "inscrit",
   "chat.webhookTitle": "Publié par un webhook",
   "chat.appTag": "Appli",
+  "chat.botTag": "Bot",
+  "chat.botTitle": "Publié par un programme avec le jeton d'accès de ce compte",
   "chat.quoteBlocked": "Un message d'un utilisateur bloqué.",
   "chat.quoteDeleted": "Le message d'origine a été supprimé.",
   "chat.edited": "(modifié)",

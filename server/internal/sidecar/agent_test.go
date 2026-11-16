@@ -68,7 +68,7 @@ func TestAgentAPI(t *testing.T) {
 	}
 	code, v = agentCall(t, srv, "POST", path, "w", map[string]any{"text": "hello from an agent"})
 	msg, _ := v["message"].(map[string]any)
-	if code != http.StatusCreated || msg["text"] != "hello from an agent" || msg["author"] != "alice" {
+	if code != http.StatusCreated || msg["text"] != "hello from an agent" || msg["author"] != "alice" || msg["bot"] != true {
 		t.Fatalf("post: %d %v", code, v)
 	}
 	// Others see it live, as any message.
