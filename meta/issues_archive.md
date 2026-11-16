@@ -406,3 +406,4 @@
 - [x] [Recordings tab asks for the list again and again](issues/recordings-tab-request-loop.md)
 - [x] [Admin recovery link](issues/admin-recovery-link.md)
 - [x] [OIDC login (PR #28): finish and merge](issues/oidc-login-pr28.md)
+- [x] [Agent API: read, post and reply with an access token](issues/agent-api.md)

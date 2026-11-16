@@ -111,7 +111,7 @@ func (s *Server) inheritsMembers(ch *Channel) bool {
 func (s *Server) InPrivate(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u, ch := s.state.Users[session], s.state.Channels[channel]
+	u, ch := s.userLocked(session), s.state.Channels[channel]
 	return u != nil && ch != nil && u.Registered && isPrivate(ch) && s.state.members(ch, membersGroup)[u.UserID]
 }
 
@@ -281,7 +281,7 @@ func (s *Server) CreatePrivateChannel(actor, parent uint32, name string) (uint32
 func (s *Server) Sees(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Channels[channel] != nil && s.state.Sees(u, channel)
 }
 

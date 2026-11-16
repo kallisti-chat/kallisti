@@ -88,6 +88,7 @@ export type TextMessage = {
   mentionAll?: MentionAll;
   noPing?: boolean; // a reply that does not ping
   webhook?: number; // posted by this webhook (see lib/webhooks)
+  bot?: boolean; // posted with an access token (the agent API)
   thread?: Thread; // the thread started from it (see lib/threads)
   poll?: Poll; // a poll message (text: the poll as text, see lib/polls)
 };
@@ -111,6 +112,7 @@ export type DisplayMessage = ChatMessage & {
   mentionAll?: MentionAll;
   noPing?: boolean; // a reply that does not ping
   webhook?: number; // see TextMessage
+  bot?: boolean; // see TextMessage
 };
 
 export type ListenOnlyChannel = { channel: number; speakers: Speaker[] };
@@ -641,6 +643,7 @@ const isMessage = (v: unknown): v is TextMessage =>
   (v.mentionAll === undefined || isMentionAll(v.mentionAll)) &&
   (v.noPing === undefined || typeof v.noPing === "boolean") &&
   (v.webhook === undefined || isNum(v.webhook)) &&
+  (v.bot === undefined || typeof v.bot === "boolean") &&
   (v.thread === undefined || isThread(v.thread));
 
 // Network input: anything unexpected is dropped.
@@ -1508,6 +1511,7 @@ export const toChatMessage = (m: TextMessage, base = "", channels?: ReadonlyMap<
       ...(m.mentionAll && { mentionAll: m.mentionAll }),
       ...(m.noPing && { noPing: true }),
       ...(m.webhook && { webhook: m.webhook }),
+      ...(m.bot && { bot: true }),
       ...(uploads.length && { uploads: uploads.map(spoilerUpload) }),
       ...(m.sticker && { sticker: m.sticker }),
       ...(m.poll && { poll: m.poll }),

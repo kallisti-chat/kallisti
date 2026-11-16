@@ -84,6 +84,16 @@ export default {
   "settings.removing": "Retrait…",
   "settings.allowedSitesHint":
     "Un serveur retiré te redemande ton accord à ta prochaine connexion. Ton compte là-bas reste.",
+  "settings.accessTokens": "Jetons d'accès",
+  "settings.accessTokensHint": "Des programmes (agents, scripts) peuvent lire et publier en ton nom avec un jeton, via l'API agents. Leurs messages portent un badge Bot. Tous les jetons prennent fin si tu changes ton mot de passe ou te déconnectes partout.",
+  "settings.accessTokensNotLoaded": "La liste n'a pas chargé.",
+  "settings.accessTokenName": "Nom, par exemple « mon agent »",
+  "settings.tokenMayPost": "Peut publier",
+  "settings.makeAccessToken": "Créer un jeton",
+  "settings.newAccessToken": "Nouveau jeton d'accès",
+  "settings.accessTokenShownOnce": "Copie-le maintenant : il ne s'affiche qu'une fois.",
+  "settings.tokenRead": "lecture",
+  "settings.tokenReadWrite": "lecture et publication",
 
   "settings.qrLoginTitle": "Se connecter avec un QR code",
   "settings.qrMaking": "Création du code…",

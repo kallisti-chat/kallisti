@@ -16,7 +16,7 @@ import (
 func (s *Server) MayRead(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Channels[channel] != nil && (u.Channel == channel || s.state.Has(u, channel, Enter))
 }
 
@@ -43,7 +43,7 @@ func (s *Server) MaySpeak(session, channel uint32) bool {
 func (s *Server) MayWrite(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Channels[channel] != nil && s.state.Has(u, channel, TextMessage)
 }
 
@@ -62,6 +62,8 @@ func (s *Server) SendChannelText(from, channel uint32, text string) {
 		msg.Actor = proto.Uint32(actor)
 	} else if u := s.state.Users[from]; u != nil {
 		msg.Actor, msg.Message = nil, proto.String(mumbleHTML(u.Name+": "+text))
+	} else if r := s.apiUsers[from]; r != nil { // the agent API: no session to name
+		msg.Actor, msg.Message = nil, proto.String(mumbleHTML(r.Name+": "+text))
 	} else if from == 0 {
 		msg.Actor = nil
 	}
@@ -113,7 +115,7 @@ func (s *Server) SendPrivateText(from uint32, fromName string, toUser uint32, te
 func (s *Server) MayManage(session uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.Has(u, 0, MakeChannel) // admins and moderators
 }
 

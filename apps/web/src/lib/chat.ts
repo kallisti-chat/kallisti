@@ -15,6 +15,7 @@ const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Dat
 // Discord-style grouping: one header for a run of messages from one sender,
 // within 5 minutes and on the same day.
 const webhookOf = (m: ChatMessage | undefined) => (m && "webhook" in m ? m.webhook : undefined);
+const botOf = (m: ChatMessage | undefined) => !!(m && "bot" in m && m.bot);
 
 // newFrom: the first unread message (a group starts there, see chatItems).
 const idOf = (m: ChatMessage) => ("source" in m ? (m.source as { id: number } | undefined)?.id : undefined);
@@ -24,8 +25,9 @@ export const groupMessages = (messages: readonly ChatMessage[], newFrom: number 
   for (const m of messages) {
     const last = groups.at(-1);
     const prev = last?.messages.at(-1);
-    // A webhook's post may carry a user's name (see lib/webhooks).
-    const sameAuthor = last?.actor === m.actor && last.actorName === m.actorName && webhookOf(prev) === webhookOf(m);
+    // A webhook's post may carry a user's name (see lib/webhooks); a
+    // token's posts have their own header (the Bot badge).
+    const sameAuthor = last?.actor === m.actor && last.actorName === m.actorName && webhookOf(prev) === webhookOf(m) && botOf(prev) === botOf(m);
     const fresh = newFrom !== null && idOf(m) === newFrom;
     if (last && prev && sameAuthor && !fresh && m.at - prev.at <= GROUP_WINDOW_MS && sameDay(prev.at, m.at)) {
       last.messages.push(m);

@@ -84,6 +84,16 @@ export default {
   "settings.allowedSitesNotLoaded": "The list did not load.",
   "settings.removing": "Removing…",
   "settings.allowedSitesHint": "A removed server asks for your OK again at your next login there. Your account there stays.",
+  "settings.accessTokens": "Access tokens",
+  "settings.accessTokensHint": "Programs (agents, scripts) can read and post as you with a token, through the agent API. Their posts show a Bot badge. All tokens end when you change your password or log out everywhere.",
+  "settings.accessTokensNotLoaded": "The list did not load.",
+  "settings.accessTokenName": "Name, for example “my agent”",
+  "settings.tokenMayPost": "May post",
+  "settings.makeAccessToken": "Make token",
+  "settings.newAccessToken": "New access token",
+  "settings.accessTokenShownOnce": "Copy it now: it shows only once.",
+  "settings.tokenRead": "read",
+  "settings.tokenReadWrite": "read and post",
 
   // Login code (QR).
   "settings.qrLoginTitle": "Log in with a QR code",

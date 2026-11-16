@@ -49,7 +49,7 @@ func (s *Server) mayActOnIn(actor, u *User, channel uint32) bool {
 func (s *Server) ModeratesIn(session, channel uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.state.moderates(u, channel)
 }
 

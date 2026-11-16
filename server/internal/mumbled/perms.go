@@ -519,7 +519,7 @@ func (s *Server) registeredLocked(r *Registered) *User {
 			return u
 		}
 	}
-	return &User{Registered: true, UserID: r.ID, Hash: r.CertHash}
+	return &User{Registered: true, UserID: r.ID, Hash: r.CertHash, Since: r.Since}
 }
 
 // registrationChangedLocked updates an online user after a rename (name
@@ -532,6 +532,7 @@ func (s *Server) registrationChangedLocked(id uint32, name *string, actor uint32
 		go s.timeoutsChanged()
 	}
 	if name == nil {
+		delete(s.apiUsers, apiSessionBit|id)
 		for _, ch := range s.state.Channels {
 			ch.ACLs = slices.DeleteFunc(ch.ACLs, func(a ACL) bool { return a.HasUser && a.UserID == id })
 			for _, g := range ch.Groups {

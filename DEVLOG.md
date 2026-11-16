@@ -3075,3 +3075,9 @@ cortexobscura's #28 (GitHub #26): one operator-configured OpenID Connect provide
 - Docs: accounts that lose their provider need a recovery link.
 
 Live check against Dex (podman, both sides over HTTPS through eosrift): signup, returning login, and the recovery link for the OIDC-only account (then unlinking Dex with the new password). Dex sends no `auth_time`, so its first-password reauth fails closed, as documented for Pocket ID before 2.10. Reviews: subagent and Astra (one should-fix, the unlink rule, fixed).
+
+## 2026-11-16: Agent API
+
+Programs could read and post only through the bridge (a full Mumble handshake first) or post-only webhooks; even reading #kallisti-dev for flghl needed a headless browser. Now personal access tokens (Settings → Account; read, or read and post; hashed; they end with the account's other logins) and `GET /api/agent/channels`, `GET`/`POST /api/agent/channels/{id}/messages` (docs/agent-api.md). A token acts as its account through an API session in mumbled (top bit set, the registration's rights via `registeredLocked`), and posts run through the client's own `dispatch`: write rights, time-outs, read-only guests, message rules, slow mode. Posts carry a bot mark: a Bot badge and a header of their own.
+
+The reviews (subagent, Astra) found the first version posted through `post` only, past the write right and time-outs (both called it a blocker), and mumbled's time-out and staff checks, the new-account limits and the Mumble sender name did not know API sessions; a token could be made after a recovery ended its session; and the desktop client would have kept the new token as its login (`token` in the answer, now `accessToken`). All fixed with tests. Checked against a local server: tokens in the settings, curl list/read/post/reply, live with the badge in another browser, 403 for a read token, 401 after revoking.

@@ -66,6 +66,6 @@ func validServerName(name string) error {
 func (s *Server) IsAdmin(session uint32) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.state.Users[session]
+	u := s.userLocked(session)
 	return u != nil && s.isAdmin(u)
 }
