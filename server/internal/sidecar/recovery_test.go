@@ -12,6 +12,9 @@ import (
 // registration that shares an account's name, 9 feld (imported, no
 // account: claimed by the certificate "feldcert").
 func (f *fakeVoice) MayRecover(actor, userID uint32) (string, string, error) {
+	if f.duringRecover != nil {
+		f.duringRecover()
+	}
 	if actor != 1 {
 		return "", "", errors.New("only admins make recovery links")
 	}
@@ -71,5 +74,26 @@ func TestRecoveryLink(t *testing.T) {
 	}
 	if _, err := h.store.AccountByName("feld"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("account before the link is used: %v", err)
+	}
+}
+
+// Roles that change while a link is made (the user became an admin after
+// the check) end that link too.
+func TestRolesChangedWhileMakingALink(t *testing.T) {
+	h := newHub(t, "general")
+	v := &fakeVoice{}
+	h.SetVoice(v, "")
+	h.store.CreateAccount(store.Account{Name: "carol", PasswordHash: "x", CertPEM: []byte("c"), KeyPEM: []byte("k")}, time.Now(), "")
+	admin := readyAs(t, h, 1, "admin")
+	changed := make(chan struct{})
+	v.duringRecover = func() {
+		go func() { h.RolesChanged(); close(changed) }()
+		time.Sleep(50 * time.Millisecond)
+	}
+	admin.Handle([]byte(`{"type":"recovery-link","user":7}`))
+	token, _ := nextOf(t, admin, "recovery-link")["token"].(string)
+	<-changed
+	if _, err := h.store.RecoveryAccount(token, h.now()); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("link made across a role change: %v", err)
 	}
 }

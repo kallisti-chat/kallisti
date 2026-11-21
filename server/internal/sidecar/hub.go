@@ -262,6 +262,10 @@ type MumbleUser struct {
 type Hub struct {
 	store *store.Store
 	now   func() time.Time
+	// linkMu: a recovery link's check and its saving happen together, and
+	// RolesChanged deletes the links between them, never in the middle (a
+	// link checked before a role change would stay).
+	linkMu sync.Mutex
 	// Posts per webhook (see webhookpost.go).
 	webhookLimits webhookLimits
 	// Nil: no voice channel chats (a Murmur server).
@@ -1395,9 +1399,11 @@ func (h *Hub) RolesChanged() {
 	}
 	// A recovery link's account may be an admin now, whose links only
 	// SuperUser makes (see recovery.go): open links go.
+	h.linkMu.Lock()
 	if err := h.store.DeleteRecoveryLinks(); err != nil {
 		slog.Error("recovery links", "err", err)
 	}
+	h.linkMu.Unlock()
 	all := h.roles()
 	all.Type = "roles"
 	h.eachReady(func(c *Conn, id mumble.Identity) { c.send(all.forUser(h, id)) })

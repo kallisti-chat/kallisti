@@ -25,6 +25,8 @@ func (c *Conn) recoveryLink(id mumble.Identity, user uint32) {
 		c.manageError("this needs the built-in Mumble server")
 		return
 	}
+	h.linkMu.Lock()
+	defer h.linkMu.Unlock()
 	name, claim, err := h.voice.MayRecover(id.Session, user)
 	if err != nil {
 		c.manageError(err.Error())
