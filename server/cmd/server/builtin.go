@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -103,6 +104,16 @@ func accountLogin(db *store.Store) func(name, pw string) (*mumbled.WebAccount, b
 		}
 		return &mumbled.WebAccount{Name: acc.Name, CertHash: accountCertHash(acc)}, true
 	}
+}
+
+// moveRegistration gives a claimed Mumble registration to its new account
+// (see auth.Service.MoveRegistration); a changed one ends the link.
+func moveRegistration(tx *sql.Tx, l store.ClaimLink, acc store.Account) error {
+	err := mumbled.MoveUser(tx, l.User, l.CertHash, accountCertHash(acc))
+	if errors.Is(err, mumbled.ErrUserChanged) {
+		return store.ErrNotFound
+	}
+	return err
 }
 
 // pushUser: the registration with the account's certificate, which gets

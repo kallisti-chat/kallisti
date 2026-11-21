@@ -5,6 +5,7 @@ package auth
 import (
 	"cmp"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -80,6 +81,12 @@ type Service struct {
 	// the account's password, after a password change or a logout
 	// everywhere. Nil: none.
 	EndPasswordLogins func(acc store.Account)
+	// MoveRegistration gives a claimed Mumble registration (see claim) to
+	// its new account, in the account's transaction. Nil: no claim links.
+	MoveRegistration func(tx *sql.Tx, l store.ClaimLink, acc store.Account) error
+	// EndCertificateLogins disconnects the Mumble clients with this
+	// certificate (a claimed registration's old one). Nil: none.
+	EndCertificateLogins func(certHash string)
 	// OnPermanent hears that a guest account became a normal account (by
 	// name). Nil: none.
 	OnPermanent func(name string)
