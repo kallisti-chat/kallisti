@@ -34,3 +34,4 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)
+- [ ] [Recovery link for imported Mumble users](issues/recovery-link-for-imported-users.md)
