@@ -98,8 +98,9 @@ CREATE TABLE IF NOT EXISTS mumble_channel_links (
 -- app's (see MoveUser) besides its account's in mumble_users.
 CREATE TABLE IF NOT EXISTS mumble_user_certs (
 	cert_hash TEXT PRIMARY KEY,
-	user_id   INTEGER NOT NULL
+	user_id   INTEGER NOT NULL REFERENCES mumble_users(id) ON DELETE CASCADE
 );
+CREATE INDEX IF NOT EXISTS mumble_user_certs_user ON mumble_user_certs (user_id);
 `
 
 // Columns added after the first version, for databases made before; fill
@@ -516,22 +517,10 @@ func (d *DB) UserByHash(hash string) (*Registered, error) {
 }
 
 // DropOtherCerts removes the further certificates of the registration with
-// this (an account's) certificate; the dropped ones (their clients end).
-func (d *DB) DropOtherCerts(hash string) ([]string, error) {
-	rows, err := d.db.Query(`DELETE FROM mumble_user_certs WHERE user_id = (SELECT id FROM mumble_users WHERE cert_hash = ?) RETURNING cert_hash`, hash)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var h string
-		if err := rows.Scan(&h); err != nil {
-			return nil, err
-		}
-		out = append(out, h)
-	}
-	return out, rows.Err()
+// this (an account's) certificate.
+func (d *DB) DropOtherCerts(hash string) error {
+	_, err := d.db.Exec(`DELETE FROM mumble_user_certs WHERE user_id = (SELECT id FROM mumble_users WHERE cert_hash = ?)`, hash)
+	return err
 }
 
 // RegisterUser adds a registration. Ids are never used twice (removed

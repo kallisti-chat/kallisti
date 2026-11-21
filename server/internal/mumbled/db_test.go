@@ -384,12 +384,27 @@ func TestMoveUser(t *testing.T) {
 // with the user.
 func TestOtherCertsEnd(t *testing.T) {
 	db := testDB(t)
-	id, _ := db.RegisterUser("feld", "old")
-	tx, _ := db.db.Begin()
-	MoveUser(tx, id, "feld", "old", "new")
-	tx.Commit()
-	if dropped, err := db.DropOtherCerts("new"); err != nil || len(dropped) != 1 || dropped[0] != "old" {
-		t.Fatalf("dropped %v %v", dropped, err)
+	claimed := func(name, old, account string) uint32 {
+		t.Helper()
+		id, err := db.RegisterUser(name, old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tx, err := db.db.Begin()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := MoveUser(tx, id, name, old, account); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	id := claimed("feld", "old", "new")
+	if err := db.DropOtherCerts("new"); err != nil {
+		t.Fatal(err)
 	}
 	if r, _ := db.UserByHash("old"); r != nil {
 		t.Fatalf("old certificate after the drop: %+v", r)
@@ -398,11 +413,10 @@ func TestOtherCertsEnd(t *testing.T) {
 		t.Fatalf("the account's own: %+v", r)
 	}
 
-	other, _ := db.RegisterUser("mira", "m1")
-	tx, _ = db.db.Begin()
-	MoveUser(tx, other, "mira", "m1", "m2")
-	tx.Commit()
-	db.UnregisterUser(other)
+	other := claimed("mira", "m1", "m2")
+	if err := db.UnregisterUser(other); err != nil {
+		t.Fatal(err)
+	}
 	if r, _ := db.UserByHash("m1"); r != nil {
 		t.Fatalf("certificate of a deleted user: %+v", r)
 	}

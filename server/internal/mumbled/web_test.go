@@ -498,3 +498,43 @@ func TestOldCertificateOfAClaimedUser(t *testing.T) {
 		t.Fatalf("the old certificate after the end: %v", &r)
 	}
 }
+
+// A ban follows a claimed user across its certificates: one on the account
+// keeps the old Mumble app out, and one made on the app's session holds for
+// the account.
+func TestBansCoverAClaimedUsersOldCertificate(t *testing.T) {
+	db := testDB(t)
+	s, addr := startServerAndListen(t, "127.0.0.1", Config{DB: db}, nil)
+	cert := clientCert(t)
+	id, err := db.RegisterUser("carol", certHashOf(cert))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := MoveUser(tx, id, "carol", certHashOf(cert), "cert-carol"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	carol := dialAs(t, addr, dialOpts{name: "carol", cert: cert})
+	s.mu.Lock()
+	hash := s.state.Users[carol.session].Hash
+	s.mu.Unlock()
+	if hash != "cert-carol" {
+		t.Fatalf("the session's certificate %q, want the account's", hash)
+	}
+	carol.conn.Close()
+
+	s.bans.Store(&[]BanEntry{{Hash: "cert-carol"}})
+	again, _ := tryDialWith(t, addr, dialOpts{name: "carol", cert: cert})
+	var r pb.Reject
+	proto.Unmarshal(again.expect(mumble.TypeReject), &r)
+	if !strings.Contains(r.GetReason(), "banned") {
+		t.Fatalf("old certificate of a banned account: %v", &r)
+	}
+}
