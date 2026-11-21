@@ -80,7 +80,7 @@ func TestClaimLink(t *testing.T) {
 
 	// A failed move makes no account and keeps the link.
 	acc := Account{Name: "Feld", PasswordHash: "pw", CertPEM: []byte("c"), KeyPEM: []byte("k")}
-	if _, err := s.Claim("t", acc, now, func(*sql.Tx, ClaimLink) error { return ErrNotFound }); !errors.Is(err, ErrNotFound) {
+	if _, err := s.Claim("t", acc, now, func(*sql.Tx, ClaimLink, Account) error { return ErrNotFound }); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("failed move: %v", err)
 	}
 	if _, err := s.AccountByName("Feld"); !errors.Is(err, ErrNotFound) {
@@ -88,14 +88,15 @@ func TestClaimLink(t *testing.T) {
 	}
 
 	var moved ClaimLink
-	got, err := s.Claim("t", acc, now, func(_ *sql.Tx, l ClaimLink) error { moved = l; return nil })
-	if err != nil || got.ID == 0 || got.Name != "Feld" || moved != link {
+	var movedTo int64
+	got, err := s.Claim("t", acc, now, func(_ *sql.Tx, l ClaimLink, a Account) error { moved, movedTo = l, a.ID; return nil })
+	if err != nil || got.ID == 0 || got.Name != "Feld" || moved != link || movedTo != got.ID {
 		t.Fatalf("claim: %+v %v, moved %+v", got, err, moved)
 	}
 	if a, _ := s.AccountByName("feld"); a.ID != got.ID || a.PasswordHash != "pw" {
 		t.Fatalf("account: %+v", a)
 	}
-	if _, err := s.Claim("t", acc, now, func(*sql.Tx, ClaimLink) error { return nil }); !errors.Is(err, ErrNotFound) {
+	if _, err := s.Claim("t", acc, now, func(*sql.Tx, ClaimLink, Account) error { return nil }); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("second use: %v", err)
 	}
 }
@@ -108,7 +109,7 @@ func TestClaimLinkNeedsNoInviteButAFreeName(t *testing.T) {
 	if err := s.SetInviteOnly(true); err != nil {
 		t.Fatal(err)
 	}
-	move := func(*sql.Tx, ClaimLink) error { return nil }
+	move := func(*sql.Tx, ClaimLink, Account) error { return nil }
 	s.SetClaimLink(ClaimLink{User: 7, Name: "feld", CertHash: "old"}, "a", now.Add(time.Hour))
 	if _, err := s.Claim("a", Account{Name: "feld", PasswordHash: "pw", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, move); err != nil {
 		t.Fatalf("invite-only: %v", err)

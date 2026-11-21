@@ -71,10 +71,11 @@ func (s *Store) ClaimLinkOf(token string, now time.Time) (ClaimLink, error) {
 }
 
 // Claim uses a valid claim link once: it makes the account (an admin's
-// link: no invitation needed) and move gives it the registration, in one
+// link: no invitation needed) and move gives it (with its id) the
+// registration, in one
 // transaction. ErrNotFound: the link is gone; ErrNameTaken: an account has
 // the name now.
-func (s *Store) Claim(token string, a Account, now time.Time, move func(*sql.Tx, ClaimLink) error) (Account, error) {
+func (s *Store) Claim(token string, a Account, now time.Time, move func(*sql.Tx, ClaimLink, Account) error) (Account, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return Account{}, err
@@ -92,7 +93,7 @@ func (s *Store) Claim(token string, a Account, now time.Time, move func(*sql.Tx,
 	if a, err = createAccount(tx, a, now); err != nil {
 		return Account{}, err
 	}
-	if err := move(tx, l); err != nil {
+	if err := move(tx, l, a); err != nil {
 		return Account{}, err
 	}
 	return a, tx.Commit()
