@@ -538,6 +538,14 @@ func (d *DB) RegisterUser(name, certHash string) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
+	// A further certificate is its user's (see MoveUser), nobody else's own.
+	var other bool
+	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM mumble_user_certs WHERE cert_hash = ?)`, certHash).Scan(&other); err != nil {
+		return 0, err
+	}
+	if other {
+		return 0, errors.New("this certificate belongs to another user")
+	}
 	if _, err := tx.Exec(`INSERT INTO mumble_users (id, name, name_key, cert_hash, registered_at) VALUES (?, ?, ?, NULLIF(?, ''), ?)`,
 		id, name, names.Key(name), certHash, time.Now().UnixMilli()); err != nil {
 		return 0, err

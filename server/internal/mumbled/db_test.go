@@ -413,6 +413,12 @@ func TestOtherCertsEnd(t *testing.T) {
 		t.Fatalf("the account's own: %+v", r)
 	}
 
+	// A further certificate is nobody else's own.
+	claimed("nora", "n1", "n2")
+	if _, err := db.RegisterUser("guest", "n1"); err == nil {
+		t.Fatal("a registration with another user's further certificate")
+	}
+
 	other := claimed("mira", "m1", "m2")
 	if err := db.UnregisterUser(other); err != nil {
 		t.Fatal(err)
