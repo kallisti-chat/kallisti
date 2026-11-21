@@ -8,19 +8,22 @@ import (
 	"kallisti.chat/server/internal/store"
 )
 
-// Session 1 is an admin; user 7 is carol (a Kallisti account), 8 is a
-// Mumble-only registration.
-func (f *fakeVoice) MayRecover(actor, userID uint32) (string, error) {
+// Session 1 is an admin; user 7 is carol (a Kallisti account), 8 a Mumble
+// registration that shares an account's name, 9 feld (imported, no
+// account: claimed by the certificate "feldcert").
+func (f *fakeVoice) MayRecover(actor, userID uint32) (string, string, error) {
 	if actor != 1 {
-		return "", errors.New("only admins make recovery links")
+		return "", "", errors.New("only admins make recovery links")
 	}
 	switch userID {
 	case 7:
-		return "carol", nil
+		return "carol", "", nil
 	case 8:
-		return "mumbler", nil
+		return "", "", errors.New("a Kallisti account has this user's name")
+	case 9:
+		return "feld", "feldcert", nil
 	}
-	return "", errors.New("no such user")
+	return "", "", errors.New("no such user")
 }
 
 func TestRecoveryLink(t *testing.T) {
@@ -57,5 +60,16 @@ func TestRecoveryLink(t *testing.T) {
 	admin.Handle([]byte(`{"type":"recovery-link","user":8}`))
 	if e := nextOf(t, admin, "error"); e["about"] != "manage" {
 		t.Fatalf("mumble-only user: %v", e)
+	}
+
+	// An imported user: a claim link for the registration, no account yet.
+	admin.Handle([]byte(`{"type":"recovery-link","user":9}`))
+	m = nextOf(t, admin, "recovery-link")
+	token, _ = m["token"].(string)
+	if l, err := h.store.ClaimLinkOf(token, h.now()); err != nil || l != (store.ClaimLink{User: 9, Name: "feld", CertHash: "feldcert"}) {
+		t.Fatalf("claim link: %+v %v", l, err)
+	}
+	if _, err := h.store.AccountByName("feld"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("account before the link is used: %v", err)
 	}
 }

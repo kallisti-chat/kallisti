@@ -154,8 +154,9 @@ type Voice interface {
 	// IsAdmin: the session's user is an admin (the logo, see logo.go).
 	IsAdmin(session uint32) bool
 	// MayRecover: the session may make a recovery link for the registered
-	// user (see recovery.go); the user's name.
-	MayRecover(session, userID uint32) (string, error)
+	// user (see recovery.go); the user's name, and for a registration
+	// without an account its certificate (claim: the link makes the account).
+	MayRecover(session, userID uint32) (name, claim string, err error)
 	// Connections: every connection over the recent window (admins).
 	Connections(session uint32) ([]Connection, error)
 	// CheckMessage: a session's message to post (with the word
