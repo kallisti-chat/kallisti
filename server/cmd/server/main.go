@@ -234,7 +234,7 @@ func run() error {
 		accounts.ServerName = mumble.srv.ServerName
 		accounts.EndPasswordLogins = func(acc store.Account) { mumble.srv.EndPasswordLogins(accountCertHash(acc)) }
 		accounts.MoveRegistration = moveRegistration
-		accounts.EndCertificateLogins = mumble.srv.EndPasswordLogins
+		accounts.EndCertificateLogins = mumble.srv.EndPasswordLogins // ends the Mumble apps with this certificate
 		hub.Agent = agentIdentity(accounts, mumble.srv)
 		accounts.SetAvatar = func(acc store.Account, avatar []byte, onlyIfNone bool) {
 			if _, err := mumble.srv.SetAccountAvatar(acc.Name, accountCertHash(acc), avatar, onlyIfNone); err != nil {

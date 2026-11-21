@@ -35,9 +35,13 @@ func (a *Service) recover(w http.ResponseWriter, r *http.Request) {
 	}
 	acc, err := a.Store.RecoveryAccount(c.Token, a.Now())
 	if errors.Is(err, store.ErrNotFound) && a.MoveRegistration != nil {
-		if link, err := a.Store.ClaimLinkOf(c.Token, a.Now()); err == nil {
+		link, claimErr := a.Store.ClaimLinkOf(c.Token, a.Now())
+		if claimErr == nil {
 			a.claim(w, r, c.Token, link, c.New)
 			return
+		}
+		if !errors.Is(claimErr, store.ErrNotFound) {
+			err = claimErr
 		}
 	}
 	var hash string
@@ -91,8 +95,8 @@ func (a *Service) claim(w http.ResponseWriter, r *http.Request, token string, li
 	}
 	acc, err = a.Store.Claim(token, acc, a.Now(), a.MoveRegistration)
 	switch {
-	case errors.Is(err, store.ErrNotFound):
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "this recovery link is used or expired: ask an admin for a new one"})
+	case errors.Is(err, store.ErrNotFound): // or the registration changed
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "this recovery link is used or expired, or the user changed: ask an admin for a new one"})
 		return
 	case errors.Is(err, store.ErrNameTaken):
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "an account has this name now: ask an admin"})
