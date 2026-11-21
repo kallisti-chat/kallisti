@@ -595,16 +595,29 @@ func (s *Server) kickLocked(session, actor uint32, reason string, ban bool) {
 
 // EndPasswordLogins disconnects the Mumble clients of the web account
 // with this certificate: they logged in with its password (see
-// identifyAccount), which changed or was logged out everywhere. Its web
-// sessions end with their own logins.
+// identifyAccount), which changed or was logged out everywhere. Further
+// certificates of its registration (a claimed one's old Mumble app) go
+// too. Its web sessions end with their own logins.
 func (s *Server) EndPasswordLogins(certHash string) {
 	if certHash == "" { // none: clients without a certificate are not its
 		return
 	}
+	// A claimed registration's further certificates (its old Mumble app's)
+	// end too.
+	ended := map[string]bool{certHash: true}
+	if s.cfg.DB != nil {
+		others, err := s.cfg.DB.DropOtherCerts(certHash)
+		if err != nil {
+			slog.Error("ending further certificates", "err", err)
+		}
+		for _, h := range others {
+			ended[h] = true
+		}
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for session, c := range s.clients {
-		if u := s.state.Users[session]; !c.web && u != nil && u.Hash == certHash {
+		if u := s.state.Users[session]; !c.web && u != nil && ended[u.Hash] {
 			s.kickLocked(session, 0, "You were logged out.", false)
 		}
 	}

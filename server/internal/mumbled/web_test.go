@@ -462,3 +462,39 @@ func TestWebSessionsGetVoiceOverUDP(t *testing.T) {
 	web.expectNone(mumble.TypeUDPTunnel)
 	native.expectNone(mumble.TypeUDPTunnel)
 }
+
+// A claimed registration's old certificate logs in by itself, until the
+// account's logins end (a password change, logging out everywhere).
+func TestOldCertificateOfAClaimedUser(t *testing.T) {
+	db := testDB(t)
+	cfg := Config{DB: db, AccountLogin: accountLogin(map[string]string{"carol": "secret"}, nil)}
+	s, addr := startServerAndListen(t, "127.0.0.1", cfg, nil)
+	cert := clientCert(t)
+	id, _ := db.RegisterUser("carol", certHashOf(cert))
+	tx, _ := db.db.Begin()
+	if err := MoveUser(tx, id, "carol", certHashOf(cert), "cert-carol"); err != nil {
+		t.Fatal(err)
+	}
+	tx.Commit()
+
+	carol := dialAs(t, addr, dialOpts{name: "carol", cert: cert})
+	s.mu.Lock()
+	u := s.state.Users[carol.session]
+	s.mu.Unlock()
+	if u == nil || !u.Registered || u.UserID != id {
+		t.Fatalf("old certificate: %+v", u)
+	}
+
+	s.EndPasswordLogins("cert-carol")
+	var m pb.UserRemove
+	proto.Unmarshal(carol.expect(mumble.TypeUserRemove), &m)
+	if m.GetSession() != carol.session {
+		t.Fatalf("removed %d, want carol %d", m.GetSession(), carol.session)
+	}
+	again, _ := tryDialWith(t, addr, dialOpts{name: "carol", cert: cert})
+	var r pb.Reject
+	proto.Unmarshal(again.expect(mumble.TypeReject), &r)
+	if r.GetType() != pb.Reject_WrongUserPW {
+		t.Fatalf("the old certificate after the end: %v", &r)
+	}
+}
