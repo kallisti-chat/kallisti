@@ -109,7 +109,7 @@ func accountLogin(db *store.Store) func(name, pw string) (*mumbled.WebAccount, b
 // moveRegistration gives a claimed Mumble registration to its new account
 // (see auth.Service.MoveRegistration); a changed one ends the link.
 func moveRegistration(tx *sql.Tx, l store.ClaimLink, acc store.Account) error {
-	err := mumbled.MoveUser(tx, l.User, l.CertHash, accountCertHash(acc))
+	err := mumbled.MoveUser(tx, l.User, l.Name, l.CertHash, accountCertHash(acc))
 	if errors.Is(err, mumbled.ErrUserChanged) {
 		return store.ErrNotFound
 	}

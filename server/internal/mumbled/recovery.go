@@ -2,6 +2,7 @@ package mumbled
 
 import (
 	"errors"
+	"net/netip"
 
 	"kallisti.chat/server/internal/names"
 )
@@ -27,6 +28,13 @@ func (s *Server) MayRecover(actor, userID uint32) (name, claim string, err error
 		return "", "", errors.New("a Kallisti account has this user's name")
 	case r.CertHash == "":
 		return "", "", errors.New("this user has no certificate")
+	// Imported names follow Murmur's rules: an account's name follows ours
+	// (an "@" would look like another server's account).
+	case names.Check(r.Name) != "":
+		return "", "", errors.New("rename this user first: " + names.Check(r.Name))
+	// The account's new certificate would not be banned.
+	case s.banned(netip.Addr{}, r.CertHash) != nil:
+		return "", "", errors.New("this user's certificate is banned")
 	default:
 		claim = r.CertHash
 	}

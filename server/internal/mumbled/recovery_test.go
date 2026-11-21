@@ -3,6 +3,7 @@ package mumbled
 import (
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // Recovery links follow the rule for deleting users: admins only, and for
@@ -10,13 +11,14 @@ import (
 func TestMayRecover(t *testing.T) {
 	db := testDB(t)
 	setAdminPassword(db, "admin")
-	// Every name but feld's has an account (once all registered), but
+	// Every name but feld's and odd@name's has an account (once all registered), but
 	// mallory's certificate is not its own: a Mumble registration that only
-	// shares the name. feld is an imported Mumble user without an account.
+	// shares the name. feld and odd@name are imported Mumble users without an
+	// account.
 	var accounts atomic.Bool
 	s, addr := startServerAndListen(t, "127.0.0.1", Config{
 		DB:               db,
-		ReservedName:     func(key string) bool { return accounts.Load() && key != "feld" },
+		ReservedName:     func(key string) bool { return accounts.Load() && key != "feld" && key != "odd@name" },
 		WebAccountExists: func(name, _ string) bool { return name != "mallory" },
 	}, nil)
 	su := superUser(t, addr)
@@ -54,6 +56,17 @@ func TestMayRecover(t *testing.T) {
 	}
 	if _, _, err := s.MayRecover(bob.session, feldID); err == nil {
 		t.Fatal("a moderator made a link for an imported user")
+	}
+	// Its name must be one an account may have, and its certificate not
+	// banned (the account's new one would not be).
+	oddID, _ := db.RegisterUser("odd@name", "oddcert")
+	if _, _, err := s.MayRecover(alice.session, oddID); err == nil {
+		t.Fatal("a link for a name accounts may not have")
+	}
+	r, _ = db.UserByID(feldID)
+	s.setBans([]BanEntry{{Hash: r.CertHash, Start: time.Now()}})
+	if _, _, err := s.MayRecover(alice.session, feldID); err == nil {
+		t.Fatal("a link for a banned certificate")
 	}
 	if _, _, err := s.MayRecover(alice.session, 999); err == nil {
 		t.Fatal("a link for nobody")

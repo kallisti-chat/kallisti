@@ -364,10 +364,10 @@ func TestMoveUser(t *testing.T) {
 	}
 	db.db.Exec(`UPDATE mumble_users SET password_hash = 'x' WHERE id = ?`, id)
 	tx, _ := db.db.Begin()
-	if err := MoveUser(tx, id, "old", "new"); err != nil {
+	if err := MoveUser(tx, id, "feld", "old", "new"); err != nil {
 		t.Fatal(err)
 	}
-	if err := MoveUser(tx, id, "old", "newer"); !errors.Is(err, ErrUserChanged) {
+	if err := MoveUser(tx, id, "feld", "old", "newer"); !errors.Is(err, ErrUserChanged) {
 		t.Fatalf("second move: %v", err)
 	}
 	tx.Commit()
