@@ -3089,3 +3089,11 @@ feld imported his Murmur server and asked how his old (certificate) user gets a 
 From the reviews (subagent, Astra): the move checks the name too (an admin's rename between link and use would have made an account that cannot connect); names must be account names (Murmur allows "@") and the certificate must not be banned (the account's new one would not be); a role change during the making of a link now ends it (a mutex with `RolesChanged`; plain recovery links had this gap too). Left: an old-certificate client that authenticates just before the claim and joins just after the kick keeps its connection (the certificate's owner; it ends on its next login).
 
 Checked on test.kallisti.chat with a self-registered certificate user (id 27): link in Server settings → Registered users, password set on the page, web login, the same Mumble id, password login in a Mumble client, the old certificate alone refused.
+
+## 2026-11-21: Claimed users keep their certificate
+
+After a claim, the user's own Mumble certificate stopped working (the registration has one certificate, now the account's). A registration can now have further certificates (`mumble_user_certs`): a claim keeps the old one there, `UserByHash` finds it, and the Mumble app keeps logging in without a password. A session that logs in with a further certificate carries the account's certificate, so bans and `$hash` ACLs cover both (the first version kept the old hash: a ban on either side missed the other, found by both reviews). Ending the account's logins (password change, logging out everywhere, recovery, deletion) drops the further certificates and ends their clients; a further certificate cannot become another registration's own.
+
+Left (Astra): a client in the middle of its login while the logins end can stay connected until it reconnects or the next end; a failed delete of further certificates is only logged.
+
+Checked on test.kallisti.chat with claimtest2 (Mumble id 28): old certificate alone after the claim, refused after a password change on the web, the new password works.
