@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { downloadUrl, formatDuration, mediaRatio, onlyOne, releaseOnDestroy, shownLength, videoPreload } from "../lib/media";
+  import { downloadUrl, formatDuration, mediaRatio, onlyOne, releaseOnDestroy, shownLength, videoFullScreen, videoPreload } from "../lib/media";
   import { formatSize } from "../lib/textChannels";
   import { t } from "../lib/i18n.svelte";
 
@@ -37,6 +37,9 @@
     started = true;
     video?.play().catch(() => {});
   };
+  // Our own full screen button: a portrait video's player is too narrow
+  // for the browser's.
+  const fullScreen = $derived(video ? videoFullScreen(video) : null);
 </script>
 
 <div class="video">
@@ -70,7 +73,14 @@
   <div class="file">
     <a class="name ellipsis" href={url} target="_blank" rel="noopener noreferrer">{name}</a>
     <span class="size">{formatSize(size)}</span>
-    <a class="download" href={downloadUrl(url)} download={name} aria-label={t("media.downloadFile", { name })} title={t("media.download")}>
+    {#if fullScreen}
+      <button type="button" class="icon" onclick={() => { fullScreen(); start(); }} aria-label={t("media.fullScreen")} title={t("media.fullScreen")}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          ><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg
+        >
+      </button>
+    {/if}
+    <a class="icon" href={downloadUrl(url)} download={name} aria-label={t("media.downloadFile", { name })} title={t("media.download")}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
         ><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg
       >
@@ -141,12 +151,12 @@
     font-size: 12px;
     color: var(--text-muted);
   }
-  .download {
+  .icon {
     display: grid;
     place-items: center;
     color: var(--text-muted);
   }
-  .download:hover {
+  .icon:hover {
     color: var(--text);
   }
 </style>
