@@ -5,6 +5,7 @@ import (
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"io"
 	"slices"
 	"testing"
@@ -214,5 +215,49 @@ func TestPushUser(t *testing.T) {
 		if id, ok := user(name); ok {
 			t.Errorf("%s: %d", name, id)
 		}
+	}
+}
+
+// A claim link with the real Mumble tables: the new account takes over the
+// registration (same id) and Mumble apps log in with its password. A
+// registration renamed after the link was made ends the link.
+func TestClaimTakesOverTheRegistration(t *testing.T) {
+	db, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	mdb, err := mumbled.OpenDB(db.DB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	claim := func(token, name string) (store.Account, error) {
+		certPEM, keyPEM, _ := certs.Generate(name)
+		hash, _ := password.Hash("secret pw")
+		return db.Claim(token, store.Account{Name: name, PasswordHash: hash, CertPEM: certPEM, KeyPEM: keyPEM}, now, moveRegistration)
+	}
+
+	id, _ := mdb.RegisterUser("feld", "oldcert")
+	db.SetClaimLink(store.ClaimLink{User: id, Name: "feld", CertHash: "oldcert"}, "t1", now.Add(time.Hour))
+	acc, err := claim("t1", "feld")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := mdb.UserByHash(accountCertHash(acc)); r == nil || r.ID != id {
+		t.Fatalf("registration of the account: %+v", r)
+	}
+	if a, ok := accountLogin(db)("feld", "secret pw"); !ok || a == nil || a.CertHash != accountCertHash(acc) {
+		t.Fatalf("Mumble app login: %+v %v", a, ok)
+	}
+
+	other, _ := mdb.RegisterUser("mira", "miracert")
+	db.SetClaimLink(store.ClaimLink{User: other, Name: "mira", CertHash: "miracert"}, "t2", now.Add(time.Hour))
+	mdb.RenameUser(other, "mirabel")
+	if _, err := claim("t2", "mira"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("renamed registration: %v", err)
+	}
+	if _, err := db.AccountByName("mira"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("account for a renamed registration: %v", err)
 	}
 }

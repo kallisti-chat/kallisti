@@ -139,7 +139,7 @@ export default {
   "admin.userDeleteNote": "アカウントとロールは削除され、メッセージは残ります",
   "admin.deleteUser": "ユーザーを削除",
   "admin.recoveryLink": "復旧リンク",
-  "admin.recoveryLinkNote": "このリンクを {name} に自分で送ってください。24 時間、1 回だけ使えます。新しいパスワードを設定し、ほかのログインを終了します。",
+  "admin.recoveryLinkNote": "このリンクを {name} に自分で送ってください。24 時間、1 回だけ使えます。新しいパスワードを設定し、ほかのログインを終了します。Kallisti アカウントのない Mumble ユーザーにはアカウントが作られ、Mumble アプリはその後このパスワードでログインします。",
   "admin.deleteUserAsk": "ユーザーを削除…",
 
   "admin.inviteOnly": "招待制サーバー",

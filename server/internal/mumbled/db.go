@@ -618,6 +618,27 @@ func (d *DB) Users() ([]Registered, error) {
 	return out, rows.Err()
 }
 
+// ErrUserChanged: the registration is not as it was (see MoveUser).
+var ErrUserChanged = errors.New("the registration changed")
+
+// MoveUser gives a registration without an account its new account's
+// certificate, in the account's transaction (mumble_users is in the same
+// database as the accounts, see store.Claim). Its own password goes: Mumble
+// apps log in with the account's. ErrUserChanged: it has another name or
+// certificate than when the link was made (the account would not match
+// it), or is gone.
+func MoveUser(tx *sql.Tx, id uint32, name, oldHash, newHash string) error {
+	res, err := tx.Exec(`UPDATE mumble_users SET cert_hash = ?, password_hash = '' WHERE id = ? AND id != 0 AND name_key = ? AND cert_hash = ?`,
+		newHash, id, names.Key(name), oldHash)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrUserChanged
+	}
+	return nil
+}
+
 func (d *DB) RenameUser(id uint32, name string) error {
 	if why := names.Check(name); why != "" || id == 0 {
 		return errors.New("invalid name")

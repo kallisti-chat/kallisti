@@ -3,6 +3,7 @@ package mumbled
 import (
 	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/netip"
 	"testing"
@@ -350,5 +351,27 @@ func TestUserIDsAreNeverReused(t *testing.T) {
 	c, err := db.RegisterUser("c", "hc")
 	if err != nil || c <= b || a >= b {
 		t.Fatalf("ids %d %d %d (%v)", a, b, c, err)
+	}
+}
+
+// A claimed registration moves to its account's certificate (once, and only
+// as it was when the link was made); its own password goes.
+func TestMoveUser(t *testing.T) {
+	db := testDB(t)
+	id, err := db.RegisterUser("feld", "old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.db.Exec(`UPDATE mumble_users SET password_hash = 'x' WHERE id = ?`, id)
+	tx, _ := db.db.Begin()
+	if err := MoveUser(tx, id, "feld", "old", "new"); err != nil {
+		t.Fatal(err)
+	}
+	if err := MoveUser(tx, id, "feld", "old", "newer"); !errors.Is(err, ErrUserChanged) {
+		t.Fatalf("second move: %v", err)
+	}
+	tx.Commit()
+	if r, _ := db.UserByHash("new"); r == nil || r.ID != id || r.PasswordHash != "" {
+		t.Fatalf("moved: %+v", r)
 	}
 }

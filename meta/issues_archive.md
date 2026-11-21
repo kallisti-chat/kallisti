@@ -407,3 +407,4 @@
 - [x] [Admin recovery link](issues/admin-recovery-link.md)
 - [x] [OIDC login (PR #28): finish and merge](issues/oidc-login-pr28.md)
 - [x] [Agent API: read, post and reply with an access token](issues/agent-api.md)
+- [x] [Recovery link for imported Mumble users](issues/recovery-link-for-imported-users.md)

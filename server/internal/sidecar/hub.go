@@ -154,8 +154,9 @@ type Voice interface {
 	// IsAdmin: the session's user is an admin (the logo, see logo.go).
 	IsAdmin(session uint32) bool
 	// MayRecover: the session may make a recovery link for the registered
-	// user (see recovery.go); the user's name.
-	MayRecover(session, userID uint32) (string, error)
+	// user (see recovery.go); the user's name, and for a registration
+	// without an account its certificate (claim: the link makes the account).
+	MayRecover(session, userID uint32) (name, claim string, err error)
 	// Connections: every connection over the recent window (admins).
 	Connections(session uint32) ([]Connection, error)
 	// CheckMessage: a session's message to post (with the word
@@ -261,6 +262,10 @@ type MumbleUser struct {
 type Hub struct {
 	store *store.Store
 	now   func() time.Time
+	// linkMu: a recovery link's check and its saving happen together, and
+	// RolesChanged deletes the links between them, never in the middle (a
+	// link checked before a role change would stay).
+	linkMu sync.Mutex
 	// Posts per webhook (see webhookpost.go).
 	webhookLimits webhookLimits
 	// Nil: no voice channel chats (a Murmur server).
@@ -1394,9 +1399,11 @@ func (h *Hub) RolesChanged() {
 	}
 	// A recovery link's account may be an admin now, whose links only
 	// SuperUser makes (see recovery.go): open links go.
+	h.linkMu.Lock()
 	if err := h.store.DeleteRecoveryLinks(); err != nil {
 		slog.Error("recovery links", "err", err)
 	}
+	h.linkMu.Unlock()
 	all := h.roles()
 	all.Type = "roles"
 	h.eachReady(func(c *Conn, id mumble.Identity) { c.send(all.forUser(h, id)) })
