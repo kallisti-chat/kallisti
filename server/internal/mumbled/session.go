@@ -185,6 +185,14 @@ func (s *Server) identify(h hello, hash string, host netip.Addr, account *WebAcc
 	if !ok {
 		return wrongPassword()
 	}
+	// A further certificate (a claimed user's old Mumble app): the session
+	// is the account's, for bans too (the ban of a session covers both).
+	if r != nil && r.CertHash != "" && r.CertHash != hash {
+		if reject := s.bannedReject(host, r.CertHash); reject != nil {
+			return identity{}, reject
+		}
+		hash = r.CertHash
+	}
 	if r != nil {
 		comment, texture, err := s.cfg.DB.UserContent(r.ID)
 		if err != nil {
@@ -595,11 +603,19 @@ func (s *Server) kickLocked(session, actor uint32, reason string, ban bool) {
 
 // EndPasswordLogins disconnects the Mumble clients of the web account
 // with this certificate: they logged in with its password (see
-// identifyAccount), which changed or was logged out everywhere. Its web
-// sessions end with their own logins.
+// identifyAccount), which changed or was logged out everywhere. Further
+// certificates of its registration (a claimed one's old Mumble app) go
+// too. Its web sessions end with their own logins.
 func (s *Server) EndPasswordLogins(certHash string) {
 	if certHash == "" { // none: clients without a certificate are not its
 		return
+	}
+	// A claimed registration's further certificates (its old Mumble app's)
+	// end too; their sessions have the account's certificate (see identify).
+	if s.cfg.DB != nil {
+		if err := s.cfg.DB.DropOtherCerts(certHash); err != nil {
+			slog.Error("ending further certificates", "err", err)
+		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

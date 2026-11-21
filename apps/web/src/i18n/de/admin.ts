@@ -139,7 +139,7 @@ export default {
   "admin.userDeleteNote": "Konto und Rollen werden entfernt, Nachrichten bleiben",
   "admin.deleteUser": "Nutzer löschen",
   "admin.recoveryLink": "Wiederherstellungslink",
-  "admin.recoveryLinkNote": "Schicke diesen Link selbst an {name}. Er gilt einmal und 24 Stunden: Er setzt ein neues Passwort und beendet die anderen Anmeldungen. Ein Mumble-Nutzer ohne Kallisti-Konto bekommt eines; seine Mumble-App meldet sich danach mit diesem Passwort an.",
+  "admin.recoveryLinkNote": "Schicke diesen Link selbst an {name}. Er gilt einmal und 24 Stunden: Er setzt ein neues Passwort und beendet die anderen Anmeldungen. Ein Mumble-Nutzer ohne Kallisti-Konto bekommt eines; seine Mumble-App funktioniert weiter.",
   "admin.deleteUserAsk": "Nutzer löschen…",
 
   "admin.inviteOnly": "Server nur auf Einladung",

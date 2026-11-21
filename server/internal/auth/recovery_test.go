@@ -64,8 +64,7 @@ func TestFirstPasswordWithFediOffNeedsRecovery(t *testing.T) {
 }
 
 // An imported Mumble user's link: it makes the account with the
-// registration's name (moved to the account's certificate) and logs in;
-// clients with the old certificate end.
+// registration's name (moved to the account's certificate) and logs in.
 func TestClaimLinkMakesTheAccount(t *testing.T) {
 	a, srv := setup(t)
 	var moved store.ClaimLink
@@ -74,8 +73,6 @@ func TestClaimLinkMakesTheAccount(t *testing.T) {
 		moved, movedTo = l, acc
 		return nil
 	}
-	var ended []string
-	a.EndCertificateLogins = func(hash string) { ended = append(ended, hash) }
 	link := store.ClaimLink{User: 9, Name: "Feld", CertHash: "old"}
 	a.Store.SetClaimLink(link, "the-token", time.Now().Add(time.Hour))
 
@@ -84,8 +81,8 @@ func TestClaimLinkMakesTheAccount(t *testing.T) {
 		t.Fatalf("claim: %d %v", resp.StatusCode, v)
 	}
 	acc, err := a.Store.AccountByName("feld")
-	if err != nil || moved != link || movedTo.ID != acc.ID || len(acc.CertPEM) == 0 || len(ended) != 1 || ended[0] != "old" {
-		t.Fatalf("account %+v %v, moved %+v to %d, ended %v", acc, err, moved, movedTo.ID, ended)
+	if err != nil || moved != link || movedTo.ID != acc.ID || len(acc.CertPEM) == 0 {
+		t.Fatalf("account %+v %v, moved %+v to %d", acc, err, moved, movedTo.ID)
 	}
 	if resp, _ := post(t, srv, "/api/login", map[string]string{"name": "Feld", "password": "a new password"}, nil); resp.StatusCode != http.StatusOK {
 		t.Errorf("login with the new password: %d", resp.StatusCode)

@@ -19,9 +19,11 @@ password: that makes their Kallisti account with the same name, and the
 registration moves to it, with its groups, channel rights, avatar,
 comment and messages. The link works once, for 24 hours.
 
-After that, the Mumble client logs in with the name and that password (the
-old certificate alone no longer does). The same works for users who
-registered in a Mumble app on Kallisti.
+The Mumble client keeps logging in with its certificate, as before; it
+can also log in with the name and the new password. Changing the password
+or logging out everywhere ends the old certificate: from then on the
+Mumble client needs the password. The same works for users who registered
+in a Mumble app on Kallisti.
 
 ## Before you start
 

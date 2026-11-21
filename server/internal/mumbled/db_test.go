@@ -374,4 +374,56 @@ func TestMoveUser(t *testing.T) {
 	if r, _ := db.UserByHash("new"); r == nil || r.ID != id || r.PasswordHash != "" {
 		t.Fatalf("moved: %+v", r)
 	}
+	// The old certificate stays the user's too (its Mumble app keeps working).
+	if r, _ := db.UserByHash("old"); r == nil || r.ID != id || r.CertHash != "new" {
+		t.Fatalf("old certificate: %+v", r)
+	}
+}
+
+// Further certificates end with the account's logins (DropOtherCerts) and
+// with the user.
+func TestOtherCertsEnd(t *testing.T) {
+	db := testDB(t)
+	claimed := func(name, old, account string) uint32 {
+		t.Helper()
+		id, err := db.RegisterUser(name, old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tx, err := db.db.Begin()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := MoveUser(tx, id, name, old, account); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	id := claimed("feld", "old", "new")
+	if err := db.DropOtherCerts("new"); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := db.UserByHash("old"); r != nil {
+		t.Fatalf("old certificate after the drop: %+v", r)
+	}
+	if r, _ := db.UserByHash("new"); r == nil || r.ID != id {
+		t.Fatalf("the account's own: %+v", r)
+	}
+
+	// A further certificate is nobody else's own.
+	claimed("nora", "n1", "n2")
+	if _, err := db.RegisterUser("guest", "n1"); err == nil {
+		t.Fatal("a registration with another user's further certificate")
+	}
+
+	other := claimed("mira", "m1", "m2")
+	if err := db.UnregisterUser(other); err != nil {
+		t.Fatal(err)
+	}
+	if r, _ := db.UserByHash("m1"); r != nil {
+		t.Fatalf("certificate of a deleted user: %+v", r)
+	}
 }

@@ -94,6 +94,13 @@ CREATE TABLE IF NOT EXISTS mumble_channel_links (
 	b INTEGER NOT NULL REFERENCES mumble_channels(id) ON DELETE CASCADE,
 	PRIMARY KEY (a, b)
 );
+-- Further certificates of a registration: a claimed one keeps its Mumble
+-- app's (see MoveUser) besides its account's in mumble_users.
+CREATE TABLE IF NOT EXISTS mumble_user_certs (
+	cert_hash TEXT PRIMARY KEY,
+	user_id   INTEGER NOT NULL REFERENCES mumble_users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS mumble_user_certs_user ON mumble_user_certs (user_id);
 `
 
 // Columns added after the first version, for databases made before; fill
@@ -499,11 +506,21 @@ func (d *DB) UserByID(id uint32) (*Registered, error) {
 	return d.userWhere(`id = ?`, id)
 }
 
+// UserByHash: the registration with this certificate, its own or a
+// further one (mumble_user_certs).
 func (d *DB) UserByHash(hash string) (*Registered, error) {
 	if hash == "" {
 		return nil, nil
 	}
-	return d.userWhere(`cert_hash = ?`, hash)
+	return d.userWhere(`id = coalesce((SELECT id FROM mumble_users WHERE cert_hash = ?1),
+		(SELECT user_id FROM mumble_user_certs WHERE cert_hash = ?1))`, hash)
+}
+
+// DropOtherCerts removes the further certificates of the registration with
+// this (an account's) certificate.
+func (d *DB) DropOtherCerts(hash string) error {
+	_, err := d.db.Exec(`DELETE FROM mumble_user_certs WHERE user_id = (SELECT id FROM mumble_users WHERE cert_hash = ?)`, hash)
+	return err
 }
 
 // RegisterUser adds a registration. Ids are never used twice (removed
@@ -520,6 +537,14 @@ func (d *DB) RegisterUser(name, certHash string) (uint32, error) {
 		(SELECT coalesce(max(id), 0) FROM mumble_users)) + 1`).Scan(&id)
 	if err != nil {
 		return 0, err
+	}
+	// A further certificate is its user's (see MoveUser), nobody else's own.
+	var other bool
+	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM mumble_user_certs WHERE cert_hash = ?)`, certHash).Scan(&other); err != nil {
+		return 0, err
+	}
+	if other {
+		return 0, errors.New("this certificate belongs to another user")
 	}
 	if _, err := tx.Exec(`INSERT INTO mumble_users (id, name, name_key, cert_hash, registered_at) VALUES (?, ?, ?, NULLIF(?, ''), ?)`,
 		id, name, names.Key(name), certHash, time.Now().UnixMilli()); err != nil {
@@ -623,8 +648,9 @@ var ErrUserChanged = errors.New("the registration changed")
 
 // MoveUser gives a registration without an account its new account's
 // certificate, in the account's transaction (mumble_users is in the same
-// database as the accounts, see store.Claim). Its own password goes: Mumble
-// apps log in with the account's. ErrUserChanged: it has another name or
+// database as the accounts, see store.Claim). The old certificate stays
+// its further one: its Mumble app keeps working. Its own password goes:
+// Mumble apps log in with the account's. ErrUserChanged: it has another name or
 // certificate than when the link was made (the account would not match
 // it), or is gone.
 func MoveUser(tx *sql.Tx, id uint32, name, oldHash, newHash string) error {
@@ -636,7 +662,8 @@ func MoveUser(tx *sql.Tx, id uint32, name, oldHash, newHash string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrUserChanged
 	}
-	return nil
+	_, err = tx.Exec(`INSERT INTO mumble_user_certs (cert_hash, user_id) VALUES (?, ?)`, oldHash, id)
+	return err
 }
 
 func (d *DB) RenameUser(id uint32, name string) error {
@@ -663,6 +690,7 @@ func (d *DB) UnregisterUser(id uint32) error {
 		`DELETE FROM mumble_group_members WHERE user_id = ?`,
 		`DELETE FROM mumble_timeouts WHERE user_id = ?`,
 		`DELETE FROM mumble_channel_timeouts WHERE user_id = ?`,
+		`DELETE FROM mumble_user_certs WHERE user_id = ?`,
 	} {
 		if _, err := tx.Exec(q, id); err != nil {
 			return err

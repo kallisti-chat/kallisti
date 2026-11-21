@@ -76,8 +76,8 @@ func hashPassword(pw string) (string, error) {
 
 // claim uses a claim link: a new account with the registration's name and
 // the password, which takes over the registration (MoveRegistration, in the
-// account's transaction: it keeps its id, groups and messages). Clients
-// with the old certificate end: Mumble apps log in with the password now.
+// account's transaction: it keeps its id, groups and messages). Its Mumble
+// app keeps its certificate, until the account's logins end.
 func (a *Service) claim(w http.ResponseWriter, r *http.Request, token string, link store.ClaimLink, pw string) {
 	fail := func(err error) {
 		slog.Error("claim link", "err", err)
@@ -104,9 +104,6 @@ func (a *Service) claim(w http.ResponseWriter, r *http.Request, token string, li
 	case err != nil:
 		fail(err)
 		return
-	}
-	if a.EndCertificateLogins != nil {
-		a.EndCertificateLogins(link.CertHash)
 	}
 	slog.Info("registration claimed", "account", acc.Name, "user", link.User)
 	if token, ok := a.startSession(w, r, acc); ok {
