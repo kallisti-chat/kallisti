@@ -16,6 +16,7 @@ import {
   releaseMedia,
   shownLength,
   spoilerUpload,
+  videoFullScreen,
   videoPreload,
 } from "../src/lib/media";
 
@@ -235,5 +236,21 @@ describe("lazyVideo", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(onFail).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
+  });
+});
+
+describe("videoFullScreen", () => {
+  it("uses the standard full screen", () => {
+    const requestFullscreen = vi.fn(() => Promise.resolve());
+    videoFullScreen({ requestFullscreen } as unknown as HTMLVideoElement)?.();
+    expect(requestFullscreen).toHaveBeenCalled();
+  });
+  it("uses the video full screen on iPhones (no standard one)", () => {
+    const webkitEnterFullscreen = vi.fn();
+    videoFullScreen({ webkitEnterFullscreen } as unknown as HTMLVideoElement)?.();
+    expect(webkitEnterFullscreen).toHaveBeenCalled();
+  });
+  it("is null without either (no button)", () => {
+    expect(videoFullScreen({} as HTMLVideoElement)).toBeNull();
   });
 });

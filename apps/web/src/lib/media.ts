@@ -77,6 +77,16 @@ export const mediaRatio = ({ width, height }: Sized) => (width && height ? `${wi
 // before the metadata loads).
 export const shownLength = (seconds: number, knownMs = 0) => finite(seconds) || knownMs / 1000;
 
+// Full screen for a video, for our own button: a narrow (portrait) player
+// leaves no room for the browser's (Firefox drops it, Chromium hides it in
+// a menu). iPhones have only the video's own full screen. null: neither.
+export const videoFullScreen = (video: HTMLVideoElement): (() => void) | null => {
+  const v = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+  if (typeof v.requestFullscreen === "function") return () => void v.requestFullscreen().catch(() => {});
+  if (typeof v.webkitEnterFullscreen === "function") return () => v.webkitEnterFullscreen?.();
+  return null;
+};
+
 // One plays at a time: starting one pauses the one before.
 let playing: HTMLMediaElement | null = null;
 export const onlyOne = (el: HTMLMediaElement) => {
