@@ -7,9 +7,21 @@ certificate, comment, avatar, last channel), bans and the server name.
 Murmur 1.4 and 1.5 databases work (schema version 9).
 
 Users keep logging in from their Mumble client with their certificate, as
-before. Their name stays theirs: on the web nobody else can take it. They
-cannot log in on the web with it yet (a Mumble registration has no web
-password); for the web app they make an account with another name.
+before. Their name stays theirs: on the web nobody else can take it. A
+Mumble registration has no web password; to use the web app with it, a
+user asks an admin for a recovery link.
+
+## Web login for an imported user
+
+An admin opens **Server settings → Registered users**, finds the user and makes a
+**Recovery link**, then sends it to the user. Opening it, the user sets a
+password: that makes their Kallisti account with the same name, and the
+registration moves to it, with its groups, channel rights, avatar,
+comment and messages. The link works once, for 24 hours.
+
+After that, the Mumble client logs in with the name and that password (the
+old certificate alone no longer does). The same works for users who
+registered in a Mumble app on Kallisti.
 
 ## Before you start
 
