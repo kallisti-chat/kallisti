@@ -219,7 +219,8 @@ func TestPushUser(t *testing.T) {
 }
 
 // A claim link with the real Mumble tables: the new account takes over the
-// registration (same id) and Mumble apps log in with its password. A
+// registration (same id); Mumble apps log in with its password, or the old
+// certificate as before. A
 // registration renamed after the link was made ends the link.
 func TestClaimTakesOverTheRegistration(t *testing.T) {
 	db, err := store.Open(":memory:")
@@ -246,6 +247,9 @@ func TestClaimTakesOverTheRegistration(t *testing.T) {
 	}
 	if r, _ := mdb.UserByHash(accountCertHash(acc)); r == nil || r.ID != id {
 		t.Fatalf("registration of the account: %+v", r)
+	}
+	if r, _ := mdb.UserByHash("oldcert"); r == nil || r.ID != id {
+		t.Fatalf("the old certificate's registration: %+v", r)
 	}
 	if a, ok := accountLogin(db)("feld", "secret pw"); !ok || a == nil || a.CertHash != accountCertHash(acc) {
 		t.Fatalf("Mumble app login: %+v %v", a, ok)
