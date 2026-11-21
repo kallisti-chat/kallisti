@@ -146,7 +146,7 @@ export default {
   "admin.userDeleteNote": "le compte et les rôles partent ; les messages restent",
   "admin.deleteUser": "Supprimer l'utilisateur",
   "admin.recoveryLink": "Lien de récupération",
-  "admin.recoveryLinkNote": "Envoie toi-même ce lien à {name}. Il marche une fois, pendant 24 heures : il définit un nouveau mot de passe et ferme ses autres connexions. Un utilisateur Mumble sans compte Kallisti en reçoit un ; son appli Mumble se connecte ensuite avec ce mot de passe.",
+  "admin.recoveryLinkNote": "Envoie toi-même ce lien à {name}. Il marche une fois, pendant 24 heures : il définit un nouveau mot de passe et ferme ses autres connexions. Un utilisateur Mumble sans compte Kallisti en reçoit un ; son appli Mumble continue de marcher.",
   "admin.deleteUserAsk": "Supprimer l'utilisateur…",
 
   "admin.inviteOnly": "Serveur sur invitation",
