@@ -3140,3 +3140,9 @@ kaia asked for the arrow keys to go through a channel's pictures and videos. The
 ## 2026-11-25: Read-only text channels
 
 kaia asked for channels such as #announcements where only some people post. A text channel's settings now have "Read only" and a list of who else may post, as "Listen only" for voice. Underneath it is the mirror's ACL: deny TextMessage to `all`, allow it to `admin`, `moderator` and each listed user. The allows for staff are needed: staff have no Write in mirrors, so the deny would take their right away too. Every post checks TextMessage already, so the web client, the agent API and Mumble clients get the same rule. The deny also applies to subchannels, so it differs from a category's own entry (a mirror with the category's entry counted as a category). `listenonly.go` now has the shared code for both. Web clients get a `read-only` list (by mirror) in ready, after each ACL change and after an access change; who cannot post sees "Only some people can post in this channel." in the message box. Reactions and threads also need TextMessage, so they are off there for others.
+
+## 2026-11-22: Image upload filenames
+
+New image uploads get a unique hash-based filename instead of sharing the original name; downloads keep an appropriate extension, and spoilers keep their marker. The name combines the file contents and a random upload key, so uploading the same image twice gives different names. Existing uploads are not renamed, and image contents and metadata are not changed. Common image download extensions and files declared as images are included; an unrecognized image without either can still keep its name. Generic picture labels avoid reading a generated hash as alt text.
+
+Checked with upload handler tests, web media tests and typechecking; an operator also confirmed an upload and download on a test deployment. This does not test metadata removal, which the change does not perform.

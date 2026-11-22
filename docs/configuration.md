@@ -45,6 +45,12 @@ brackets.
   in front of a Murmur it is read at each start.
 - `UPLOAD_DIR` (`uploads`), `UPLOAD_MAX_MB` (10 per file),
   `UPLOAD_QUOTA_MB` (100 per user per day).
+  New image uploads get a unique hash-based filename and a suitable extension,
+  rather than sharing the original filename. Spoiler markers are kept. This
+  applies to detected pictures, common image extensions and uploads declared as
+  images; an unrecognized image with neither an image extension nor an image
+  content type can retain its name. Existing uploads are not renamed. Image
+  contents and metadata (including EXIF) are not changed.
 - `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): files of private
   rooms only for who may read the room (built-in server only). See
   [private-room media](#private-room-media-experiment).
