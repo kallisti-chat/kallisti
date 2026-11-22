@@ -3145,4 +3145,4 @@ kaia asked for channels such as #announcements where only some people post. A te
 
 New image uploads get a unique hash-based filename instead of sharing the original name; downloads keep an appropriate extension, and spoilers keep their marker. The name combines the file contents and a random upload key, so uploading the same image twice gives different names. Existing uploads are not renamed, and image contents and metadata are not changed. Common image download extensions and files declared as images are included; an unrecognized image without either can still keep its name. Generic picture labels avoid reading a generated hash as alt text.
 
-Checked with upload handler tests, web media tests and typechecking; an operator also confirmed an upload and download on a test deployment. This does not test metadata removal, which the change does not perform.
+Checked with upload handler tests, web media tests and typechecking; the operator also reported the image filename test worked on a test deployment. This does not test metadata removal, which the change does not perform.
