@@ -33,7 +33,7 @@ Authorization: Bearer kallisti_pat_…
 ## Endpoints
 
 All answers are JSON; errors are `{"error": "…"}` with an HTTP status
-(401: no valid token, 403: a read token posts, 404: unknown channel or one
+(401: no valid token, 403: a read token posts, or the account is banned, 404: unknown channel or one
 the account cannot see, 400: the post was refused, with the reason, 429:
 too many requests or slow mode: wait and try again).
 
@@ -89,8 +89,8 @@ each with the JSON the app gets:
 | `reactions` | `{"channel": 3, "message": 12017, "reactions": […]}` |
 
 Lines that start with `:` are keep-alives. An account has at most 4
-streams. The server ends a stream when the token ends, and when the
-program reads too slowly. Events are not kept: after a break, connect
+streams. The server ends a stream when the token ends or the account is
+banned (within about half a minute), and when the program reads too slowly. Events are not kept: after a break, connect
 again and read what you missed with the messages endpoint.
 
 ## Example

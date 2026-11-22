@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"kallisti.chat/server/internal/mumble"
 )
@@ -133,8 +134,7 @@ func openAgentEvents(t *testing.T, srv *httptest.Server, token string) (next fun
 				return event, v
 			}
 		}
-		t.Fatalf("the stream ended: %v", lines.Err())
-		return "", nil
+		return "", nil // the stream ended
 	}, resp.StatusCode
 }
 
@@ -198,5 +198,35 @@ func TestAgentEventStreamsAreLimited(t *testing.T) {
 	}
 	if _, code := openAgentEvents(t, srv, "r"); code != http.StatusTooManyRequests {
 		t.Fatalf("one too many: %d", code)
+	}
+}
+
+// A banned account's token does nothing, and its open stream ends.
+func TestAgentAPIRefusesBannedAccounts(t *testing.T) {
+	h := newHub(t, "general")
+	v := &fakeVoice{}
+	h.SetVoice(v, "")
+	srv := agentServer(t, h)
+	old := agentKeepAlive
+	agentKeepAlive = 20 * time.Millisecond
+	t.Cleanup(func() { agentKeepAlive = old })
+	next, _ := openAgentEvents(t, srv, "r")
+	next() // ready
+	v.mu.Lock()
+	v.banned = map[uint32]bool{7: true}
+	v.mu.Unlock()
+	if code, _ := agentCall(t, srv, "GET", "/api/agent/channels", "r", nil); code != http.StatusForbidden {
+		t.Fatalf("banned: %d", code)
+	}
+	ended := make(chan struct{})
+	go func() {
+		defer close(ended)
+		for event, _ := next(); event != ""; event, _ = next() {
+		}
+	}()
+	select {
+	case <-ended:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the stream stays open")
 	}
 }

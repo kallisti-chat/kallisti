@@ -34,9 +34,10 @@ const agentPageSize = 100
 // checked again then.
 const (
 	agentStreams      = 4
-	agentKeepAlive    = 25 * time.Second
 	agentWriteTimeout = 10 * time.Second
 )
+
+var agentKeepAlive = 25 * time.Second
 
 // agentEvents are the events of a chat's readers that a stream passes on.
 var agentEvents = map[string]bool{"message": true, "message-edited": true, "message-deleted": true, "messages-deleted": true, "reactions": true}
@@ -69,11 +70,23 @@ func agentError(w http.ResponseWriter, code int, message string) {
 	agentJSON(w, code, map[string]string{"error": message})
 }
 
+// agentOf is a request's token as an identity (see Hub.Agent). banned:
+// the account's user is banned; a token does not get around that.
+func (h *Hub) agentOf(r *http.Request) (id mumble.Identity, write, banned, ok bool) {
+	if h.Agent == nil {
+		return
+	}
+	if id, write, ok = h.Agent(r); ok && h.voice != nil && h.voice.UserBanned(id.UserID) {
+		return id, false, true, false
+	}
+	return
+}
+
 func (h *Hub) ServeAgent(w http.ResponseWriter, r *http.Request) {
-	var id mumble.Identity
-	var write, ok bool
-	if h.Agent != nil {
-		id, write, ok = h.Agent(r)
+	id, write, banned, ok := h.agentOf(r)
+	if banned {
+		agentError(w, http.StatusForbidden, "this account is banned")
+		return
 	}
 	if !ok {
 		agentError(w, http.StatusUnauthorized, "a valid access token is needed (Authorization: Bearer)")
@@ -264,7 +277,7 @@ func (h *Hub) agentStream(w http.ResponseWriter, r *http.Request, id mumble.Iden
 		case <-r.Context().Done():
 			return
 		case <-tick.C:
-			now, _, ok := h.Agent(r)
+			now, _, _, ok := h.agentOf(r)
 			if !ok || now.UserID != id.UserID || !write(": ping\n\n") {
 				return
 			}

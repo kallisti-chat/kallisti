@@ -34,6 +34,7 @@ const (
 	sendTimeout = 10 * time.Second
 	maxBody     = 8 << 10
 	maxList     = 1000 // quiet chats, blocked users, loud threads
+	maxAll      = 200  // chats for all messages: looked through on every message
 )
 
 // Note is one push: a short text without the message itself (privacy), the
@@ -115,14 +116,16 @@ func (s *Service) Stop() {
 	s.workers.Wait()
 }
 
-// due: no push for a user's chat in the window before now (then counted).
-func (s *Service) due(user string, channel int64, now time.Time) bool {
+// due: no push of this kind (a ping, or one for all messages: it must not
+// take a ping's turn) for a user's chat in the window before now (then
+// counted).
+func (s *Service) due(user string, channel int64, all bool, now time.Time) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.last == nil {
 		s.last = map[string]time.Time{}
 	}
-	key := fmt.Sprintf("%s\x00%d", user, channel)
+	key := fmt.Sprintf("%s\x00%d\x00%v", user, channel, all)
 	if t, ok := s.last[key]; ok && now.Sub(t) < collapseWindow {
 		return false
 	}
@@ -135,11 +138,11 @@ func (s *Service) due(user string, channel int64, now time.Time) bool {
 	return true
 }
 
-// Notify queues a push to a user's browsers (by name): one per user and
-// chat in collapseWindow, none when the queue is full or stopped. After
+// Notify queues a push to a user's browsers (by name): one per user, chat
+// and kind in collapseWindow, none when the queue is full or stopped. After
 // Start.
 func (s *Service) Notify(name string, n Note) {
-	if s.ctx == nil || s.ctx.Err() != nil || !s.due(names.Key(name), n.Channel, s.Now()) { // not started, or stopped
+	if s.ctx == nil || s.ctx.Err() != nil || !s.due(names.Key(name), n.Channel, n.All, s.Now()) { // not started, or stopped
 		return
 	}
 	select {
@@ -318,7 +321,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusForbidden, "push notifications need an account with a password")
 	case !knownPushService(sub.Endpoint):
 		fail(w, http.StatusBadRequest, "unknown push service")
-	case !validKeys(sub.Keys.P256dh, sub.Keys.Auth) || len(sub.Quiet) > maxList || len(sub.Blocked) > maxList || len(sub.Loud) > maxList || len(sub.All) > maxList:
+	case !validKeys(sub.Keys.P256dh, sub.Keys.Auth) || len(sub.Quiet) > maxList || len(sub.Blocked) > maxList || len(sub.Loud) > maxList || len(sub.All) > maxAll:
 		fail(w, http.StatusBadRequest, "invalid subscription")
 	default:
 		blocked := make([]string, len(sub.Blocked))

@@ -475,3 +475,27 @@ func TestDeliverAllMessages(t *testing.T) {
 		}
 	}
 }
+
+// A push for "all messages" does not use up the chat's turn for a ping:
+// a mention soon after still goes out (to the devices on "mentions only").
+func TestAllMessagesPushesKeepPingsDue(t *testing.T) {
+	s, _, _ := newService(t)
+	s.Start(0, 5)
+	defer s.Stop()
+	s.Notify("alice", Note{Channel: 1, All: true})
+	s.Notify("alice", Note{Channel: 1, All: true})
+	s.Notify("alice", Note{Channel: 1})
+	s.Notify("alice", Note{Channel: 1})
+	if len(s.queue) != 2 {
+		t.Fatalf("%d queued, want one of each", len(s.queue))
+	}
+}
+
+// A device names at most maxAll chats for all messages.
+func TestSubscriptionLimitsAllMessages(t *testing.T) {
+	s, _, _ := newService(t)
+	b, _ := json.Marshal(map[string]any{"endpoint": phone, "keys": map[string]string{"p256dh": p256dh, "auth": auth}, "all": make([]int64, maxAll+1)})
+	if w := call(t, s, "POST", "/api/push/subscriptions", "a1", string(b)); w.Code != http.StatusBadRequest {
+		t.Fatalf("got %d", w.Code)
+	}
+}
