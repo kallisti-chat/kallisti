@@ -296,6 +296,7 @@ func run() error {
 		}
 	}()
 	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", health(db.DB()))
 	mux.Handle("/api/upload", fileHandler)
 	mux.HandleFunc("/api/webhooks/", hub.ServeWebhook) // see sidecar/webhookpost.go
 	mux.HandleFunc("/api/agent/", hub.ServeAgent)      // see sidecar/agent.go
