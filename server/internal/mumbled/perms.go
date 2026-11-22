@@ -2,6 +2,7 @@ package mumbled
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -207,7 +208,11 @@ func (s *Server) aclMsg(c *client, m *pb.ACL) {
 		return
 	}
 	s.mu.Unlock()
-	known := s.registeredIDs(aclUserIDs(m)) // DB lookups outside the lock
+	known, err := s.registeredIDs(aclUserIDs(m)) // DB lookups outside the lock
+	if err != nil {
+		c.deny(errLookup)
+		return
+	}
 	// Roles live in root's groups, channel moderators in channels'; runs
 	// after the unlock.
 	defer s.rolesChanged()
@@ -273,14 +278,23 @@ func aclUserIDs(m *pb.ACL) []uint32 {
 	return slices.Sorted(maps.Keys(ids))
 }
 
-// registeredIDs keeps the ids of registered users.
-func (s *Server) registeredIDs(ids []uint32) map[uint32]bool {
+var errLookup = errors.New("the users could not be looked up: nothing was changed")
+
+// registeredIDs keeps the ids of registered users. On an error the
+// caller changes nothing: an empty answer would drop every user.
+func (s *Server) registeredIDs(ids []uint32) (map[uint32]bool, error) {
 	known := map[uint32]bool{}
-	names, _ := s.userNames(ids)
+	names, err := s.userNames(ids)
 	for id := range names {
 		known[id] = true
 	}
-	return known
+	return known, err
+}
+
+// isRegistered: false also when the lookup fails.
+func (s *Server) isRegistered(id uint32) bool {
+	known, err := s.registeredIDs([]uint32{id})
+	return err == nil && known[id]
 }
 
 // aclsFromProto reads an edited ACL; entries for unknown users are dropped.

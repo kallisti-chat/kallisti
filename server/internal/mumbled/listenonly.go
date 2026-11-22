@@ -125,7 +125,10 @@ func (s *Server) SetListenOnly(actor, channel uint32, on bool, speakers []uint32
 	}
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	known := s.registeredIDs(speakers) // DB lookups outside the lock
+	known, err := s.registeredIDs(speakers) // DB lookups outside the lock
+	if err != nil {
+		return errLookup
+	}
 	s.mu.Lock()
 	ch, u := s.state.Channels[channel], s.state.Users[actor]
 	switch {

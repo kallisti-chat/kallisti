@@ -294,3 +294,33 @@ func TestAdminsByCertificateAreSuperUsersToDelete(t *testing.T) {
 		t.Fatal("an admin deleted a certificate admin")
 	}
 }
+
+// A failed user lookup refuses the change: the users in it are not taken
+// for unknown and dropped.
+func TestAFailedUserLookupChangesNothing(t *testing.T) {
+	s, addr := rolesServer(t)
+	su := superUser(t, addr)
+	_, aliceID := registered(t, addr, "alice")
+	if err := s.SetAdmin(su.session, aliceID, true); err != nil {
+		t.Fatal(err)
+	}
+	music := su.createChannel(0, "Music", false)
+	db := s.cfg.DB.db
+	if _, err := db.Exec(`ALTER TABLE mumble_users RENAME TO gone`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetListenOnly(su.session, music, true, []uint32{aliceID}); err == nil {
+		t.Error("listen-only was set without its speakers")
+	}
+	if err := s.SetPrivate(su.session, music, true, []uint32{aliceID}); err == nil {
+		t.Error("the channel was made private without its members")
+	}
+	su.setACL(0, true, nil, []*pb.ACL_ChanGroup{{Name: proto.String("admin"), Add: []uint32{aliceID}}})
+	su.expectDenied(pb.PermissionDenied_Text)
+	if _, err := db.Exec(`ALTER TABLE gone RENAME TO mumble_users`); err != nil {
+		t.Fatal(err)
+	}
+	if admins, _ := s.Roles(); !slices.Contains(admins, aliceID) {
+		t.Fatalf("admins %v: alice was dropped", admins)
+	}
+}

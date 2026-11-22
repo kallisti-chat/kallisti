@@ -168,7 +168,10 @@ func (s *Server) SetPrivate(actor, channel uint32, on bool, members []uint32) er
 	}
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	known := s.registeredIDs(members) // DB lookups outside the lock
+	known, err := s.registeredIDs(members) // DB lookups outside the lock
+	if err != nil {
+		return errLookup
+	}
 	s.mu.Lock()
 	ch, u := s.state.Channels[channel], s.state.Users[actor]
 	switch {
@@ -204,7 +207,7 @@ func (s *Server) SetPrivate(actor, channel uint32, on bool, members []uint32) er
 func (s *Server) AddMember(channel, user uint32) (added bool, err error) {
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	if !s.registeredIDs([]uint32{user})[user] {
+	if !s.isRegistered(user) {
 		return false, errors.New("no such user")
 	}
 	s.mu.Lock()

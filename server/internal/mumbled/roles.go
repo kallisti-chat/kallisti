@@ -58,7 +58,7 @@ func (s *Server) isAdmin(u *User) bool { return s.state.Has(u, 0, Write) }
 func (s *Server) setRole(actor, userID uint32, group string, on bool, may func(*User) bool, denied string) error {
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	if userID == 0 || !s.registeredIDs([]uint32{userID})[userID] {
+	if userID == 0 || !s.isRegistered(userID) {
 		return errors.New("not a registered user")
 	}
 	s.mu.Lock()
