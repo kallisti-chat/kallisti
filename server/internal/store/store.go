@@ -212,6 +212,8 @@ CREATE TABLE IF NOT EXISTS messages (
 	verified   INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS messages_by_channel ON messages(channel_id, id);
+-- The upload limit sums an author's recent uploads on each upload.
+CREATE INDEX IF NOT EXISTS uploads_by_author ON uploads(author, created_at);
 -- Counters; last_message_id: the highest message id ever given.
 CREATE TABLE IF NOT EXISTS store_meta (
 	key   TEXT PRIMARY KEY,
@@ -1408,6 +1410,9 @@ func (s *Store) MessagesAfter(channel, after int64, contains string) (int64, []M
 	var latest int64
 	if err := s.db.QueryRow(`SELECT coalesce(max(id), 0) FROM messages WHERE channel_id = ?`, channel).Scan(&latest); err != nil {
 		return 0, nil, err
+	}
+	if latest <= after { // the usual case: nothing new
+		return latest, nil, nil
 	}
 	// Only the newest maxMessagesAfter messages are looked at.
 	rows, err := s.db.Query(messageSelect+`WHERE m.id IN (
