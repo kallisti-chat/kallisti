@@ -110,7 +110,7 @@ func (c *Conn) webhookRequest(id mumble.Identity, req request) {
 		}
 		h.webhookLimits.forget(req.Webhook)
 	case "webhook-picture-token":
-		c.send(map[string]any{"type": "upload-token", "token": h.issueToken(uploadToken{author: id.Name, webhook: req.Webhook})})
+		c.send(map[string]any{"type": "upload-token", "token": h.issueToken(uploadToken{kind: webhookPictureToken, author: id.Name, webhook: req.Webhook})})
 		return
 	case "remove-webhook-picture":
 		if _, err := h.store.SetWebhookPicture(req.Webhook, nil, h.now()); err != nil {
@@ -125,11 +125,8 @@ func (c *Conn) webhookRequest(id mumble.Identity, req request) {
 // RedeemWebhookPictureToken says which webhook's picture a token uploads
 // (once, before it expires).
 func (h *Hub) RedeemWebhookPictureToken(token string) (webhook int64, ok bool) {
-	t, ok := h.redeem(token)
-	if !ok || t.webhook == 0 {
-		return 0, false
-	}
-	return t.webhook, true
+	t, ok := h.redeem(token, webhookPictureToken)
+	return t.webhook, ok
 }
 
 // WebhookPictureChanged tells everyone a webhook's picture changed (set or

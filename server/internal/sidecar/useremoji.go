@@ -125,7 +125,7 @@ func (c *Conn) userEmojiToken(id mumble.Identity, name string) {
 			return
 		}
 	}
-	c.send(map[string]any{"type": "upload-token", "token": c.hub.issueToken(uploadToken{author: id.Name, emoji: name, user: id.UserID, personal: true})})
+	c.send(map[string]any{"type": "upload-token", "token": c.hub.issueToken(uploadToken{kind: userEmojiToken, author: id.Name, emoji: name, user: id.UserID})})
 }
 
 // addUserEmoji adds an emoji someone used (a personal one, "<:name:id>",
@@ -220,11 +220,8 @@ func (c *Conn) removeEmojiImage(id mumble.Identity, ref string) {
 // RedeemUserEmojiToken returns who may add which personal emoji with a
 // token (once, before it expires).
 func (h *Hub) RedeemUserEmojiToken(token string) (user uint32, name string, ok bool) {
-	t, ok := h.redeem(token)
-	if !ok || !t.personal {
-		return 0, "", false
-	}
-	return t.user, t.emoji, true
+	t, ok := h.redeem(token, userEmojiToken)
+	return t.user, t.emoji, ok
 }
 
 // reactionEmoji is the form of a personal emoji reaction: the image's
