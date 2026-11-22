@@ -3097,3 +3097,17 @@ After a claim, the user's own Mumble certificate stopped working (the registrati
 Left (Astra): a client in the middle of its login while the logins end can stay connected until it reconnects or the next end; a failed delete of further certificates is only logged.
 
 Checked on test.kallisti.chat with claimtest2 (Mumble id 28): old certificate alone after the claim, refused after a password change on the web, the new password works.
+
+## 2026-11-22: Audit: fixes, two refactors, three features
+
+Three read-only surveys (server, web client, feature gaps) gave a ranked list; this is what was done from it.
+
+Fixes: a failed user lookup during an ACL edit took every user for unknown and saved the ACL without them (on root: no admins left); `registeredIDs` now returns its error and the edit is refused. `MessagesAfter` ran its 500-row scan for every readable chat on each connect, also for chats with nothing new: it returns after the max-id query. Upload tokens have a kind (the file token was "none of the other kinds", so a new kind could have passed as one). An index for the upload limit's sum. In the web client the emoji set and the mention names were new objects on every server event, which sanitized every shown message again: they now keep their identity while their content is the same.
+
+Refactors: the auth handlers' four repeated blocks (error reply, small JSON body, "not logged in", "too many attempts") are helpers. The dialog shell (box, backdrop, header, title, close button) is in `app.css` once, with `:where()` so a dialog's own rules win; 16 components lost about 320 lines. Not a wrapper component: the dialogs differ in forms and key handling, the copies were CSS. Not done: loading the language detector later (short English lines defeat the word list, so it would load in nearly every session anyway).
+
+Features: a push for every message of chats set to "All messages" (the setting worked only while the app was open): a device names those chats with its subscription (`all`, at most 200), the hub asks who wants them with a `json_each` query, and the same limits as for pings hold. `/healthz` checks the database; the compose healthcheck and the Helm startup and readiness probes use it (liveness stays on `/`: a busy database must not restart the pod). The agent API has a stream of events (`GET /api/agent/events`, server-sent events: what a chat's readers get) and reactions.
+
+From the reviews (subagent, Astra): a banned account's token still worked, on a stream without end; an "all messages" push took the chat's one-a-minute turn from a mention, and its tag replaced the mention's notification; an open stream made shutdown wait its full 5 s and exit with an error (the HTTP server waits for requests, not for WebSockets).
+
+Checked on test.kallisti.chat: `/healthz`, and four dialogs' computed styles in headless Chromium against the old rules. Not checked there: a real browser push for "All messages" (tests only), so that issue stays open.

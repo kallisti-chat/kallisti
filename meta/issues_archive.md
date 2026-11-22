@@ -409,3 +409,4 @@
 - [x] [Agent API: read, post and reply with an access token](issues/agent-api.md)
 - [x] [Recovery link for imported Mumble users](issues/recovery-link-for-imported-users.md)
 - [x] [Claimed users keep their certificate](issues/claimed-users-keep-their-certificate.md)
+- [x] [Agent API: a stream of events, and reactions](issues/agent-api-events-and-reactions.md)
