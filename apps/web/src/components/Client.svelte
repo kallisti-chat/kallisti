@@ -106,7 +106,7 @@
   } from "../lib/moderation";
   import { chatSeen, notificationBody, notifier, shouldNotify } from "../lib/notify";
   import { createNotifyLeader } from "../lib/notifyLeader";
-  import { isMentionAll, mentionNames, pingsMe, replyPing } from "../lib/mentions";
+  import { isMentionAll, keepNames, mentionNames, pingsMe, replyPing } from "../lib/mentions";
   import { userPreferences, channelLists, channelPrefs, collapsedCategories, directPrefs, settings } from "../lib/settings.svelte";
   import { textGroups, textOrder } from "../lib/categories";
   import { befriendable, type FriendRow } from "../lib/friends";
@@ -747,7 +747,12 @@
     statusOfSession({ statuses: text.statuses, own: text.ownStatus, me: server.session, away, now: statusNow }, session);
   // Custom server emoji and our personal ones, for messages, reactions and
   // pickers below.
-  const customEmoji = $derived(customEmojiSet(text.emoji, connection.httpBase, text.myEmoji, text.removedEmoji));
+  // From the lists themselves, not from `text` (new on every event): a
+  // new set makes every shown message again.
+  const emojiList = $derived(text.emoji);
+  const myEmoji = $derived(text.myEmoji);
+  const removedEmoji = $derived(text.removedEmoji);
+  const customEmoji = $derived(customEmojiSet(emojiList, connection.httpBase, myEmoji, removedEmoji));
   // The stickers with absolute image URLs (see lib/stickers).
   const stickers = $derived(text.stickers.map((s) => ({ ...s, url: connection.httpBase + s.url })));
   setCustomEmoji(() => customEmoji);
@@ -1167,9 +1172,8 @@
   // itself: a new map (and new chat lines) only when the channels change.
   const textChannelList = $derived(text.channels);
   const channelIds = $derived(new Map(textChannelList.map((c) => [c.name.toLowerCase(), c.id])));
-  const textChat = $derived(
-    chatId === null ? [] : (text.messages[chatId] ?? []).map((m) => toChatMessage(m, connection.httpBase, channelIds)),
-  );
+  const chatMessages = $derived(chatId === null ? undefined : text.messages[chatId]);
+  const textChat = $derived((chatMessages ?? []).map((m) => toChatMessage(m, connection.httpBase, channelIds)));
   // Server settings (bans, registered users) for moderators and admins.
   let showModeration = $state(false);
   const moderation = $derived({ ...moderationRights(server), emoji: canManageText(server, text) });
@@ -1210,13 +1214,17 @@
   const slow = $derived(slowIn(textId, textChat));
   // Names "@" suggests (see lib/mentions); everyone and here only for
   // moderators of stored chats.
+  // The same list while the names are (see keepNames).
+  const keepPeople = keepNames();
   const people = $derived(
-    mentionNames({
-      online: users.map((u) => u.name),
-      authors: textChat.flatMap((m) => (m.actorName ? [m.actorName] : [])),
-      members: Object.values(text.members),
-      all: (textId ?? voiceChatId) !== null && canManageText(server, text),
-    }),
+    keepPeople(
+      mentionNames({
+        online: users.map((u) => u.name),
+        authors: textChat.flatMap((m) => (m.actorName ? [m.actorName] : [])),
+        members: Object.values(text.members),
+        all: (textId ?? voiceChatId) !== null && canManageText(server, text),
+      }),
+    ),
   );
   // One send of files at a time, the files one after another. Settles once
   // the server stored the message, or fails (the message box keeps the

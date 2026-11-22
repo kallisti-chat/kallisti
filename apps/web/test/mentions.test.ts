@@ -8,6 +8,7 @@ import {
   replyPing,
   suggestNames,
   mentionNames,
+  keepNames,
 } from "../src/lib/mentions";
 import { initialTextState, type TextMessage, type TextState } from "../src/lib/textChannels";
 
@@ -178,3 +179,14 @@ describe("mentionNames", () => {
   });
 });
 
+
+describe("keepNames", () => {
+  it("keeps the list before when the names are the same", () => {
+    const keep = keepNames();
+    const first = keep(["ada", "bob"]);
+    expect(keep(["ada", "bob"])).toBe(first);
+    const next = keep(["ada", "cy"]);
+    expect(next).toEqual(["ada", "cy"]);
+    expect(keep(["ada", "cy"])).toBe(next);
+  });
+});
