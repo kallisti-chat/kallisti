@@ -30,7 +30,8 @@ const maxPushSubscriptions = 10
 // PushSubscription is a browser's push endpoint and keys (RFC 8291), and
 // what it wants no pushes for: chats, and users it blocked (by
 // names.Key). Loud: threads with a setting of their own (their channel's
-// quiet does not hold).
+// quiet does not hold). All: chats it wants a push for every message of,
+// not only for pings.
 type PushSubscription struct {
 	Endpoint string
 	P256dh   string
@@ -38,18 +39,20 @@ type PushSubscription struct {
 	Quiet    []int64
 	Blocked  []string
 	Loud     []int64
+	All      []int64
 }
 
 type pushPrefs struct {
 	Quiet   []int64  `json:"quiet"`
 	Blocked []string `json:"blocked"`
 	Loud    []int64  `json:"loud,omitempty"`
+	All     []int64  `json:"all,omitempty"`
 }
 
 // SetPushSubscription keeps a subscription for a session (by its endpoint:
 // the same browser again replaces it, also for another account).
 func (s *Store) SetPushSubscription(session string, p PushSubscription, at time.Time) error {
-	prefs, err := json.Marshal(pushPrefs{p.Quiet, p.Blocked, p.Loud})
+	prefs, err := json.Marshal(pushPrefs{p.Quiet, p.Blocked, p.Loud, p.All})
 	if err != nil {
 		return err
 	}
@@ -106,7 +109,7 @@ func (s *Store) PushSubscriptions(nameKey string, now time.Time) ([]PushSubscrip
 		if err := json.Unmarshal([]byte(raw), &prefs); err != nil {
 			return nil, err
 		}
-		p.Quiet, p.Blocked, p.Loud = prefs.Quiet, prefs.Blocked, prefs.Loud
+		p.Quiet, p.Blocked, p.Loud, p.All = prefs.Quiet, prefs.Blocked, prefs.Loud, prefs.All
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -128,6 +131,14 @@ func (s *Store) PushNames(now time.Time) ([]string, error) {
 		out = append(out, name)
 	}
 	return out, rows.Err()
+}
+
+// PushNamesForAll are the names of the accounts with a subscription that
+// wants every message of one of these chats (a thread and its channel).
+func (s *Store) PushNamesForAll(now time.Time, chats ...int64) ([]string, error) {
+	in, args := inList(chats)
+	return column[string](s.db, `SELECT DISTINCT a.name`+pushOf+` AND EXISTS (
+		SELECT 1 FROM json_each(p.prefs, '$.all') WHERE value IN (`+in+`)) ORDER BY a.name`, append([]any{now.UnixMilli()}, args...)...)
 }
 
 // VAPIDKeys are the server's push keys (RFC 8292), made with generate on

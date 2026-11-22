@@ -267,3 +267,37 @@ func TestPushes(t *testing.T) {
 		}
 	}
 }
+
+// A message that pings nobody is pushed to who has the chat on "All
+// messages" on a device, with the limits of a ping.
+func TestPushesForAllMessages(t *testing.T) {
+	h, _, mod, carol, _ := pushHub(t)
+	general, secret := h.channels[0].ID, h.channels[1].ID
+	// alice: all messages of #general and #secret (which she may not read).
+	h.store.SetPushSubscription("s1", store.PushSubscription{Endpoint: "https://fcm.googleapis.com/alice", P256dh: "p", Auth: "a", All: []int64{general, secret}}, clock)
+	// mod too, but is connected.
+	h.store.SetPushSubscription("s2", store.PushSubscription{Endpoint: "https://fcm.googleapis.com/mod", P256dh: "p", Auth: "a", All: []int64{general}}, clock)
+	var got []string
+	h.Push = func(name string, n push.Note) { got = append(got, fmt.Sprintf("%s: %s all=%v", name, n.Body, n.All)) }
+	check := func(what string, want ...string) {
+		t.Helper()
+		slices.Sort(got)
+		if !slices.Equal(got, want) {
+			t.Errorf("%s: got %q, want %q", what, got, want)
+		}
+		got = nil
+	}
+	post(t, h, carol, general, `"text":"lunch?"`)
+	check("a plain message", "alice: Message in #general from carol all=true")
+	post(t, h, mod, secret, `"text":"the plan"`)
+	check("not in a chat she may not read")
+	post(t, h, mod, general, `"text":"@alice @bob hi"`)
+	check("a ping stays a ping", "alice: Mention in #general from mod all=false", "bob: Mention in #general from mod all=false")
+	id := startThread(t, h, mod, postTo(t, h, mod, general, "topic"), "Topic")
+	got = nil
+	postTo(t, h, mod, id, "more")
+	check("a thread of the channel", "alice: Message in #general › Topic from mod all=true")
+	h.store.AddMessage(store.NewMessage{ChannelID: general, Author: "alice", Verified: true, AuthorID: 40, Text: "x", At: clock})
+	h.pushFor(chat{id: general}, store.Message{Author: "alice", Verified: true, AuthorID: new(uint32(40)), Text: "mine"})
+	check("not for her own message")
+}

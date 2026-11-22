@@ -447,3 +447,31 @@ func TestSubscriptionsFromAnotherSite(t *testing.T) {
 		t.Fatalf("with a token: %d %s", w.Code, w.Body)
 	}
 }
+
+// A message that pings nobody goes only to the devices that have its chat
+// on "All messages"; a thread takes its channel's setting unless it has
+// its own.
+func TestDeliverAllMessages(t *testing.T) {
+	s, f, _ := newService(t)
+	b, _ := json.Marshal(map[string]any{"endpoint": phone, "keys": map[string]string{"p256dh": p256dh, "auth": auth}, "all": []int64{3}, "loud": []int64{3, 8}, "quiet": []int64{9}})
+	if w := call(t, s, "POST", "/api/push/subscriptions", "a1", string(b)); w.Code != http.StatusNoContent {
+		t.Fatalf("subscribe: %d %s", w.Code, w.Body)
+	}
+	call(t, s, "POST", "/api/push/subscriptions", "a2", subscribe(laptop))
+	for _, c := range []struct {
+		note Note
+		want int
+	}{
+		{Note{Channel: 3, All: true}, 1},
+		{Note{Channel: 3}, 2},                       // a ping: all devices
+		{Note{Channel: 4, All: true}, 0},            // "mentions only" everywhere
+		{Note{Channel: 7, Parent: 3, All: true}, 1}, // a thread there
+		{Note{Channel: 8, Parent: 3, All: true}, 0}, // with a setting of its own
+		{Note{Channel: 9, Parent: 3, All: true}, 0}, // quiet itself
+	} {
+		s.deliver(context.Background(), "alice", c.note)
+		if got := f.take(); len(got) != c.want || c.note.All && len(got) == 1 && got[0].endpoint != phone {
+			t.Errorf("%+v: got %+v", c.note, got)
+		}
+	}
+}
