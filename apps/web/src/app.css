@@ -134,6 +134,37 @@ button:disabled {
   outline-offset: 2px;
 }
 
+/* The shell of every dialog: the box, and a header with the title and
+   the close button (no specificity: a dialog's own rules win). */
+:where(dialog) {
+  width: min(440px, 92vw);
+  padding: 24px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text);
+}
+:where(dialog)::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+:where(dialog > header, dialog > form > header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16px;
+}
+:where(dialog > header, dialog > form > header) > :where(h2) {
+  margin: 0;
+  font-size: 18px;
+}
+/* With specificity: a button's colour and font are set above. */
+dialog > header > .close,
+dialog > form > header > .close {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
 /* Dialogs scroll, their header (title and close button) stays: it
    covers the dialog's top padding (24px in every dialog). */
 dialog > header,

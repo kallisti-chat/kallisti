@@ -118,13 +118,6 @@
     width: min(860px, 94vw);
     height: min(660px, 90vh);
     padding: 0;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-main);
-    color: var(--text);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
   }
   dialog[open] {
     display: flex;
@@ -147,21 +140,9 @@
      padding, and its parts scroll on their own. */
   header {
     position: static;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     margin: 0;
     padding: 14px 20px;
     border-bottom: 1px solid var(--border);
-  }
-  h2 {
-    margin: 0;
-    font-size: 18px;
-  }
-  .close {
-    font-size: 24px;
-    line-height: 1;
-    color: var(--text-muted);
   }
   .back {
     padding: 0;

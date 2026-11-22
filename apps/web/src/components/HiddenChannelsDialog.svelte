@@ -42,29 +42,9 @@
   dialog {
     width: min(400px, 92vw);
     max-height: 80vh;
-    padding: 24px;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-main);
-    color: var(--text);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
   }
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding-bottom: 8px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 18px;
-  }
-  .close {
-    font-size: 24px;
-    line-height: 1;
-    color: var(--text-muted);
   }
   .note {
     margin: 0 0 12px;
