@@ -107,6 +107,7 @@
   import { chatSeen, notificationBody, notifier, shouldNotify } from "../lib/notify";
   import { createNotifyLeader } from "../lib/notifyLeader";
   import { isMentionAll, keepNames, mentionNames, pingsMe, replyPing } from "../lib/mentions";
+  import { duckedGain, type WhisperTarget } from "../lib/whisper";
   import { userPreferences, channelLists, channelPrefs, collapsedCategories, directPrefs, settings } from "../lib/settings.svelte";
   import { textGroups, textOrder } from "../lib/categories";
   import { befriendable, type FriendRow } from "../lib/friends";
@@ -584,8 +585,23 @@
   // Per-user volume and local mute, by user name. Playback drops a
   // speaker's voice until this set it.
   const audioOf = (name: string) => preferences.audioOf(name);
+  // While a priority speaker talks, the others are quieter (see
+  // lib/whisper).
+  const prioritySpeakers = $derived(new Set(users.filter((u) => u.prioritySpeaker).map((u) => u.session)));
   $effect(() => {
-    for (const u of users) connection.playback?.setUserGain(u.session, gainOf(audioOf(u.name)));
+    const talking = prioritySpeakers.size ? (connection.playback?.speaking ?? new Set<number>()) : new Set<number>();
+    for (const u of users) connection.playback?.setUserGain(u.session, duckedGain(gainOf(audioOf(u.name)), u.session, talking, prioritySpeakers));
+  });
+  // A whisper or shout: who alone hears me (see lib/whisper). It ends
+  // when we leave voice.
+  const whisperingTo = (to: WhisperTarget) =>
+    !!connection.whisper && ("session" in to ? "session" in connection.whisper && connection.whisper.session === to.session : "channel" in connection.whisper && connection.whisper.channel === to.channel);
+  const whisperName = $derived.by(() => {
+    const w = connection.whisper;
+    return !w ? null : "session" in w ? (server.users[w.session]?.name ?? null) : (server.channels[w.channel]?.name ?? null);
+  });
+  $effect(() => {
+    if (!voiceOn && untrack(() => connection.whisper)) connection.setWhisper(null);
   });
   const localMuted = $derived(new Set(users.filter((u) => audioOf(u.name).muted).map((u) => u.session)));
 
@@ -1880,6 +1896,7 @@
     canCreateSub={m.canCreateSub}
     recording={m.kind === "voice" && staffRecords ? recorded.has(m.id) : undefined}
     onRecord={(on) => connection.manage({ record: m.id, on })}
+    shout={m.kind === "voice" && voiceOn ? { on: whisperingTo({ channel: m.id }), set: (on) => connection.setWhisper(on ? { channel: m.id } : null) } : undefined}
     onMembers={() => channels.startMembers(m.kind, m.id)}
     onModerators={() => channels.startModerators(m.kind, m.id)}
     onWebhooks={m.kind === "text" && canManageText(server, text) ? () => (webhooksOf = { channel: m.id, name: m.name }) : undefined}
@@ -2051,6 +2068,9 @@
     user={menuUser}
     isMe={menuUser.session === server.session}
     audio={audioOf(menuUser.name)}
+    whisper={voiceOn && menuUser.session !== server.session
+      ? { on: whisperingTo({ session: menuUser.session }), set: (on) => connection.setWhisper(on ? { session: menuUser.session } : null) }
+      : undefined}
     x={menu.x}
     y={menu.y}
     onAudio={(patch) => preferences.updateAudio(menuUser.name, patch)}
@@ -2097,7 +2117,7 @@
 {:else if menu && memberUser}
   {@const p = memberUser}
   <UserMenu
-    user={{ name: p.name, comment: text.bios[p.id] ?? "", mute: false, deaf: false }}
+    user={{ name: p.name, comment: text.bios[p.id] ?? "", mute: false, deaf: false, prioritySpeaker: false }}
     byId
     status={p.session === undefined ? null : statusOf(p.session)}
     isMe={false}
@@ -2273,6 +2293,7 @@
     <ChannelSidebar
       {server}
       {speaking}
+      heard={connection.playback?.heard}
       {localMuted}
       {unread}
       textChannels={text.channels}
@@ -2334,6 +2355,12 @@
         {/if}
         {#if soundHint(audioState, voiceOn)}
           <p class="sound-hint" role="status">{t("client.soundHint")}</p>
+        {/if}
+        {#if connection.whisper && whisperName !== null}
+          <p class="whisper" role="status">
+            <span class="ellipsis">{t("session" in connection.whisper ? "client.whisperingTo" : "client.shoutingTo", { name: whisperName })}</span>
+            <button type="button" onclick={() => connection.setWhisper(null)}>{t("client.stopWhisper")}</button>
+          </p>
         {/if}
         <VoiceBar
           channel={channelName}
@@ -2552,6 +2579,22 @@
 </div>
 
 <style>
+  .whisper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--bg-input);
+  }
+  .whisper button {
+    flex: none;
+    font-weight: 600;
+    text-decoration: underline;
+  }
   .sound-hint {
     margin: 0;
     padding: 6px 8px;

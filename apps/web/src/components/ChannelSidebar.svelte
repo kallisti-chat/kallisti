@@ -2,6 +2,7 @@
   import UserName from "./UserName.svelte";
   import { channelTree, usersIn, type ChannelNode, type ServerState } from "@kallisti/protocol";
   import { longPress } from "../lib/longPress";
+  import type { Heard } from "../lib/whisper";
   import { mirrorIds, withoutMirrors } from "../lib/mirrors";
   import { shownCollapsed, textGroups, type TextCategory } from "../lib/categories";
   import { noChannelList, ownView } from "../lib/channelList";
@@ -21,6 +22,7 @@
     currentChannel,
     lobby = false,
     speaking,
+    heard = new Map(),
     localMuted,
     unread,
     textChannels,
@@ -65,6 +67,8 @@
     // channels, and users in root are not shown here.
     lobby?: boolean;
     speaking: ReadonlySet<number>;
+    // Who whispers or shouts to me now (see lib/whisper).
+    heard?: ReadonlyMap<number, Heard>;
     localMuted: ReadonlySet<number>;
     // Unread private messages per user name.
     unread: Record<string, number>;
@@ -193,6 +197,13 @@
               <Avatar name={user.name} size={24} speaking={speaking.has(user.session)} />
               <span class="name ellipsis"><UserName name={user.name} /></span>
               <span class="flags">
+                {#if heard.has(user.session)}
+                  {@const how = t(heard.get(user.session) === "whisper" ? "sidebar.whispersToYou" : "sidebar.shoutsToYou")}
+                  <span class="mark" title={how}><span aria-hidden="true">›</span><span class="sr-only">{how}</span></span>
+                {/if}
+                {#if user.prioritySpeaker}
+                  <span class="mark" title={t("sidebar.prioritySpeaker")}><span aria-hidden="true">★</span><span class="sr-only">{t("sidebar.prioritySpeaker")}</span></span>
+                {/if}
                 {#if localMuted.has(user.session)}
                   <span title={t("sidebar.mutedForYou")}>
                     <Icon name="speaker" off size={16} /><span class="sr-only">{t("sidebar.mutedForYou")}</span>
@@ -540,6 +551,11 @@
   }
   .flags span {
     display: inline-flex;
+  }
+  .flags .mark {
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--accent);
   }
   .users li:has(.live) {
     display: flex;

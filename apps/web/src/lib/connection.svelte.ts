@@ -26,6 +26,7 @@ import {
   type Bytes,
   type MumbleMessage,
   type OutgoingAudio,
+  setVoiceTarget,
   type ServerState,
   type TextTarget,
 } from "@kallisti/protocol";
@@ -85,6 +86,7 @@ import { exposePlayback } from "./perfHook";
 import { transportOf } from "./connectionQuality";
 import { recordingUrl } from "./recording";
 import { answer, ANSWER_MS, confirmsManage, type Via } from "./saveFeedback";
+import { WHISPER_TARGET, whisperHolds, withTarget, type WhisperTarget } from "./whisper";
 
 // The server drops clients after 30 s without a ping. Each ping also
 // measures the round trip (see connectionInfo), so as in Mumble: often.
@@ -223,8 +225,15 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   const send = (bytes: Bytes) => {
     if (ws.readyState === WebSocket.OPEN) ws.send(bytes);
   };
+  // A whisper or shout (see lib/whisper): voice goes to its target. The
+  // server forgets targets with the connection, as this does.
+  let whisper = $state.raw<WhisperTarget | null>(null);
+  const setWhisper = (to: WhisperTarget | null) => {
+    whisper = to;
+    send(setVoiceTarget(WHISPER_TARGET, !to ? null : "session" in to ? { sessions: [to.session] } : { channel: to.channel }));
+  };
   const sendAudio = (packet: OutgoingAudio) => {
-    if (state.status === "synced") send(encodeVoicePacket(encodeAudio(audioFormat(state), packet)));
+    if (state.status === "synced") send(encodeVoicePacket(encodeAudio(audioFormat(state), withTarget(packet, whisper))));
   };
 
   // The UI starts capture, with the device from the settings. Both move
@@ -295,6 +304,7 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       for (const m of messages) if (m.type === "UserRemove") text = forgetStatus(text, m.message.session);
       const before = state;
       state = messages.reduce((s, m) => reduce(s, m, Date.now()), state);
+      if (whisper && !whisperHolds(whisper, state)) setWhisper(null); // its user left, its channel went
       const denied = messages.some((m) => m.type === "PermissionDenied") ? (state.notice?.text ?? "") : null;
       if (settleWaiters("mumble", denied, (w) => w.via === "mumble" && w.holds(state))) state = { ...state, notice: before.notice };
       if (state.status === "synced" && !wasSynced) {
@@ -685,6 +695,11 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
       streams?.setAudio(ctx);
     },
     send,
+    // Who alone hears my voice now (null: my channel, as usual).
+    get whisper() {
+      return whisper;
+    },
+    setWhisper,
     sendText: (target: TextTarget, text: string) => {
       send(sendText(target, text));
       state = addOwnMessage(state, target, text, Date.now());

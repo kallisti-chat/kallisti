@@ -46,6 +46,19 @@ describe("playback", () => {
     expect(playback.speaking.has(6)).toBe(true); // muted still shows the ring
   });
 
+  it("knows who whispers or shouts to me while they talk", () => {
+    const { playback } = setup();
+    playback.setUserGain(5, 1);
+    playback.handle({ ...packet(5), target: 2 });
+    expect(playback.heard.get(5)).toBe("whisper");
+    playback.handle({ ...packet(5), target: 0 }); // back to normal talk
+    expect(playback.heard.has(5)).toBe(false);
+    playback.handle({ ...packet(5), target: 1 });
+    expect(playback.heard.get(5)).toBe("shout");
+    playback.handle({ ...packet(5), target: 1, terminator: true });
+    expect(playback.heard.has(5)).toBe(false);
+  });
+
   it("forgets a speaker who left: their next session waits for its settings again", () => {
     const { playback } = setup();
     playback.setUserGain(5, 1);

@@ -9,6 +9,7 @@ import {
   escapeHtml,
   joinChannel,
   moderateUser,
+  setVoiceTarget,
   removeUser,
   queryPermissions,
   queryBans,
@@ -175,6 +176,23 @@ describe("moderation", () => {
     if (deaf.type !== "UserState") throw new Error();
     expect(deaf.message.deaf).toBe(true);
     expect(isFieldSet(deaf.message, pb.UserStateSchema.field.mute)).toBe(false);
+    const priority = decodeOne(moderateUser(5, { prioritySpeaker: true }));
+    if (priority.type !== "UserState") throw new Error();
+    expect(priority.message.prioritySpeaker).toBe(true);
+    expect(isFieldSet(priority.message, pb.UserStateSchema.field.mute)).toBe(false);
+  });
+
+  it("sets a voice target: users, a channel, or none (which removes it)", () => {
+    const users = decodeOne(setVoiceTarget(1, { sessions: [4, 7] }));
+    if (users.type !== "VoiceTarget") throw new Error();
+    expect(users.message.id).toBe(1);
+    expect(users.message.targets.map((t) => t.session)).toEqual([[4, 7]]);
+    const channel = decodeOne(setVoiceTarget(1, { channel: 9 }));
+    if (channel.type !== "VoiceTarget") throw new Error();
+    expect(channel.message.targets[0]?.channelId).toBe(9);
+    const none = decodeOne(setVoiceTarget(1, null));
+    if (none.type !== "VoiceTarget") throw new Error();
+    expect(none.message.targets).toEqual([]);
   });
 });
 
