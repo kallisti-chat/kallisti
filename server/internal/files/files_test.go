@@ -2,6 +2,7 @@ package files
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -86,11 +87,15 @@ func TestUploadAndServeAnImage(t *testing.T) {
 		t.Error("missing CORS header")
 	}
 	key, _ := v["key"].(string)
-	if len(key) < 32 || v["name"] != "my cat.png" || v["type"] != "image/png" || v["size"] != float64(len(img)) {
+	name, _ := v["name"].(string)
+	if len(key) < 32 || len(name) != 68 || !strings.HasSuffix(name, ".png") || v["type"] != "image/png" || v["size"] != float64(len(img)) {
 		t.Fatalf("response %v", v)
 	}
+	if _, err := hex.DecodeString(strings.TrimSuffix(name, ".png")); err != nil {
+		t.Fatalf("image name is not a hash: %q", name)
+	}
 	u, err := s.UploadByKey(key)
-	if err != nil || u.Author != "alice" {
+	if err != nil || u.Author != "alice" || u.Name != name {
 		t.Fatalf("stored %+v %v", u, err)
 	}
 	get, err := http.Get(srv.URL + v["url"].(string))
@@ -113,8 +118,34 @@ func TestUploadAndServeAnImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	dl.Body.Close()
-	if d := dl.Header.Get("Content-Disposition"); !strings.HasPrefix(d, "attachment") || !strings.Contains(d, "my cat.png") {
+	if d := dl.Header.Get("Content-Disposition"); !strings.HasPrefix(d, "attachment") || !strings.Contains(d, name) || strings.Contains(d, "my cat") {
 		t.Fatalf("download disposition %q", d)
+	}
+}
+
+func TestImageNamesAreUniqueAndPreserveSpoilers(t *testing.T) {
+	srv, _ := setup(t, 1<<20)
+	img := pngBytes(t)
+	_, first := upload(t, srv, "good", "SPOILER_private.jpg", "image/jpeg", img)
+	_, second := upload(t, srv, "good", "SPOILER_private.jpg", "image/jpeg", img)
+	a, b := first["name"].(string), second["name"].(string)
+	if a == b || !strings.HasPrefix(a, "SPOILER_") || !strings.HasSuffix(a, ".png") || strings.Contains(a, "private") {
+		t.Fatalf("names %q and %q", a, b)
+	}
+	_, file := upload(t, srv, "good", "document.txt", "text/plain", []byte("hello"))
+	if file["name"] != "document.txt" {
+		t.Fatalf("non-image name changed: %v", file)
+	}
+}
+
+func TestImageDownloadsDoNotExposeOriginalNames(t *testing.T) {
+	srv, _ := setup(t, 1<<20)
+	for _, name := range []string{"IMG_private.HEIC", "private.tiff", "private.svg"} {
+		resp, v := upload(t, srv, "good", name, "application/octet-stream", []byte("sample image data"))
+		got, _ := v["name"].(string)
+		if resp.StatusCode != http.StatusOK || strings.Contains(got, "private") || !strings.HasSuffix(got, strings.ToLower(filepath.Ext(name))) || v["type"] != "application/octet-stream" {
+			t.Fatalf("%s: %d %v", name, resp.StatusCode, v)
+		}
 	}
 }
 

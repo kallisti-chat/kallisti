@@ -2,7 +2,7 @@
   import UserName from "./UserName.svelte";
   import { webhookPicture } from "../lib/webhooks";
   import { autosize } from "../lib/autosize";
-  import { afterImageError, asSpoiler, attachmentView, chatSrc, chatVideo, imageBox, lazyVideo, lightboxOf } from "../lib/media";
+  import { afterImageError, asSpoiler, attachmentView, chatSrc, chatVideo, generatedImageName, imageBox, lazyVideo, lightboxOf } from "../lib/media";
   import { emojiImages } from "../lib/emojiImages.svelte";
   import Emoji from "./Emoji.svelte";
   import EmojiPicker from "./EmojiPicker.svelte";
@@ -2175,14 +2175,14 @@
     href={lightboxOf(upload).url}
     target="_blank"
     rel="noopener noreferrer"
-    aria-label={t("chat.viewImage", { name: upload.description || upload.name })}
+    aria-label={t("chat.viewImage", { name: upload.description || (generatedImageName(upload.name) ? t("admin.picture") : upload.name) })}
     onclick={(e) => {
       if (!opensLightbox(e)) return;
       e.preventDefault();
       lightbox = { start: Math.max(0, media().indexOf(upload)) };
     }}
   >
-    {@render picture(upload, upload.description || upload.name, fill)}
+    {@render picture(upload, upload.description || (generatedImageName(upload.name) ? t("admin.picture") : upload.name), fill)}
   </a>
 {/snippet}
 

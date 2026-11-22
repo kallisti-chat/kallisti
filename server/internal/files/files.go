@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"cmp"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -167,7 +168,8 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	http.NewResponseController(w).SetReadDeadline(time.Now().Add(uploadTimeout))
 	key := randomKey()
 	dst := filepath.Join(h.Dir, key)
-	size, head, err := h.save(dst, r.Body)
+	digest := sha256.New()
+	size, head, err := h.save(dst, io.TeeReader(r.Body, digest))
 	switch {
 	case errors.Is(err, errTooLarge):
 		jsonError(w, "file too large", http.StatusRequestEntityTooLarge)
@@ -195,6 +197,16 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	// the first 512 bytes) have no size: downloads.
 	ctype := storedType(head, name)
 	media := measure(dst, ctype)
+	ext := imageExtension(ctype, name, r.Header.Get("Content-Type"))
+	if ext != "" {
+		// include the random upload key so identical images have distinct names.
+		io.WriteString(digest, key)
+		prefix := ""
+		if strings.HasPrefix(cleanName(name), "SPOILER_") {
+			prefix = "SPOILER_"
+		}
+		name = prefix + hex.EncodeToString(digest.Sum(nil)) + ext
+	}
 	if isPicture(ctype) && media.Width == 0 {
 		ctype = "application/octet-stream"
 	}
@@ -208,6 +220,21 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"key": u.Key, "name": u.Name, "type": u.Type, "size": u.Size, "url": sidecar.FileURL(u),
 	})
+}
+
+// imageExtension also recognizes common image downloads that cannot be shown inline.
+func imageExtension(ctype, name, declaredType string) string {
+	if ext := map[string]string{"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp", "image/avif": ".avif", "image/jxl": ".jxl"}[ctype]; ext != "" {
+		return ext
+	}
+	ext := strings.ToLower(filepath.Ext(cleanName(name)))
+	if slices.Contains([]string{".heic", ".heif", ".tif", ".tiff", ".bmp", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".jxl"}, ext) {
+		return ext
+	}
+	if strings.HasPrefix(strings.ToLower(declaredType), "image/") {
+		return ".bin"
+	}
+	return ""
 }
 
 var (

@@ -2,6 +2,8 @@
 
 export type MediaKind = "audio" | "video";
 
+export const generatedImageName = (name: string) => /^(?:SPOILER_)?[0-9a-f]{64}\.[a-z0-9]+$/.test(name);
+
 // In step with the server's files/media.go.
 const AUDIO = /\.(mp3|m4a|ogg|oga|opus|wav|flac)$/i;
 const VIDEO = /\.(mp4|m4v|webm)$/i;
