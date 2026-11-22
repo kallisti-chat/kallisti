@@ -32,7 +32,6 @@
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 - [ ] [Push for channels set to "All messages"](issues/push-for-all-messages.md)
-- [ ] [Whisper, shout and priority speaker in the web client](issues/web-whisper-and-priority-speaker.md)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)

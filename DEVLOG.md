@@ -3111,3 +3111,13 @@ Features: a push for every message of chats set to "All messages" (the setting w
 From the reviews (subagent, Astra): a banned account's token still worked, on a stream without end; an "all messages" push took the chat's one-a-minute turn from a mention, and its tag replaced the mention's notification; an open stream made shutdown wait its full 5 s and exit with an error (the HTTP server waits for requests, not for WebSockets).
 
 Checked on test.kallisti.chat: `/healthz`, and four dialogs' computed styles in headless Chromium against the old rules. Not checked there: a real browser push for "All messages" (tests only), so that issue stays open.
+
+## 2026-11-22: Whisper, shout and priority speaker in the web client
+
+The server had Mumble's voice targets and the priority speaker; the web client sent all voice with target 0 and had no control for either. Now a user's menu has "Whisper" and a voice channel's menu "Shout to this channel": a mode that is turned on and off (not a second hold key as in Mumble: it works on phones and needs no setup), with a bar by the voice controls that says who hears me. One voice target (id 1) carries it; `createWhisperTargets` stamps each outgoing packet. Who whispers or shouts to me shows a lock or a speaker while they talk (the packet's context). Staff with the mute right set the priority speaker from the user menu; while one talks, the others play at 30 % (Mumble's client does this itself, so the web client does too).
+
+From the review: a whisper that ends in the middle of a sentence (its user left, or "stop") keeps that talk spurt on the target, which the server has no receivers for by then, so the rest goes to nobody and not to the channel. Whisper and shout are offered only with the Whisper right in the target's channel, a shout also only with Speak there (the menu must not hand everyone a way into listen-only channels), and not to text-only users: the server drops such voice without a word and the bar would lie. A priority speaker muted for me makes nobody quieter.
+
+Left: the server lets a Mumble client shout into a listen-only channel (it denies Speak there, not Whisper); that was so before. A deaf target still gets "Only X hears you".
+
+Checked on test.kallisti.chat with three headless Chromium clients with fake microphones in one voice channel: the target saw the whisper mark, the third did not hear the whisperer, stop brought normal talk back, the priority speaker mark showed for the others. The ducking has a unit test only.
