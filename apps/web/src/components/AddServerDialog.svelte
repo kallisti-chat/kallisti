@@ -281,7 +281,6 @@
   footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     justify-content: flex-end;
     gap: 8px;
     margin-top: 8px;

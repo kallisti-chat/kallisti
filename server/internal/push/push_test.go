@@ -499,3 +499,17 @@ func TestSubscriptionLimitsAllMessages(t *testing.T) {
 		t.Fatalf("got %d", w.Code)
 	}
 }
+
+// A push for all messages has a tag of its own: it does not replace a
+// mention's notification of the same chat on the device.
+func TestAllMessagesPushesHaveTheirOwnTag(t *testing.T) {
+	s, f, _ := newService(t)
+	b, _ := json.Marshal(map[string]any{"endpoint": phone, "keys": map[string]string{"p256dh": p256dh, "auth": auth}, "all": []int64{3}})
+	call(t, s, "POST", "/api/push/subscriptions", "a1", string(b))
+	s.deliver(context.Background(), "alice", Note{Channel: 3})
+	s.deliver(context.Background(), "alice", Note{Channel: 3, All: true})
+	got := f.take()
+	if len(got) != 2 || got[0].note.Tag != "chat-3" || got[1].note.Tag != "chat-3-all" || got[1].topic != "chat-3-all" {
+		t.Fatalf("got %+v", got)
+	}
+}

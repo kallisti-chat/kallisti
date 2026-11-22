@@ -182,6 +182,9 @@ func (s *Service) deliver(ctx context.Context, name string, n Note) {
 		return
 	}
 	topic := fmt.Sprintf("chat-%d", n.Channel)
+	if n.All { // of its own: it must not replace a mention's notification
+		topic += "-all"
+	}
 	n.Tag = topic
 	if s.Brand != nil {
 		n.Title, n.Icon = s.Brand()

@@ -108,4 +108,5 @@ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
 curl -sN -H "Authorization: Bearer $TOKEN" https://chat.example.org/api/agent/events
 ```
 
-Not yet: direct messages and files.
+Not yet: files, and reading or sending direct messages (the event stream
+already has the account's own).

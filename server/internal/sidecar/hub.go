@@ -339,8 +339,6 @@ type Hub struct {
 	slow       slowPosts // see slowmode.go
 }
 
-// emoji: a token for adding this custom emoji (not for a file); personal:
-// to the user's own emoji (see useremoji.go).
 // tokenKind: what an upload token is for. It is redeemed only as that
 // (the zero value as nothing).
 type tokenKind int

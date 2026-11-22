@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"maps"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -236,13 +238,26 @@ func (h *Hub) agentDo(w http.ResponseWriter, id mumble.Identity, req request) (r
 	}
 }
 
+// CloseStreams ends the event streams, at shutdown: the HTTP server waits
+// for open requests (not for WebSockets).
+func (h *Hub) CloseStreams() {
+	h.mu.Lock()
+	streams := slices.Collect(maps.Keys(h.streams))
+	h.mu.Unlock()
+	for _, c := range streams {
+		c.Close()
+	}
+}
+
 // agentStream sends what the readers of the account's chats get, as
 // server-sent events, until the client leaves, the token ends, or the
 // client reads too slowly (it then connects again and pages the history).
 func (h *Hub) agentStream(w http.ResponseWriter, r *http.Request, id mumble.Identity) {
 	c := h.Connect()
 	defer c.Close()
+	c.mu.Lock()
 	c.identity = &id
+	c.mu.Unlock()
 	h.mu.Lock()
 	open := 0
 	for _, user := range h.streams {

@@ -230,3 +230,15 @@ func TestAgentAPIRefusesBannedAccounts(t *testing.T) {
 		t.Fatal("the stream stays open")
 	}
 }
+
+// At shutdown the streams end: the HTTP server waits for open requests.
+func TestCloseStreamsEndsTheEventStreams(t *testing.T) {
+	h := newHub(t, "general")
+	h.SetVoice(&fakeVoice{}, "")
+	next, _ := openAgentEvents(t, agentServer(t, h), "r")
+	next() // ready
+	h.CloseStreams()
+	if event, _ := next(); event != "" {
+		t.Fatalf("got %q after the close", event)
+	}
+}
