@@ -36,6 +36,7 @@
     inVoice,
     isLobby,
     isTextOnly,
+    TEXT_ONLY,
     joinChannel,
     listedUsers,
     messagesIn,
@@ -107,7 +108,7 @@
   import { chatSeen, notificationBody, notifier, shouldNotify } from "../lib/notify";
   import { createNotifyLeader } from "../lib/notifyLeader";
   import { isMentionAll, keepNames, mentionNames, pingsMe, replyPing } from "../lib/mentions";
-  import { duckedGain, type WhisperTarget } from "../lib/whisper";
+  import { duckedGain, mayReach, sameTarget, type WhisperTarget } from "../lib/whisper";
   import { userPreferences, channelLists, channelPrefs, collapsedCategories, directPrefs, settings } from "../lib/settings.svelte";
   import { textGroups, textOrder } from "../lib/categories";
   import { befriendable, type FriendRow } from "../lib/friends";
@@ -587,15 +588,17 @@
   const audioOf = (name: string) => preferences.audioOf(name);
   // While a priority speaker talks, the others are quieter (see
   // lib/whisper).
-  const prioritySpeakers = $derived(new Set(users.filter((u) => u.prioritySpeaker).map((u) => u.session)));
+  // Not one I muted for me: I hear nothing to make room for.
+  const prioritySpeakers = $derived(new Set(users.filter((u) => u.prioritySpeaker && gainOf(audioOf(u.name)) > 0).map((u) => u.session)));
   $effect(() => {
     const talking = prioritySpeakers.size ? (connection.playback?.speaking ?? new Set<number>()) : new Set<number>();
     for (const u of users) connection.playback?.setUserGain(u.session, duckedGain(gainOf(audioOf(u.name)), u.session, talking, prioritySpeakers));
   });
   // A whisper or shout: who alone hears me (see lib/whisper). It ends
   // when we leave voice.
-  const whisperingTo = (to: WhisperTarget) =>
-    !!connection.whisper && ("session" in to ? "session" in connection.whisper && connection.whisper.session === to.session : "channel" in connection.whisper && connection.whisper.channel === to.channel);
+  const whisperingTo = (to: WhisperTarget) => sameTarget(connection.whisper, to);
+  // Offered where my voice gets through (see mayReach).
+  const reaches = (channel: number, shout: boolean) => voiceOn && channel !== TEXT_ONLY && mayReach(server.channelPermissions[channel], shout);
   const whisperName = $derived.by(() => {
     const w = connection.whisper;
     return !w ? null : "session" in w ? (server.users[w.session]?.name ?? null) : (server.channels[w.channel]?.name ?? null);
@@ -1896,7 +1899,7 @@
     canCreateSub={m.canCreateSub}
     recording={m.kind === "voice" && staffRecords ? recorded.has(m.id) : undefined}
     onRecord={(on) => connection.manage({ record: m.id, on })}
-    shout={m.kind === "voice" && voiceOn ? { on: whisperingTo({ channel: m.id }), set: (on) => connection.setWhisper(on ? { channel: m.id } : null) } : undefined}
+    shout={m.kind === "voice" && reaches(m.id, true) ? { on: whisperingTo({ channel: m.id }), set: (on) => connection.setWhisper(on ? { channel: m.id } : null) } : undefined}
     onMembers={() => channels.startMembers(m.kind, m.id)}
     onModerators={() => channels.startModerators(m.kind, m.id)}
     onWebhooks={m.kind === "text" && canManageText(server, text) ? () => (webhooksOf = { channel: m.id, name: m.name }) : undefined}
@@ -2068,7 +2071,7 @@
     user={menuUser}
     isMe={menuUser.session === server.session}
     audio={audioOf(menuUser.name)}
-    whisper={voiceOn && menuUser.session !== server.session
+    whisper={menuUser.session !== server.session && reaches(menuUser.channelId, false)
       ? { on: whisperingTo({ session: menuUser.session }), set: (on) => connection.setWhisper(on ? { session: menuUser.session } : null) }
       : undefined}
     x={menu.x}

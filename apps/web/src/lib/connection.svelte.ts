@@ -86,7 +86,7 @@ import { exposePlayback } from "./perfHook";
 import { transportOf } from "./connectionQuality";
 import { recordingUrl } from "./recording";
 import { answer, ANSWER_MS, confirmsManage, type Via } from "./saveFeedback";
-import { WHISPER_TARGET, whisperHolds, withTarget, type WhisperTarget } from "./whisper";
+import { createWhisperTargets, WHISPER_TARGET, whisperHolds, type WhisperTarget } from "./whisper";
 
 // The server drops clients after 30 s without a ping. Each ping also
 // measures the round trip (see connectionInfo), so as in Mumble: often.
@@ -228,12 +228,14 @@ export const connect = (url: string, credentials: Credentials, audio: AudioConte
   // A whisper or shout (see lib/whisper): voice goes to its target. The
   // server forgets targets with the connection, as this does.
   let whisper = $state.raw<WhisperTarget | null>(null);
+  const targets = createWhisperTargets();
   const setWhisper = (to: WhisperTarget | null) => {
     whisper = to;
+    targets.set(to);
     send(setVoiceTarget(WHISPER_TARGET, !to ? null : "session" in to ? { sessions: [to.session] } : { channel: to.channel }));
   };
   const sendAudio = (packet: OutgoingAudio) => {
-    if (state.status === "synced") send(encodeVoicePacket(encodeAudio(audioFormat(state), withTarget(packet, whisper))));
+    if (state.status === "synced") send(encodeVoicePacket(encodeAudio(audioFormat(state), targets.stamp(packet))));
   };
 
   // The UI starts capture, with the device from the settings. Both move

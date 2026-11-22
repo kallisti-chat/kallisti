@@ -113,6 +113,7 @@ export const Perm = {
   MuteDeafen: 0x10,
   Move: 0x20,
   MakeChannel: 0x40,
+  Whisper: 0x100,
   MakeTempChannel: 0x400,
   Kick: 0x10000,
   Ban: 0x20000,
