@@ -199,7 +199,7 @@
               <span class="flags">
                 {#if heard.has(user.session)}
                   {@const how = t(heard.get(user.session) === "whisper" ? "sidebar.whispersToYou" : "sidebar.shoutsToYou")}
-                  <span class="mark" title={how}><span aria-hidden="true">›</span><span class="sr-only">{how}</span></span>
+                  <span class="mark" title={how}><Icon name={heard.get(user.session) === "whisper" ? "lock" : "speaker"} size={14} /><span class="sr-only">{how}</span></span>
                 {/if}
                 {#if user.prioritySpeaker}
                   <span class="mark" title={t("sidebar.prioritySpeaker")}><span aria-hidden="true">★</span><span class="sr-only">{t("sidebar.prioritySpeaker")}</span></span>
