@@ -32,6 +32,7 @@
 - [ ] [Server texts as codes, translated in the client](issues/server-text-codes.md)
 - [ ] [Translate messages on the device](issues/message-translation.md) (phase 1 merged 2026-11-06)
 - [ ] [Push for channels set to "All messages"](issues/push-for-all-messages.md)
+- [ ] [Agent API: a stream of events, and reactions](issues/agent-api-events-and-reactions.md)
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)

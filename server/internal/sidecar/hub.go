@@ -319,7 +319,10 @@ type Hub struct {
 	visitsMu sync.Mutex
 	visits   map[uint32]*visit
 	conns    map[*Conn]struct{}
-	tokens   map[string]uploadToken
+	// The agent API's event streams (see agent.go), with their user:
+	// they get what a chat's readers get, and nothing else.
+	streams map[*Conn]uint32
+	tokens  map[string]uploadToken
 	// One status change at a time, from the change to its broadcast (taken
 	// before mu and Conn.mu; see status.go). Also guards online: the
 	// members online as last told, with their sessions (see members.go).
@@ -362,7 +365,7 @@ type uploadToken struct {
 }
 
 func NewHub(s *store.Store, now func() time.Time) (*Hub, error) {
-	h := &Hub{store: s, now: now, conns: map[*Conn]struct{}{}, tokens: map[string]uploadToken{}}
+	h := &Hub{store: s, now: now, conns: map[*Conn]struct{}{}, streams: map[*Conn]uint32{}, tokens: map[string]uploadToken{}}
 	if err := h.reloadChannels(); err != nil {
 		return nil, err
 	}
@@ -440,6 +443,7 @@ func (c *Conn) Close() {
 	c.mu.Unlock()
 	c.hub.mu.Lock()
 	delete(c.hub.conns, c)
+	delete(c.hub.streams, c)
 	// Murmur reuses session numbers: the next guest owns none of these.
 	if id != nil && !id.Registered {
 		for m, session := range c.hub.guestMessages {
