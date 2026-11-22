@@ -26,7 +26,7 @@ func (a *Service) friends(w http.ResponseWriter, r *http.Request) {
 		Account string `json:"account"`
 	}
 	if r.Method != http.MethodGet && json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		sendError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	if !meant(w, r, acc, body.Account) {
@@ -44,12 +44,12 @@ func (a *Service) friends(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		body.Name = strings.TrimSpace(body.Name)
 		if !valid || !validListName(body.Name) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "not a server's address, a user id and a name"})
+			sendError(w, http.StatusBadRequest, "not a server's address, a user id and a name")
 			return
 		}
 		f := store.Friend{Origin: body.Origin, User: uint32(*body.User), Name: body.Name}
 		if err = a.Store.AddFriend(acc.ID, f, maxFriends); errors.Is(err, store.ErrTooManyFriends) {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "your friends list is full"})
+			sendError(w, http.StatusConflict, "your friends list is full")
 			return
 		} else if err == nil {
 			writeJSON(w, http.StatusOK, map[string]any{})
@@ -57,7 +57,7 @@ func (a *Service) friends(w http.ResponseWriter, r *http.Request) {
 		}
 	case http.MethodDelete:
 		if !valid {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "not a server's address and a user id"})
+			sendError(w, http.StatusBadRequest, "not a server's address and a user id")
 			return
 		}
 		if err = a.Store.RemoveFriend(acc.ID, body.Origin, uint32(*body.User)); err == nil {
@@ -68,5 +68,5 @@ func (a *Service) friends(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot change the friends list"})
+	sendError(w, http.StatusInternalServerError, "cannot change the friends list")
 }

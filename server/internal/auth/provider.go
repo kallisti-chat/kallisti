@@ -223,7 +223,7 @@ func (a *Service) registerClient(w http.ResponseWriter, r *http.Request) {
 		ok = ok && slices.Contains(providerScopes, s)
 	}
 	if !ok || name == "" || utf8.RuneCountInString(name) > 100 || len(website) > 300 || !validRedirect(redirect) {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "invalid app"})
+		sendError(w, http.StatusUnprocessableEntity, "invalid app")
 		return
 	}
 	id := clientIDFor(redirect)
@@ -271,13 +271,12 @@ func (a *Service) oauthRequest(w http.ResponseWriter, r *http.Request) {
 	if !a.consentSite(w, r) {
 		return
 	}
-	if !a.allow(r) { // each request keeps a ticket
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) { // each request keeps a ticket
 		return
 	}
 	q, err := a.parseAuthorize(r.URL.Query())
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "this login request is not valid"})
+		sendError(w, http.StatusBadRequest, "this login request is not valid")
 		return
 	}
 	acc, ok := a.providerAccount(w, r)
@@ -287,7 +286,7 @@ func (a *Service) oauthRequest(w http.ResponseWriter, r *http.Request) {
 	now := a.Now()
 	ticket := a.Provider.asks.put(oauthAsk{acc.ID, q}, now, now.Add(askLifetime))
 	if ticket == "" {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "please try again"})
+		sendError(w, http.StatusServiceUnavailable, "please try again")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -303,31 +302,29 @@ func (a *Service) oauthApprove(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Ticket string `json:"ticket"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &body) {
 		return
 	}
 	acc, ok := a.providerAccount(w, r)
 	if !ok {
 		return
 	}
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	ask, ok := a.Provider.asks.get(body.Ticket, a.Now(), true)
 	if !ok || ask.account != acc.ID {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "the question expired, please try again"})
+		sendError(w, http.StatusConflict, "the question expired, please try again")
 		return
 	}
 	q := ask.req
 	if err := a.Store.GrantOAuth(acc.ID, q.redirect, a.Now()); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again"})
+		sendError(w, http.StatusInternalServerError, "please try again")
 		return
 	}
 	to, ok := a.codeFor(acc, q)
 	if !ok {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "please try again"})
+		sendError(w, http.StatusServiceUnavailable, "please try again")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"redirect": to})
@@ -340,9 +337,8 @@ func (a *Service) oauthGrants(w http.ResponseWriter, r *http.Request) {
 	if !a.consentSite(w, r) {
 		return
 	}
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
 	if r.Method == http.MethodDelete {
@@ -350,11 +346,11 @@ func (a *Service) oauthGrants(w http.ResponseWriter, r *http.Request) {
 			Redirect string `json:"redirect"`
 		}
 		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil || body.Redirect == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+			sendError(w, http.StatusBadRequest, "invalid request")
 			return
 		}
 		if err := a.Store.RevokeOAuth(acc.ID, body.Redirect, clientIDFor(body.Redirect)); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again"})
+			sendError(w, http.StatusInternalServerError, "please try again")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -362,7 +358,7 @@ func (a *Service) oauthGrants(w http.ResponseWriter, r *http.Request) {
 	}
 	grants, err := a.Store.OAuthGrants(acc.ID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again"})
+		sendError(w, http.StatusInternalServerError, "please try again")
 		return
 	}
 	sites := make([]map[string]string, 0, len(grants))
@@ -384,7 +380,7 @@ func (a *Service) consentSite(w http.ResponseWriter, r *http.Request) bool {
 	if config.CookieOrigin(a.AllowedOrigins, r.Header.Get("Origin")) {
 		return true
 	}
-	writeJSON(w, http.StatusForbidden, map[string]string{"error": "only this server's own page asks this"})
+	sendError(w, http.StatusForbidden, "only this server's own page asks this")
 	return false
 }
 
@@ -394,16 +390,16 @@ func (a *Service) providerAccount(w http.ResponseWriter, r *http.Request) (store
 	acc, ok := a.AccountFor(r)
 	switch {
 	case !ok:
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
+		sendError(w, http.StatusUnauthorized, "not logged in")
 	case acc.Temporary:
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "set a password first: a guest account cannot log in elsewhere"})
+		sendError(w, http.StatusForbidden, "set a password first: a guest account cannot log in elsewhere")
 	case !fedi.ValidUsername(acc.Name):
 		// Other servers take names as the fediverse makes them.
 		msg := "other servers do not take names with characters other than letters, digits, _ . and -"
 		if _, host := names.Split(acc.Name); host != "" {
 			msg = "an account from another server logs in elsewhere with its home server"
 		}
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": msg})
+		sendError(w, http.StatusForbidden, msg)
 	default:
 		return acc, true
 	}
@@ -411,7 +407,7 @@ func (a *Service) providerAccount(w http.ResponseWriter, r *http.Request) (store
 }
 
 func tokenError(w http.ResponseWriter, code string) {
-	writeJSON(w, http.StatusBadRequest, map[string]string{"error": code})
+	sendError(w, http.StatusBadRequest, code)
 }
 
 // token trades a code for a short token (the same app and redirect URI,
@@ -442,7 +438,7 @@ func (a *Service) token(w http.ResponseWriter, r *http.Request) {
 	}
 	token := randomHex(32)
 	if err := a.Store.CreateOAuthToken(tokenHash(token), code.account, id, code.scopes, now.Add(tokenLifetime)); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "server_error"})
+		sendError(w, http.StatusInternalServerError, "server_error")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"access_token": token, "token_type": "Bearer", "scope": code.scopes, "created_at": now.Unix(), "expires_in": int(tokenLifetime.Seconds())})
@@ -452,7 +448,7 @@ func (a *Service) verifyCredentials(w http.ResponseWriter, r *http.Request) {
 	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	acc, _, err := a.Store.AccountByOAuthToken(tokenHash(token), a.Now())
 	if token == "" || err != nil || acc.Temporary {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "The access token is invalid"})
+		sendError(w, http.StatusUnauthorized, "The access token is invalid")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

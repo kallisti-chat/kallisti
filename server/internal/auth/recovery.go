@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -17,20 +16,18 @@ import (
 // connections end, and this browser is logged in. A claim link (for a
 // Mumble registration without an account) makes the account (see claim).
 func (a *Service) recover(w http.ResponseWriter, r *http.Request) {
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c struct {
 		Token string `json:"token"`
 		New   string `json:"new"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if n := utf8.RuneCountInString(c.New); n < 8 || n > 256 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the password needs 8 to 256 characters"})
+		sendError(w, http.StatusBadRequest, "the password needs 8 to 256 characters")
 		return
 	}
 	acc, err := a.Store.RecoveryAccount(c.Token, a.Now())
@@ -52,12 +49,12 @@ func (a *Service) recover(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if errors.Is(err, store.ErrNotFound) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "this recovery link is used or expired: ask an admin for a new one"})
+		sendError(w, http.StatusNotFound, "this recovery link is used or expired: ask an admin for a new one")
 		return
 	}
 	if err != nil {
 		slog.Error("recovery", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again later"})
+		sendError(w, http.StatusInternalServerError, "please try again later")
 		return
 	}
 	slog.Info("account recovered", "account", acc.Name)
@@ -81,7 +78,7 @@ func hashPassword(pw string) (string, error) {
 func (a *Service) claim(w http.ResponseWriter, r *http.Request, token string, link store.ClaimLink, pw string) {
 	fail := func(err error) {
 		slog.Error("claim link", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again later"})
+		sendError(w, http.StatusInternalServerError, "please try again later")
 	}
 	acc := store.Account{Name: link.Name}
 	var err error
@@ -96,10 +93,10 @@ func (a *Service) claim(w http.ResponseWriter, r *http.Request, token string, li
 	acc, err = a.Store.Claim(token, acc, a.Now(), a.MoveRegistration)
 	switch {
 	case errors.Is(err, store.ErrNotFound): // or the registration changed
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "this recovery link is used or expired, or the user changed: ask an admin for a new one"})
+		sendError(w, http.StatusNotFound, "this recovery link is used or expired, or the user changed: ask an admin for a new one")
 		return
 	case errors.Is(err, store.ErrNameTaken):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "an account has this name now: ask an admin"})
+		sendError(w, http.StatusConflict, "an account has this name now: ask an admin")
 		return
 	case err != nil:
 		fail(err)

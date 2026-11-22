@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -143,7 +142,7 @@ func (a *Service) serveOIDC(w http.ResponseWriter, r *http.Request) bool {
 	case r.URL.Path == oidcPath+"/signup" && r.Method == http.MethodGet:
 		s, ok := a.OIDC.signups.get(a.cookie(r, oidcSignupCookie), a.Now(), false)
 		if !ok {
-			writeJSON(w, 404, map[string]string{"error": "the login expired, please try again"})
+			sendError(w, 404, "the login expired, please try again")
 		} else {
 			writeJSON(w, 200, map[string]string{"name": s.name, "provider": a.OIDC.name})
 		}
@@ -159,38 +158,35 @@ func (a *Service) serveOIDC(w http.ResponseWriter, r *http.Request) bool {
 
 func (a *Service) oidcStart(w http.ResponseWriter, r *http.Request) {
 	if !a.secure(r) {
-		writeJSON(w, 403, map[string]string{"error": "openid login requires a secure connection"})
+		sendError(w, 403, "openid login requires a secure connection")
 		return
 	}
-	if !a.allow(r) {
-		writeJSON(w, 429, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c struct {
 		Mode     string `json:"mode"`
 		Password string `json:"password"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, 400, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if c.Mode == "" {
 		c.Mode = "login"
 	}
 	if c.Mode != "login" && c.Mode != "link" && c.Mode != "reauth" {
-		writeJSON(w, 400, map[string]string{"error": "invalid login mode"})
+		sendError(w, 400, "invalid login mode")
 		return
 	}
 	flow := oidcFlow{mode: c.Mode, verifier: oauth2.GenerateVerifier(), nonce: randomHex(32), started: a.Now()}
 	if c.Mode != "login" {
-		acc, ok := a.AccountFor(r)
+		acc, ok := a.account(w, r)
 		if !ok {
-			writeJSON(w, 401, map[string]string{"error": "not logged in"})
 			return
 		}
 		if c.Mode == "link" {
 			if acc.PasswordHash == "" && !acc.Temporary {
-				writeJSON(w, 409, map[string]string{"error": "set a password before linking another login method"})
+				sendError(w, 409, "set a password before linking another login method")
 				return
 			}
 			if acc.PasswordHash != "" {
@@ -198,31 +194,31 @@ func (a *Service) oidcStart(w http.ResponseWriter, r *http.Request) {
 				valid := password.Check(acc.PasswordHash, c.Password)
 				release()
 				if !valid {
-					writeJSON(w, 401, map[string]string{"error": "the password is wrong"})
+					sendError(w, 401, "the password is wrong")
 					return
 				}
 			}
 			// One identity per account: refused now, not after the provider.
 			if _, err := a.Store.OIDCIdentityOf(acc.ID); err == nil {
-				writeJSON(w, 409, map[string]string{"error": "this account has a linked login already: unlink it first"})
+				sendError(w, 409, "this account has a linked login already: unlink it first")
 				return
 			}
 		} else {
 			id, err := a.Store.OIDCIdentityOf(acc.ID)
 			if err != nil || id.Issuer != a.OIDC.issuer {
-				writeJSON(w, 409, map[string]string{"error": "no account is linked to this provider"})
+				sendError(w, 409, "no account is linked to this provider")
 				return
 			}
 		}
 		flow.account, flow.session, flow.passwordHash = acc.ID, a.SessionKey(r), acc.PasswordHash
 	}
 	if err := a.OIDC.discover(r.Context()); err != nil {
-		writeJSON(w, 502, map[string]string{"error": "cannot reach the login provider, please try again"})
+		sendError(w, 502, "cannot reach the login provider, please try again")
 		return
 	}
 	state := a.OIDC.flows.put(flow, a.Now(), a.Now().Add(flowLifetime))
 	if state == "" {
-		writeJSON(w, 503, map[string]string{"error": "too many pending logins"})
+		sendError(w, 503, "too many pending logins")
 		return
 	}
 	a.setFlowCookie(w, r, oidcStateCookie, state, flowLifetime)
@@ -235,7 +231,7 @@ func (a *Service) oidcStart(w http.ResponseWriter, r *http.Request) {
 
 func (a *Service) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	if !a.secure(r) {
-		writeJSON(w, 403, map[string]string{"error": "openid login requires a secure connection"})
+		sendError(w, 403, "openid login requires a secure connection")
 		return
 	}
 	o := a.OIDC
@@ -364,13 +360,11 @@ func (a *Service) oidcCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Service) oidcSignup(w http.ResponseWriter, r *http.Request) {
-	if !a.allow(r) {
-		writeJSON(w, 429, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, 400, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if !a.mayRegister(w, c.Invite, false) {
@@ -386,7 +380,7 @@ func (a *Service) oidcSignup(w http.ResponseWriter, r *http.Request) {
 	key := a.cookie(r, oidcSignupCookie)
 	s, ok := o.signups.get(key, a.Now(), false)
 	if !ok {
-		writeJSON(w, 404, map[string]string{"error": "the login expired, please try again"})
+		sendError(w, 404, "the login expired, please try again")
 		return
 	}
 	acc, token, ok := a.newAccount(w, r, store.Account{Name: name}, true, func(acc store.Account) (store.Account, error) {
@@ -401,35 +395,32 @@ func (a *Service) oidcSignup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Service) oidcUnlink(w http.ResponseWriter, r *http.Request) {
-	if !a.allow(r) {
-		writeJSON(w, 429, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, 401, map[string]string{"error": "not logged in"})
 		return
 	}
 	var c struct {
 		Password string `json:"password"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, 400, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if _, err := a.Store.OIDCIdentityOf(acc.ID); errors.Is(err, store.ErrNotFound) {
-		writeJSON(w, 404, map[string]string{"error": "no login is linked to this account"})
+		sendError(w, 404, "no login is linked to this account")
 		return
 	}
 	if acc.PasswordHash == "" {
-		writeJSON(w, 409, map[string]string{"error": "set a password first: this is your only way to log in"})
+		sendError(w, 409, "set a password first: this is your only way to log in")
 		return
 	}
 	release := password.Limit()
 	ok = password.Check(acc.PasswordHash, c.Password)
 	release()
 	if !ok {
-		writeJSON(w, 401, map[string]string{"error": "the password is wrong"})
+		sendError(w, 401, "the password is wrong")
 		return
 	}
 	keep := a.SessionKey(r)
@@ -442,7 +433,7 @@ func (a *Service) oidcUnlink(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}); err != nil {
-		writeJSON(w, 409, map[string]string{"error": "the account or session changed, please try again"})
+		sendError(w, 409, "the account or session changed, please try again")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

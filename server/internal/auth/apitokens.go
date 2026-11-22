@@ -32,13 +32,12 @@ func (a *Service) APIAccount(r *http.Request) (store.Account, bool, bool) {
 // apiTokens: an account's tokens, made, listed and revoked with a session
 // (never with a token). Not for guest accounts.
 func (a *Service) apiTokens(w http.ResponseWriter, r *http.Request) {
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
 	if acc.Temporary {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "guest accounts have no access tokens"})
+		sendError(w, http.StatusForbidden, "guest accounts have no access tokens")
 		return
 	}
 	var c struct {
@@ -47,35 +46,35 @@ func (a *Service) apiTokens(w http.ResponseWriter, r *http.Request) {
 		Write bool   `json:"write"`
 	}
 	if r.Method != http.MethodGet && json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		sendError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	switch r.Method {
 	case http.MethodGet:
 		list, err := a.Store.APITokens(acc.ID)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot list the tokens"})
+			sendError(w, http.StatusInternalServerError, "cannot list the tokens")
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"tokens": list})
 	case http.MethodPost:
 		name := strings.TrimSpace(c.Name)
 		if n := utf8.RuneCountInString(name); n < 1 || n > 64 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the name needs 1 to 64 characters"})
+			sendError(w, http.StatusBadRequest, "the name needs 1 to 64 characters")
 			return
 		}
 		token := apiTokenPrefix + randomHex(32)
 		t, err := a.Store.CreateAPIToken(acc.ID, a.SessionKey(r), name, tokenHash(token), c.Write, a.Now())
 		if errors.Is(err, store.ErrTooManyTokens) {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "too many tokens: revoke one first"})
+			sendError(w, http.StatusConflict, "too many tokens: revoke one first")
 			return
 		}
 		if errors.Is(err, store.ErrNotFound) {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "the session ended meanwhile"})
+			sendError(w, http.StatusUnauthorized, "the session ended meanwhile")
 			return
 		}
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot make the token"})
+			sendError(w, http.StatusInternalServerError, "cannot make the token")
 			return
 		}
 		slog.Info("access token made", "account", acc.Name, "token", t.ID, "write", t.Write)
@@ -83,7 +82,7 @@ func (a *Service) apiTokens(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusCreated, map[string]any{"accessToken": token, "id": t.ID, "name": t.Name, "write": t.Write, "created": t.Created})
 	case http.MethodDelete:
 		if err := a.Store.DeleteAPIToken(acc.ID, c.ID); err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such token"})
+			sendError(w, http.StatusNotFound, "no such token")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
