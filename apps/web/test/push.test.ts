@@ -41,11 +41,12 @@ describe("keys", () => {
 describe("subscriptions", () => {
   it("are sent with the quiet channels and blocked users", () => {
     const json = { endpoint: "https://push.example/x", keys: { p256dh: "P", auth: "A" }, expirationTime: null };
-    expect(subscriptionBody(json, { quiet: [3, 4], loud: [5], blocked: ["bob"] })).toEqual({
+    expect(subscriptionBody(json, { quiet: [3, 4], loud: [5], all: [6], blocked: ["bob"] })).toEqual({
       endpoint: "https://push.example/x",
       keys: { p256dh: "P", auth: "A" },
       quiet: [3, 4],
       loud: [5],
+      all: [6],
       blocked: ["bob"],
     });
   });
@@ -153,7 +154,7 @@ describe("push lifecycle", () => {
     const b = fakeBrowser(pauseAt);
     const base = "https://chat.example";
     b.storage.set("pushOwner", pushOwner(base, "alice"));
-    const sync = syncPush(base, "alice", { quiet: [], loud: [], blocked: [] });
+    const sync = syncPush(base, "alice", { quiet: [], loud: [], all: [], blocked: [] });
     await new Promise((r) => setTimeout(r));
     const off = turnOffPush(base);
     b.release();
@@ -174,7 +175,7 @@ describe("push lifecycle", () => {
     const base = "https://chat.example";
     b.storage.set("pushOwner", pushOwner(base, "alice"));
     const [syncing, other] = [await tab(), await tab()];
-    const sync = syncing.syncPush(base, "alice", { quiet: [], loud: [], blocked: [] });
+    const sync = syncing.syncPush(base, "alice", { quiet: [], loud: [], all: [], blocked: [] });
     await new Promise((r) => setTimeout(r));
     await other.turnOffPush(base);
     b.release();
@@ -233,7 +234,7 @@ describe("push from added servers", () => {
       return url.endsWith("/api/push") ? new Response(JSON.stringify({ publicKey: KEY })) : new Response(null, { status: 204 });
     });
     const { dropServerPushes, syncServerPush, turnOffPush } = await import("../src/lib/push");
-    const prefs = { quiet: [], loud: [], blocked: [] };
+    const prefs = { quiet: [], loud: [], all: [], blocked: [] };
     storage.set("pushOwner", pushOwner(HOME, "lain")); // the home server's push is on
     const scope = serverPushScope(B, HOME);
     await syncServerPush({ origin: B, token: "tb", name: "lain" }, true, prefs);

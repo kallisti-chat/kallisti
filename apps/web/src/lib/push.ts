@@ -52,8 +52,8 @@ export const pushOwner = (base: string, name: string) => `${base} ${name.toLower
 
 // What this browser wants no pushes for: chats it keeps quiet (and threads
 // of quiet channels, but not the loud ones; see pushLists), and users it
-// blocked.
-export type PushPrefs = { quiet: number[]; loud: number[]; blocked: readonly string[] };
+// blocked; and the chats it wants a push for every message of (all).
+export type PushPrefs = { quiet: number[]; loud: number[]; all: number[]; blocked: readonly string[] };
 
 export const subscriptionBody = (sub: PushSubscriptionJSON, prefs: PushPrefs) => ({ endpoint: sub.endpoint, keys: sub.keys, ...prefs });
 

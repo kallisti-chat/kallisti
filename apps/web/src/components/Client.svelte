@@ -885,6 +885,12 @@
     reopen = null;
     untrack(() => openChat(id));
   });
+  // Mutes end on their own: checked every half minute.
+  let muteNow = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (muteNow = Date.now()), 30_000);
+    return () => clearInterval(timer);
+  });
   // Push notifications (see lib/push), for accounts with a password: on
   // start and when channel settings or blocks change, the server learns
   // this session, the quiet chats (see pushLists) and the blocked users
@@ -893,7 +899,7 @@
   const pushName = $derived(!pushSync && account && !account.temporary && browserPushSupport() !== "none" ? me?.name : undefined);
   const pushPrefsKey = $derived(
     JSON.stringify({
-      ...pushLists(channelPrefs.value, connection.httpBase, Object.keys(text.directs).map(Number)),
+      ...pushLists(channelPrefs.value, connection.httpBase, Object.keys(text.directs).map(Number), muteNow),
       blocked: [...preferences.list].sort(),
     }),
   );
@@ -967,12 +973,6 @@
     view = first ? { kind: "text", id: first.id } : { kind: "voice" };
   });
   // Muted text channels show no unread marker (mentions still count).
-  // Mutes end on their own: checked every half minute.
-  let muteNow = $state(Date.now());
-  $effect(() => {
-    const timer = setInterval(() => (muteNow = Date.now()), 30_000);
-    return () => clearInterval(timer);
-  });
   // The settings as they hold: threads without their own take their
   // channel's (see lib/channelPrefs).
   const chatPrefs = $derived(withParents(channelPrefs.value, connection.httpBase, text.threads));
