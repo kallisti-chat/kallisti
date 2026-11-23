@@ -3121,3 +3121,7 @@ From the review: a whisper that ends in the middle of a sentence (its user left,
 The server too: a shout into a channel needs Speak there besides Whisper (stricter than Murmur), so a Mumble client cannot shout into a listen-only channel or around a channel time-out either. A whisper to one user in such a channel stays. For a deafened target the bar says that they do not hear me.
 
 Checked on test.kallisti.chat with three headless Chromium clients with fake microphones in one voice channel: the target saw the whisper mark, the third did not hear the whisperer, stop brought normal talk back, the priority speaker mark showed for the others. The ducking has a unit test only.
+
+## 2026-11-23: A change that is not saved says so
+
+Channel, ACL, role, ban and time-out changes in mumbled apply in memory and go to all clients first, and are written after. A failed write was only logged: the moderator saw success and the change was gone after the next restart. Now the session that made the change gets a server text ("This change is not saved … it holds until the server restarts"), also for changes through the web client's requests. The order stays (apply, then write): writing first would mean new lock orders in channel create and edit, bans and time-outs, for a failure that needs a full disk or a broken database. The server's own changes (text channel mirrors, ended time-outs, a member added by an invite link) are still only logged.

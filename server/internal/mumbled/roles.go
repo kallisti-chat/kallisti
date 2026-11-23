@@ -85,7 +85,7 @@ func (s *Server) setRole(actor, userID uint32, group string, on bool, may func(*
 	s.permissionsChangedLocked(root)
 	save := cloneChannel(root)
 	s.mu.Unlock()
-	s.save([]*Channel{save}, nil, 0)
+	s.save(actor, []*Channel{save}, nil, 0)
 	s.rolesChanged()
 	return nil
 }

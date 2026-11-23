@@ -2,7 +2,6 @@ package mumbled
 
 import (
 	"errors"
-	"log/slog"
 	"net/netip"
 	"slices"
 	"time"
@@ -158,7 +157,7 @@ func (s *Server) removeUser(actorSession uint32, m *pb.UserRemove, d time.Durati
 	}
 	s.mu.Unlock()
 	if bans != nil {
-		s.saveBans(bans)
+		s.saveBans(actorSession, bans)
 	}
 	return 0, true
 }
@@ -178,8 +177,8 @@ func (s *Server) currentBans() []BanEntry {
 
 // setBans replaces the ban list without expired bans, and saves it.
 // Callers hold saveMu.
-func (s *Server) setBans(bans []BanEntry) {
-	s.saveBans(s.publishBans(bans))
+func (s *Server) setBans(actor uint32, bans []BanEntry) {
+	s.saveBans(actor, s.publishBans(bans))
 }
 
 // publishBans replaces the ban list without expired bans and returns it.
@@ -191,12 +190,12 @@ func (s *Server) publishBans(bans []BanEntry) []BanEntry {
 	return bans
 }
 
-func (s *Server) saveBans(bans []BanEntry) {
+func (s *Server) saveBans(actor uint32, bans []BanEntry) {
 	if s.cfg.DB == nil {
 		return
 	}
 	if err := s.cfg.DB.SaveBans(bans); err != nil {
-		slog.Error("saving bans", "err", err)
+		s.notSaved(actor, "saving bans", err)
 	}
 }
 
@@ -256,7 +255,7 @@ func (s *Server) banListMsg(c *client, m *pb.BanList) {
 		seen[b] = true
 		bans = append(bans, b)
 	}
-	s.setBans(bans)
+	s.setBans(c.session, bans)
 }
 
 // parseBanStart reads Qt's ISO dates (UTC, often without a zone).

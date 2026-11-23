@@ -197,7 +197,7 @@ func (s *Server) SetPrivate(actor, channel uint32, on bool, members []uint32) er
 		save = []*Channel{cloneChannel(ch)}
 	}
 	s.mu.Unlock()
-	s.save(save, nil, 0)
+	s.save(actor, save, nil, 0)
 	s.privateChanged()
 	return nil
 }
@@ -235,7 +235,7 @@ func (s *Server) AddMember(channel, user uint32) (added bool, err error) {
 		save = []*Channel{cloneChannel(ch)}
 	}
 	s.mu.Unlock()
-	s.save(save, nil, 0)
+	s.save(0, save, nil, 0)
 	s.privateChanged()
 	return true, nil
 }
@@ -275,7 +275,7 @@ func (s *Server) CreatePrivateChannel(actor, parent uint32, name string) (uint32
 	s.showChannelLocked(ch)
 	save, lastID := cloneChannel(ch), s.state.LastChannelID()
 	s.mu.Unlock()
-	s.save([]*Channel{save}, nil, lastID)
+	s.save(actor, []*Channel{save}, nil, lastID)
 	s.privateChanged()
 	return ch.ID, nil
 }
