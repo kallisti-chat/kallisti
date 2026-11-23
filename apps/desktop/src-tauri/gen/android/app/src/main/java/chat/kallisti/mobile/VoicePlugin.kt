@@ -47,6 +47,7 @@ class VoicePlugin(private val activity: Activity) : Plugin(activity) {
   // On the main thread.
   private fun reconcile() {
     val channel = VoiceService.wanted
+    (activity as? MainActivity)?.voicePriority(channel != null)
     if (channel == null) {
       // A start still on its way stops itself (VoiceService.onStartCommand).
       if (VoiceService.running) {
