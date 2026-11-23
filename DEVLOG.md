@@ -3118,6 +3118,6 @@ The server had Mumble's voice targets and the priority speaker; the web client s
 
 From the review: a whisper that ends in the middle of a sentence (its user left, or "stop") keeps that talk spurt on the target, which the server has no receivers for by then, so the rest goes to nobody and not to the channel. Whisper and shout are offered only with the Whisper right in the target's channel, a shout also only with Speak there (the menu must not hand everyone a way into listen-only channels), and not to text-only users: the server drops such voice without a word and the bar would lie. A priority speaker muted for me makes nobody quieter.
 
-Left: the server lets a Mumble client shout into a listen-only channel (it denies Speak there, not Whisper); that was so before. A deaf target still gets "Only X hears you".
+The server too: a shout into a channel needs Speak there besides Whisper (stricter than Murmur), so a Mumble client cannot shout into a listen-only channel or around a channel time-out either. A whisper to one user in such a channel stays. For a deafened target the bar says that they do not hear me.
 
 Checked on test.kallisti.chat with three headless Chromium clients with fake microphones in one voice channel: the target saw the whisper mark, the third did not hear the whisperer, stop brought normal talk back, the priority speaker mark showed for the others. The ducking has a unit test only.

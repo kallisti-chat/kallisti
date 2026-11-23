@@ -54,6 +54,7 @@ export default {
   "client.serverSettings": "Ajustes del servidor",
   "client.soundHint": "Haz clic en cualquier sitio para activar el sonido",
   "client.whisperingTo": "Solo {name} te oye",
+  "client.whisperDeaf": "{name} tiene el sonido apagado y no te oye",
   "client.shoutingTo": "Gritas a {name}",
   "client.stopWhisper": "Parar",
   "client.closePanel": "Cerrar panel",

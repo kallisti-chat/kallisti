@@ -54,6 +54,7 @@ export default {
   "client.serverSettings": "伺服器設定",
   "client.soundHint": "點擊任意處以開啟聲音",
   "client.whisperingTo": "只有 {name} 能聽到你",
+  "client.whisperDeaf": "{name} 已拒聽，聽不到你",
   "client.shoutingTo": "你正在向 {name} 喊話",
   "client.stopWhisper": "停止",
   "client.closePanel": "關閉面板",

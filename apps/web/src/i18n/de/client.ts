@@ -54,6 +54,7 @@ export default {
   "client.serverSettings": "Servereinstellungen",
   "client.soundHint": "Klicke irgendwo, um den Ton einzuschalten",
   "client.whisperingTo": "Nur {name} hört dich",
+  "client.whisperDeaf": "{name} hat den Ton aus und hört dich nicht",
   "client.shoutingTo": "Du rufst in {name}",
   "client.stopWhisper": "Beenden",
   "client.closePanel": "Bereich schließen",

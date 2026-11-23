@@ -603,6 +603,12 @@
     const w = connection.whisper;
     return !w ? null : "session" in w ? (server.users[w.session]?.name ?? null) : (server.channels[w.channel]?.name ?? null);
   });
+  // A deafened user hears no whisper: the bar says so.
+  const whisperDeaf = $derived.by(() => {
+    const w = connection.whisper;
+    const user = w && "session" in w ? server.users[w.session] : undefined;
+    return !!user && (user.deaf || user.selfDeaf);
+  });
   $effect(() => {
     if (!voiceOn && untrack(() => connection.whisper)) connection.setWhisper(null);
   });
@@ -2361,7 +2367,7 @@
         {/if}
         {#if connection.whisper && whisperName !== null}
           <p class="whisper" role="status">
-            <span class="ellipsis">{t("session" in connection.whisper ? "client.whisperingTo" : "client.shoutingTo", { name: whisperName })}</span>
+            <span class="ellipsis">{t(whisperDeaf ? "client.whisperDeaf" : "session" in connection.whisper ? "client.whisperingTo" : "client.shoutingTo", { name: whisperName })}</span>
             <button type="button" onclick={() => connection.setWhisper(null)}>{t("client.stopWhisper")}</button>
           </p>
         {/if}

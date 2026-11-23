@@ -172,7 +172,7 @@ func (s *State) Receivers(sender, target uint32) map[uint32]AudioContext {
 }
 
 // addTargetReceivers adds whisper and shout receivers: users in the target
-// channels where the speaker may whisper (filtered by group), then users
+// channels where the speaker may whisper and speak (filtered by group), then users
 // named directly, then listeners of the target channels.
 func (s *State) addTargetReceivers(u *User, vt VoiceTarget, add func(*User, AudioContext)) {
 	// Target channel: its group filters, any of which lets a user in ("" is
@@ -196,7 +196,9 @@ func (s *State) addTargetReceivers(u *User, vt VoiceTarget, add func(*User, Audi
 		for ch := range chans {
 			ok, seen := may[ch]
 			if !seen {
-				ok = s.Has(u, ch, Whisper)
+				// Speak too (not in Murmur): a shout must not get around
+				// a listen-only channel or a time-out there.
+				ok = s.Has(u, ch, Whisper|Speak)
 				may[ch] = ok
 			}
 			if ok && !slices.Contains(groups[ch], tc.Group) {

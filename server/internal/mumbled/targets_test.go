@@ -75,6 +75,22 @@ func TestWhisperNeedsPermission(t *testing.T) {
 	}
 }
 
+// A shout into a channel needs Speak there too: not into a listen-only
+// channel. A whisper to a user in it stays (it is to that user alone).
+func TestShoutNeedsSpeakInTheChannel(t *testing.T) {
+	s, _, _, b := targetState(t)
+	b.ACLs = []ACL{listenOnlyDeny}
+	s.Changed()
+	s.SetTarget(1, 1, VoiceTarget{Channels: []TargetChannel{{ID: b.ID}}})
+	if got := receivers(s, 1, 1); len(got) != 0 {
+		t.Fatalf("shout: receivers %v", got)
+	}
+	s.SetTarget(1, 1, VoiceTarget{Sessions: []uint32{4}})
+	if got := receivers(s, 1, 1); !maps.Equal(got, map[uint32]AudioContext{4: ContextWhisper}) {
+		t.Fatalf("whisper: receivers %v", got)
+	}
+}
+
 func TestListenersHearAChannel(t *testing.T) {
 	s, a, _, _ := targetState(t)
 	s.Listen(4, a.ID, true)

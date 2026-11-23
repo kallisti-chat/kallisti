@@ -54,6 +54,7 @@ export default {
   "client.serverSettings": "サーバー設定",
   "client.soundHint": "どこかをクリックすると音が出ます",
   "client.whisperingTo": "{name} だけに聞こえています",
+  "client.whisperDeaf": "{name} はスピーカーミュート中で、あなたの声は聞こえません",
   "client.shoutingTo": "{name} に呼びかけています",
   "client.stopWhisper": "やめる",
   "client.closePanel": "パネルを閉じる",

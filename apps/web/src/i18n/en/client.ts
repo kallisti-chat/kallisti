@@ -58,6 +58,7 @@ export default {
   "client.serverSettings": "Server settings",
   "client.soundHint": "Click anywhere to turn on sound",
   "client.whisperingTo": "Only {name} hears you",
+  "client.whisperDeaf": "{name} is deafened and does not hear you",
   "client.shoutingTo": "You shout to {name}",
   "client.stopWhisper": "Stop",
   "client.closePanel": "Close panel",
