@@ -64,7 +64,7 @@ func TestMayRecover(t *testing.T) {
 		t.Fatal("a link for a name accounts may not have")
 	}
 	r, _ = db.UserByID(feldID)
-	s.setBans([]BanEntry{{Hash: r.CertHash, Start: time.Now()}})
+	s.setBans(0, []BanEntry{{Hash: r.CertHash, Start: time.Now()}})
 	if _, _, err := s.MayRecover(alice.session, feldID); err == nil {
 		t.Fatal("a link for a banned certificate")
 	}

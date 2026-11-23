@@ -209,7 +209,7 @@ func (s *Server) SyncTextTree(cats []TextCategory, want []TextMirror) (catIDs, i
 	}
 	lastID := s.state.LastChannelID()
 	s.mu.Unlock()
-	s.save(save, removed, lastID)
+	s.save(0, save, removed, lastID)
 	if parent.ID != saved {
 		if err := s.storeTextParent(parent.ID); err != nil {
 			return catIDs, ids, err

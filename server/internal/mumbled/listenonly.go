@@ -158,7 +158,7 @@ func (s *Server) SetListenOnly(actor, channel uint32, on bool, speakers []uint32
 	}
 	s.mu.Unlock()
 	if save != nil {
-		s.save(save, nil, 0)
+		s.save(actor, save, nil, 0)
 	}
 	s.listenOnlyChanged()
 	return nil

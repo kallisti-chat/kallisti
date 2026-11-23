@@ -1,6 +1,7 @@
 package mumbled
 
 import (
+	"cmp"
 	"errors"
 	"html"
 	"log/slog"
@@ -402,27 +403,36 @@ func cloneChannel(ch *Channel) *Channel {
 	return &cp
 }
 
+// notSaved: a change holds in memory but could not be written, so it is
+// gone after a restart. The session that made it is told (0: nobody, the
+// server's own changes), once per failed write.
+func (s *Server) notSaved(actor uint32, what string, err error) {
+	slog.Error(what, "err", err)
+	if actor != 0 {
+		s.SendServerText(actor, "This change is not saved (a database error): it holds until the server restarts. Tell the server's admin.")
+	}
+}
+
 // save writes channel changes after the state changed. Callers hold
-// saveMu (not mu), so saves keep the order of the changes.
-func (s *Server) save(channels []*Channel, removed []uint32, lastID uint32) {
+// saveMu (not mu), so saves keep the order of the changes. actor: see
+// notSaved.
+func (s *Server) save(actor uint32, channels []*Channel, removed []uint32, lastID uint32) {
 	db := s.cfg.DB
 	if db == nil {
 		return
 	}
+	var failed error
 	for _, ch := range channels {
-		if err := db.SaveChannel(ch); err != nil {
-			slog.Error("saving channel", "channel", ch.ID, "err", err)
-		}
+		failed = cmp.Or(failed, db.SaveChannel(ch))
 	}
 	if len(removed) > 0 {
-		if err := db.DeleteChannels(removed); err != nil {
-			slog.Error("removing channels", "channels", removed, "err", err)
-		}
+		failed = cmp.Or(failed, db.DeleteChannels(removed))
 	}
 	if lastID > 0 {
-		if err := db.SaveNextChannel(lastID); err != nil {
-			slog.Error("saving channel id", "err", err)
-		}
+		failed = cmp.Or(failed, db.SaveNextChannel(lastID))
+	}
+	if failed != nil {
+		s.notSaved(actor, "saving channels", failed)
 	}
 }
 
@@ -493,7 +503,7 @@ func (s *Server) createChannel(c *client, m *pb.ChannelState) {
 	}
 	lastID := s.state.LastChannelID()
 	s.mu.Unlock()
-	s.save(save, nil, lastID)
+	s.save(c.session, save, nil, lastID)
 }
 
 func (s *Server) editChannel(c *client, m *pb.ChannelState) {
@@ -566,7 +576,7 @@ func (s *Server) editChannel(c *client, m *pb.ChannelState) {
 		}
 	}
 	s.mu.Unlock()
-	s.save(save, nil, 0)
+	s.save(c.session, save, nil, 0)
 }
 
 func (s *Server) channelRemoveMsg(c *client, m *pb.ChannelRemove) {
@@ -590,7 +600,7 @@ func (s *Server) channelRemoveMsg(c *client, m *pb.ChannelRemove) {
 	private := slices.ContainsFunc(s.state.Subtree(m.GetChannelId()), func(id uint32) bool { return isPrivate(s.state.Channels[id]) })
 	removed := s.removeChannelLocked(m.GetChannelId(), c.session)
 	s.mu.Unlock()
-	s.save(nil, removed, 0)
+	s.save(c.session, nil, removed, 0)
 	if private {
 		s.privateChanged()
 	}

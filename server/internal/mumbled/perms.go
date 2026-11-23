@@ -242,7 +242,7 @@ func (s *Server) aclMsg(c *client, m *pb.ACL) {
 	if !ch.Temporary {
 		save := cloneChannel(ch)
 		s.mu.Unlock()
-		s.save([]*Channel{save}, nil, 0)
+		s.save(c.session, []*Channel{save}, nil, 0)
 		s.mu.Lock()
 	}
 }

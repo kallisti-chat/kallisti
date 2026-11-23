@@ -126,7 +126,7 @@ func (s *Server) SetChannelModerator(actor, user, channel uint32, on bool) error
 		save = []*Channel{cloneChannel(ch)}
 	}
 	s.mu.Unlock()
-	s.save(save, nil, 0)
+	s.save(actor, save, nil, 0)
 	s.rolesChanged() // the Kallisti server resends private channels too
 	return nil
 }

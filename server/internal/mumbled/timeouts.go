@@ -3,7 +3,6 @@ package mumbled
 import (
 	"cmp"
 	"errors"
-	"log/slog"
 	"slices"
 	"time"
 
@@ -89,7 +88,7 @@ func (s *Server) loadTimeouts() error {
 		if until.After(time.Now()) && (!key.inChannel || s.state.Channels[key.channel] != nil) {
 			s.startTimeoutLocked(key, until)
 		} else {
-			s.saveTimeout(key, time.Time{})
+			s.saveTimeout(0, key, time.Time{})
 		}
 	}
 	return nil
@@ -145,7 +144,7 @@ func (s *Server) setTimeout(actor, session uint32, d time.Duration, may func(a, 
 	}
 	s.setTimeoutLocked(key, until, actor)
 	s.mu.Unlock()
-	s.saveTimeout(key, until)
+	s.saveTimeout(actor, key, until)
 	s.timeoutsChanged()
 	return nil
 }
@@ -163,7 +162,7 @@ func (s *Server) expireTimeout(key timeoutKey, until time.Time) {
 	}
 	s.setTimeoutLocked(key, time.Time{}, 0)
 	s.mu.Unlock()
-	s.saveTimeout(key, time.Time{})
+	s.saveTimeout(0, key, time.Time{})
 	s.timeoutsChanged()
 }
 
@@ -319,8 +318,8 @@ func timedOutText(who string, until time.Time, channel ...string) error {
 }
 
 // saveTimeout keeps a registered user's time-out (zero: none). Callers
-// hold saveMu.
-func (s *Server) saveTimeout(key timeoutKey, until time.Time) {
+// hold saveMu. actor: see notSaved.
+func (s *Server) saveTimeout(actor uint32, key timeoutKey, until time.Time) {
 	if key.guest || s.cfg.DB == nil {
 		return
 	}
@@ -331,7 +330,7 @@ func (s *Server) saveTimeout(key timeoutKey, until time.Time) {
 		err = s.cfg.DB.SaveTimeout(key.id, until)
 	}
 	if err != nil {
-		slog.Error("saving a time-out", "user", key.id, "err", err)
+		s.notSaved(actor, "saving a time-out", err)
 	}
 }
 

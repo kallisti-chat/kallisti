@@ -199,7 +199,7 @@ func TestBansSurviveARestartAndExpiredOnesGo(t *testing.T) {
 	if s.banned(netip.MustParseAddr("10.0.0.1"), "abc") == nil {
 		t.Fatal("saved ban not loaded")
 	}
-	s.setBans(s.currentBans())
+	s.setBans(0, s.currentBans())
 	if got, _ := db.Bans(); len(got) != 1 || got[0].Hash != "abc" {
 		t.Fatalf("after saving: %+v", got)
 	}
@@ -332,7 +332,7 @@ func TestABanPublishedDuringAdmissionStillApplies(t *testing.T) {
 		ban  BanEntry
 		host netip.Addr
 	}{{BanEntry{Prefix: netip.PrefixFrom(banned, 32)}, banned}, {BanEntry{Hash: "bad"}, other}, {BanEntry{Hash: certHash(own)}, other}} {
-		s.setBans([]BanEntry{e.ban})
+		s.setBans(0, []BanEntry{e.ban})
 		c := &client{out: make(chan []byte, queueSize), voice: make(chan []byte, queueSize), host: e.host, name: "late", certs: own}
 		if reject := s.join(c, identity{name: "late", hash: "bad"}, &pb.CryptSetup{}); reject == nil {
 			t.Fatalf("ban %+v: joined", e.ban)

@@ -2,6 +2,7 @@ package mumbled
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -233,4 +234,21 @@ func TestABigServerAcceptsNewClients(t *testing.T) {
 			t.Fatal("no ServerSync")
 		}
 	}
+}
+
+// A change that could not be saved is told to who made it: it holds only
+// until the next restart.
+func TestAFailedSaveIsToldToTheActor(t *testing.T) {
+	s, addr := rolesServer(t)
+	su := superUser(t, addr)
+	if _, err := s.cfg.DB.db.Exec(`ALTER TABLE mumble_channels RENAME TO gone`); err != nil {
+		t.Fatal(err)
+	}
+	su.createChannel(0, "Music", false)
+	var m pb.TextMessage
+	proto.Unmarshal(su.expect(mumble.TypeTextMessage), &m)
+	if !strings.Contains(m.GetMessage(), "not saved") {
+		t.Fatalf("got %q", m.GetMessage())
+	}
+	s.cfg.DB.db.Exec(`ALTER TABLE gone RENAME TO mumble_channels`)
 }
