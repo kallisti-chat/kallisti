@@ -7,6 +7,8 @@
     <!-- Voice in the background: VoiceService. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- With the screen off: the CPU and the Wi-Fi stay awake while in voice. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Listening without the microphone allowed. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

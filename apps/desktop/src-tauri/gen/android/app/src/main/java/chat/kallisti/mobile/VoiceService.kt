@@ -10,16 +10,61 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 
 // While in voice: a foreground service, so Android lets the app play on (and
 // record) in the background and with the screen off. Of type microphone when
 // the microphone is allowed, else mediaPlayback: a listener without it would
 // get no service, and Android freezes the app a few seconds after it leaves
 // the screen. Its notification ("In voice: #channel") opens the app.
+//
+// The service alone does not keep the phone awake: with the screen off the
+// CPU slows down and the Wi-Fi saves power (it holds packets back), and
+// the voice gets choppy for the others. While it runs it holds a partial
+// wake lock and a high-performance Wi-Fi lock.
 class VoiceService : Service() {
+  private var awake: PowerManager.WakeLock? = null
+  private var wifi: WifiManager.WifiLock? = null
+
   override fun onBind(intent: Intent?): IBinder? = null
+
+  // Idempotent: a second start keeps the locks it has.
+  private fun stayAwake() {
+    try {
+      if (awake == null) {
+        awake = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "kallisti:voice").apply {
+          setReferenceCounted(false)
+          acquire()
+        }
+      }
+      if (wifi == null) {
+        // Not the newer low-latency mode: that one holds only with the
+        // screen on.
+        @Suppress("DEPRECATION")
+        wifi = applicationContext.getSystemService(WifiManager::class.java).createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "kallisti:voice").apply {
+          setReferenceCounted(false)
+          acquire()
+        }
+      }
+    } catch (e: Exception) {
+      // Voice works without them, as before.
+      android.util.Log.w("Kallisti", "voice service without wake locks", e)
+    }
+  }
+
+  private fun sleepAgain() {
+    try {
+      awake?.release()
+      wifi?.release()
+    } catch (e: Exception) {
+      android.util.Log.w("Kallisti", "wake locks not released", e)
+    }
+    awake = null
+    wifi = null
+  }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     // Stopped meanwhile (a start overtaken by a stop): no service.
@@ -39,6 +84,7 @@ class VoiceService : Service() {
       }
       running = true
       recording = mic
+      stayAwake()
     } catch (e: Exception) {
       // E.g. the microphone not allowed (14+): no service, no crash.
       android.util.Log.w("Kallisti", "voice service not in the foreground", e)
@@ -48,6 +94,7 @@ class VoiceService : Service() {
   }
 
   override fun onDestroy() {
+    sleepAgain()
     running = false
     super.onDestroy()
   }

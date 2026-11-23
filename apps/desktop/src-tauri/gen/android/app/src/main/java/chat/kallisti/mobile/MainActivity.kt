@@ -1,13 +1,34 @@
 package chat.kallisti.mobile
 
+import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
+  private var webView: WebView? = null
+  private var inVoice = false
+
+  override fun onWebViewCreate(webView: WebView) {
+    this.webView = webView
+    voicePriority(inVoice)
+  }
+
+  // While in voice the page's process keeps its priority when the app is
+  // not on the screen: capture, noise suppression and the encoder run
+  // there, and Android slows a hidden web view down. Else as usual (the
+  // priority is given up when hidden). On the main thread.
+  fun voicePriority(on: Boolean) {
+    inVoice = on
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      webView?.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, !on)
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
