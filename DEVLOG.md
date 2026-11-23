@@ -3097,3 +3097,27 @@ After a claim, the user's own Mumble certificate stopped working (the registrati
 Left (Astra): a client in the middle of its login while the logins end can stay connected until it reconnects or the next end; a failed delete of further certificates is only logged.
 
 Checked on test.kallisti.chat with claimtest2 (Mumble id 28): old certificate alone after the claim, refused after a password change on the web, the new password works.
+
+## 2026-11-22: Audit: fixes, two refactors, three features
+
+Three read-only surveys (server, web client, feature gaps) gave a ranked list; this is what was done from it.
+
+Fixes: a failed user lookup during an ACL edit took every user for unknown and saved the ACL without them (on root: no admins left); `registeredIDs` now returns its error and the edit is refused. `MessagesAfter` ran its 500-row scan for every readable chat on each connect, also for chats with nothing new: it returns after the max-id query. Upload tokens have a kind (the file token was "none of the other kinds", so a new kind could have passed as one). An index for the upload limit's sum. In the web client the emoji set and the mention names were new objects on every server event, which sanitized every shown message again: they now keep their identity while their content is the same.
+
+Refactors: the auth handlers' four repeated blocks (error reply, small JSON body, "not logged in", "too many attempts") are helpers. The dialog shell (box, backdrop, header, title, close button) is in `app.css` once, with `:where()` so a dialog's own rules win; 16 components lost about 320 lines. Not a wrapper component: the dialogs differ in forms and key handling, the copies were CSS. Not done: loading the language detector later (short English lines defeat the word list, so it would load in nearly every session anyway).
+
+Features: a push for every message of chats set to "All messages" (the setting worked only while the app was open): a device names those chats with its subscription (`all`, at most 200), the hub asks who wants them with a `json_each` query, and the same limits as for pings hold. `/healthz` checks the database; the compose healthcheck and the Helm startup and readiness probes use it (liveness stays on `/`: a busy database must not restart the pod). The agent API has a stream of events (`GET /api/agent/events`, server-sent events: what a chat's readers get) and reactions.
+
+From the reviews (subagent, Astra): a banned account's token still worked, on a stream without end; an "all messages" push took the chat's one-a-minute turn from a mention, and its tag replaced the mention's notification; an open stream made shutdown wait its full 5 s and exit with an error (the HTTP server waits for requests, not for WebSockets).
+
+Checked on test.kallisti.chat: `/healthz`, and four dialogs' computed styles in headless Chromium against the old rules. Not checked there: a real browser push for "All messages" (tests only), so that issue stays open.
+
+## 2026-11-22: Whisper, shout and priority speaker in the web client
+
+The server had Mumble's voice targets and the priority speaker; the web client sent all voice with target 0 and had no control for either. Now a user's menu has "Whisper" and a voice channel's menu "Shout to this channel": a mode that is turned on and off (not a second hold key as in Mumble: it works on phones and needs no setup), with a bar by the voice controls that says who hears me. One voice target (id 1) carries it; `createWhisperTargets` stamps each outgoing packet. Who whispers or shouts to me shows a lock or a speaker while they talk (the packet's context). Staff with the mute right set the priority speaker from the user menu; while one talks, the others play at 30 % (Mumble's client does this itself, so the web client does too).
+
+From the review: a whisper that ends in the middle of a sentence (its user left, or "stop") keeps that talk spurt on the target, which the server has no receivers for by then, so the rest goes to nobody and not to the channel. Whisper and shout are offered only with the Whisper right in the target's channel, a shout also only with Speak there (the menu must not hand everyone a way into listen-only channels), and not to text-only users: the server drops such voice without a word and the bar would lie. A priority speaker muted for me makes nobody quieter.
+
+The server too: a shout into a channel needs Speak there besides Whisper (stricter than Murmur), so a Mumble client cannot shout into a listen-only channel or around a channel time-out either. A whisper to one user in such a channel stays. For a deafened target the bar says that they do not hear me.
+
+Checked on test.kallisti.chat with three headless Chromium clients with fake microphones in one voice channel: the target saw the whisper mark, the third did not hear the whisperer, stop brought normal talk back, the priority speaker mark showed for the others. The ducking has a unit test only.

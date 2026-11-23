@@ -296,6 +296,7 @@ func run() error {
 		}
 	}()
 	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", health(db.DB()))
 	mux.Handle("/api/upload", fileHandler)
 	mux.HandleFunc("/api/webhooks/", hub.ServeWebhook) // see sidecar/webhookpost.go
 	mux.HandleFunc("/api/agent/", hub.ServeAgent)      // see sidecar/agent.go
@@ -375,6 +376,7 @@ func run() error {
 	// connections: the bridge closes and waits for those itself.
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	hub.CloseStreams() // the agent API's: open requests, which Shutdown waits for
 	err = srv.Shutdown(shutdownCtx)
 	b.Close()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

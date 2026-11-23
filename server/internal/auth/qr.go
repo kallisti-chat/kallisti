@@ -106,7 +106,7 @@ func deviceName(s string) (string, bool) {
 // readJSON reads a small request body (also unauthenticated ones).
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(v); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		sendError(w, http.StatusBadRequest, "invalid request")
 		return false
 	}
 	return true
@@ -122,16 +122,15 @@ func (a *Service) qrStart(w http.ResponseWriter, r *http.Request) {
 	}
 	device, ok := deviceName(req.Device)
 	if !ok {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a device name has 1 to 64 characters"})
+		sendError(w, http.StatusBadRequest, "a device name has 1 to 64 characters")
 		return
 	}
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	acc, logged := a.AccountFor(r)
 	if logged && acc.Temporary {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "set a password first: a guest account cannot log in elsewhere"})
+		sendError(w, http.StatusForbidden, "set a password first: a guest account cannot log in elsewhere")
 		return
 	}
 	now := a.Now()
@@ -140,7 +139,7 @@ func (a *Service) qrStart(w http.ResponseWriter, r *http.Request) {
 		g.account = acc
 	}
 	if !a.qr.add(g, now) {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "too many codes at once, try again later"})
+		sendError(w, http.StatusServiceUnavailable, "too many codes at once, try again later")
 		return
 	}
 	kind := "request"
@@ -163,7 +162,7 @@ func (a *Service) qrScan(w http.ResponseWriter, r *http.Request) {
 	}
 	device, ok := deviceName(req.Device)
 	if !ok {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a device name has 1 to 64 characters"})
+		sendError(w, http.StatusBadRequest, "a device name has 1 to 64 characters")
 		return
 	}
 	acc, logged := a.AccountFor(r)
@@ -292,7 +291,7 @@ func (a *Service) qrWait(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"state": "refused"})
 		return
 	} else if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot log in"})
+		sendError(w, http.StatusInternalServerError, "cannot log in")
 		return
 	}
 	writeJSON(w, http.StatusOK, withToken(map[string]any{"state": "done", "name": take.account.Name}, a.handOutSession(w, r, token)))

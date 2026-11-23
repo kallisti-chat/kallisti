@@ -109,7 +109,7 @@ func (c *Conn) stickerRequest(id mumble.Identity, req request) {
 		} else {
 			s := stickerOf(req)
 			s.Author = id.Name
-			c.send(map[string]any{"type": "upload-token", "token": c.hub.issueToken(uploadToken{author: id.Name, sticker: &s})})
+			c.send(map[string]any{"type": "upload-token", "token": c.hub.issueToken(uploadToken{kind: stickerToken, author: id.Name, sticker: &s})})
 		}
 	case "rename-sticker":
 		if msg := c.hub.stickerFields(req, req.Sticker); msg != "" {
@@ -138,8 +138,8 @@ func (c *Conn) stickerDone(err error) {
 // RedeemStickerToken returns the sticker a token may add (once, before
 // it expires): its fields and author.
 func (h *Hub) RedeemStickerToken(token string) (store.Sticker, bool) {
-	t, ok := h.redeem(token)
-	if !ok || t.sticker == nil {
+	t, ok := h.redeem(token, stickerToken)
+	if !ok {
 		return store.Sticker{}, false
 	}
 	return *t.sticker, true

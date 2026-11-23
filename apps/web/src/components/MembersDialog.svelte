@@ -158,39 +158,15 @@
 </dialog>
 
 <style>
-  dialog {
-    width: min(440px, 92vw);
-    padding: 24px;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-main);
-    color: var(--text);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
-  }
-  header,
-  footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
   header {
     padding-bottom: 8px;
   }
   footer {
+    display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 8px;
     margin-top: 16px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 18px;
-  }
-  .close {
-    font-size: 24px;
-    line-height: 1;
-    color: var(--text-muted);
   }
   p {
     margin: 0 0 12px;

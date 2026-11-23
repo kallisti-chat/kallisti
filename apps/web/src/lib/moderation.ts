@@ -152,7 +152,7 @@ export type ModerationAction =
   | { kind: "ban"; reason: string; seconds: number; deleteSeconds?: number } // 0: for ever
   | { kind: "timeout"; seconds: number; deleteSeconds?: number } // 0: end it
   | { kind: "channelTimeout"; channel: number; seconds: number } // 0: end it
-  | { kind: "mute" | "deaf"; on: boolean }
+  | { kind: "mute" | "deaf" | "priority"; on: boolean }
   | { kind: "move"; channel: number }
   | { kind: "delete"; seconds: number };
 type Request = { mumble: Bytes } | { manage: ManageAction };
@@ -177,6 +177,8 @@ export const moderationRequest = (session: number, a: Exclude<ModerationAction, 
       return { mumble: moderateUser(session, { mute: a.on }) };
     case "deaf":
       return { mumble: moderateUser(session, { deaf: a.on }) };
+    case "priority":
+      return { mumble: moderateUser(session, { prioritySpeaker: a.on }) };
     case "move":
       return { mumble: joinChannel(session, a.channel) };
   }

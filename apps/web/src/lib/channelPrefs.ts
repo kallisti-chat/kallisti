@@ -123,10 +123,15 @@ export const nothingIds = (prefs: ChannelPrefs, server: string): number[] =>
 // chats set to "nothing" and direct chats muted for good (a timed mute
 // would outlive closed tabs); loud: chats with another level of their
 // own (threads with a setting of their own have one: the server keeps
-// the threads of quiet channels quiet, not these).
-export const pushLists = (prefs: ChannelPrefs, server: string, directs: readonly number[]) => {
+// the threads of quiet channels quiet, not these); all: chats set to
+// "all messages" and not muted now (a mute that ends while the app is
+// closed stays until the app opens again), for pushes without a ping.
+export const pushLists = (prefs: ChannelPrefs, server: string, directs: readonly number[], now: number) => {
   const own = prefs[server] ?? {};
   return {
+    all: Object.entries(own)
+      .filter(([, p]) => p.level === "all" && !isMuted(p, now))
+      .map(([id]) => Number(id)),
     quiet: [...nothingIds(prefs, server), ...directs.filter((id) => own[id]?.mutedUntil === 0)].sort((a, b) => a - b),
     loud: Object.entries(own)
       .filter(([, p]) => p.level && p.level !== "nothing")

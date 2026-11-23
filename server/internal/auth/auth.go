@@ -223,7 +223,7 @@ func (a *Service) ownSite(w http.ResponseWriter, r *http.Request, why string) bo
 	if config.OwnSite(a.AllowedOrigins, r.Header.Get("Origin")) {
 		return true
 	}
-	writeJSON(w, http.StatusForbidden, map[string]string{"error": why})
+	sendError(w, http.StatusForbidden, why)
 	return false
 }
 
@@ -259,14 +259,14 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// CORS preflight, and browsers mark cross-site requests.
 		ctype, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if ctype != "application/json" {
-			writeJSON(w, http.StatusUnsupportedMediaType, map[string]string{"error": "send JSON"})
+			sendError(w, http.StatusUnsupportedMediaType, "send JSON")
 			return
 		}
 		// Other sites (another Kallisti's page, the apps) are cross-site by
 		// nature and log in with a token: never with the cookie.
 		tokens := !config.CookieOrigin(a.AllowedOrigins, r.Header.Get("Origin")) && a.cookie(r, CookieName) == ""
 		if r.Header.Get("Sec-Fetch-Site") == "cross-site" && !tokens {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "cross-site requests are not allowed"})
+			sendError(w, http.StatusForbidden, "cross-site requests are not allowed")
 			return
 		}
 	}
@@ -345,7 +345,7 @@ func (a *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			writeJSON(w, http.StatusOK, me)
 		} else {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
+			sendError(w, http.StatusUnauthorized, "not logged in")
 		}
 	default:
 		http.NotFound(w, r)
@@ -497,13 +497,11 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 	if !a.ownSite(w, r, "create an account on the server's own site") {
 		return
 	}
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if !a.mayRegister(w, c.Invite, false) {
@@ -514,7 +512,7 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if n := utf8.RuneCountInString(c.Password); n < 8 || n > 256 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the password needs 8 to 256 characters"})
+		sendError(w, http.StatusBadRequest, "the password needs 8 to 256 characters")
 		return
 	}
 	// After the quick checks (a taken name does not use up the challenge),
@@ -526,7 +524,7 @@ func (a *Service) create(w http.ResponseWriter, r *http.Request) {
 	hash, err := password.Hash(c.Password)
 	release()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot create the account"})
+		sendError(w, http.StatusInternalServerError, "cannot create the account")
 		return
 	}
 	if acc, token, ok := a.newAccount(w, r, store.Account{Name: name, PasswordHash: hash}, true, func(acc store.Account) (store.Account, error) {
@@ -545,13 +543,11 @@ func (a *Service) guest(w http.ResponseWriter, r *http.Request) {
 	if !a.ownSite(w, r, "join as a guest on the server's own site") {
 		return
 	}
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	name, ok := a.checkName(w, c.Name)
@@ -559,12 +555,12 @@ func (a *Service) guest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if n, err := a.Store.TemporaryAccounts(); err != nil || n >= cmp.Or(a.MaxGuests, defaultMaxGuests) {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "too many guests right now, please create an account"})
+		sendError(w, http.StatusServiceUnavailable, "too many guests right now, please create an account")
 		return
 	}
 	// Only now (a name that can be used): taken names do not use it up.
 	if !a.guests.allow(clientip.Of(r, a.TrustForwardedFor), rate.Every(guestEvery), guestBurst) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many guests from your address, try again later"})
+		sendError(w, http.StatusTooManyRequests, "too many guests from your address, try again later")
 		return
 	}
 	if acc, token, ok := a.newAccount(w, r, store.Account{Name: name, Temporary: true}, true, a.createAccount); ok {
@@ -586,12 +582,12 @@ func (a *Service) checkRemoteName(w http.ResponseWriter, raw string) (string, bo
 func (a *Service) checkNameBy(w http.ResponseWriter, raw string, check func(string) string, invalidStatus int) (string, bool) {
 	name := norm.NFC.String(strings.TrimSpace(raw))
 	if msg := check(name); msg != "" {
-		writeJSON(w, invalidStatus, map[string]string{"error": msg})
+		sendError(w, invalidStatus, msg)
 		return "", false
 	}
 	_, err := a.Store.AccountByName(name)
 	if err == nil || a.NameTaken != nil && a.NameTaken(names.Key(name)) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "this name is already taken"})
+		sendError(w, http.StatusConflict, "this name is already taken")
 		return "", false
 	}
 	return name, true
@@ -606,7 +602,7 @@ func (a *Service) createAccount(acc store.Account) (store.Account, error) {
 // handoff makes its own, see fediHandoff).
 func (a *Service) newAccount(w http.ResponseWriter, r *http.Request, acc store.Account, session bool, create func(store.Account) (store.Account, error)) (store.Account, string, bool) {
 	fail := func() (store.Account, string, bool) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot create the account"})
+		sendError(w, http.StatusInternalServerError, "cannot create the account")
 		return store.Account{}, "", false
 	}
 	var err error
@@ -618,15 +614,15 @@ func (a *Service) newAccount(w http.ResponseWriter, r *http.Request, acc store.A
 		return store.Account{}, "", false
 	}
 	if errors.Is(err, store.ErrNameTaken) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "this name is already taken"})
+		sendError(w, http.StatusConflict, "this name is already taken")
 		return store.Account{}, "", false
 	}
 	if errors.Is(err, store.ErrOIDCTaken) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "this provider account is linked already: log in with it"})
+		sendError(w, http.StatusConflict, "this provider account is linked already: log in with it")
 		return store.Account{}, "", false
 	}
 	if errors.Is(err, store.ErrFediTaken) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "this fediverse account has a Kallisti account already: log in with it"})
+		sendError(w, http.StatusConflict, "this fediverse account has a Kallisti account already: log in with it")
 		return store.Account{}, "", false
 	}
 	if err != nil {
@@ -641,18 +637,16 @@ func (a *Service) newAccount(w http.ResponseWriter, r *http.Request, acc store.A
 }
 
 func (a *Service) login(w http.ResponseWriter, r *http.Request) {
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	// Names longer than any account's: wrong at once, not counted.
 	if utf8.RuneCountInString(c.Name) > maxLoginName {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "wrong name or password"})
+		sendError(w, http.StatusUnauthorized, "wrong name or password")
 		return
 	}
 	// From other sites: a limit per account (guesses spread over their
@@ -665,7 +659,7 @@ func (a *Service) login(w http.ResponseWriter, r *http.Request) {
 			if full {
 				why = "too many logins from other sites right now, try again later or on the server's own site"
 			}
-			writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": why})
+			sendError(w, http.StatusTooManyRequests, why)
 			return
 		}
 	}
@@ -680,9 +674,9 @@ func (a *Service) login(w http.ResponseWriter, r *http.Request) {
 	if guarded && errors.Is(err, store.ErrNotFound) {
 		a.failures.refund(c.Name)
 		if a.MumbleLogin != nil {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "log in with a Mumble registration on the server's own site"})
+			sendError(w, http.StatusForbidden, "log in with a Mumble registration on the server's own site")
 		} else {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "wrong name or password"})
+			sendError(w, http.StatusUnauthorized, "wrong name or password")
 		}
 		return
 	}
@@ -698,7 +692,7 @@ func (a *Service) login(w http.ResponseWriter, r *http.Request) {
 			a.failures.refund(c.Name) // our fault, no failed guess
 		}
 		slog.Error("login", "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again later"})
+		sendError(w, http.StatusInternalServerError, "please try again later")
 		return
 	}
 	if err != nil && a.MumbleLogin != nil {
@@ -712,7 +706,7 @@ func (a *Service) login(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !ok || err != nil || acc.Temporary || acc.PasswordHash == "" {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "wrong name or password"})
+		sendError(w, http.StatusUnauthorized, "wrong name or password")
 		return
 	}
 	if guarded {
@@ -740,7 +734,7 @@ func (a *Service) logout(w http.ResponseWriter, r *http.Request) {
 	acc, ok := a.AccountFor(r)
 	key := a.SessionKey(r)
 	if (body.Session != "" && key != "" && body.Session != sessionID(key)) || (body.Name != "" && ok && names.Key(body.Name) != names.Key(acc.Name)) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "another login is active here now"})
+		sendError(w, http.StatusConflict, "another login is active here now")
 		return
 	}
 	if ok && acc.Temporary {
@@ -763,13 +757,12 @@ func (a *Service) clearSession(w http.ResponseWriter, r *http.Request) {
 
 // logoutAll ends every session of the account, this one too.
 func (a *Service) logoutAll(w http.ResponseWriter, r *http.Request) {
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
 	if err := a.endLogins(acc, "", func() error { return a.Store.DeleteSessionsExcept(acc.ID, "") }); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot log out"})
+		sendError(w, http.StatusInternalServerError, "cannot log out")
 		return
 	}
 	a.clearCookie(w, r, CookieName)
@@ -778,25 +771,22 @@ func (a *Service) logoutAll(w http.ResponseWriter, r *http.Request) {
 
 // changePassword needs the old password and ends all other sessions.
 func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c struct {
 		Old string `json:"old"`
 		New string `json:"new"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if n := utf8.RuneCountInString(c.New); n < 8 || n > 256 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the password needs 8 to 256 characters"})
+		sendError(w, http.StatusBadRequest, "the password needs 8 to 256 characters")
 		return
 	}
 	// A temporary account has no password yet: the first one makes it a
@@ -807,7 +797,7 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 	// fediverse or OIDC logins off (or the provider changed) there is no
 	// proof: an admin's recovery link (see recovery.go) sets it then.
 	if acc.PasswordHash == "" && !acc.Temporary && !a.mayProve(acc) {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "ask an admin for a recovery link to set a password"})
+		sendError(w, http.StatusForbidden, "ask an admin for a recovery link to set a password")
 		return
 	}
 	if acc.PasswordHash == "" && !acc.Temporary && !a.firstPasswordProof(acc, r) {
@@ -823,7 +813,7 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	release()
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "the current password is wrong"})
+		sendError(w, http.StatusUnauthorized, "the current password is wrong")
 		return
 	}
 	// acc is from before the body was read: the store checks again that
@@ -835,11 +825,11 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	if errors.Is(err, store.ErrNotFound) {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "the password or session changed meanwhile"})
+		sendError(w, http.StatusUnauthorized, "the password or session changed meanwhile")
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot change the password"})
+		sendError(w, http.StatusInternalServerError, "cannot change the password")
 		return
 	}
 	if acc.Temporary && a.OnPermanent != nil {
@@ -853,7 +843,7 @@ func (a *Service) changePassword(w http.ResponseWriter, r *http.Request) {
 func (a *Service) startSession(w http.ResponseWriter, r *http.Request, acc store.Account) (string, bool) {
 	token, err := a.newSession(acc)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot log in"})
+		sendError(w, http.StatusInternalServerError, "cannot log in")
 		return "", false
 	}
 	return a.handOutSession(w, r, token), true
@@ -951,6 +941,29 @@ func withToken(v map[string]any, token string) map[string]any {
 		v["token"] = token
 	}
 	return v
+}
+
+// sendError replies with an error text.
+func sendError(w http.ResponseWriter, status int, text string) {
+	writeJSON(w, status, map[string]string{"error": text})
+}
+
+// account is the request's account; without one it replies 401.
+func (a *Service) account(w http.ResponseWriter, r *http.Request) (store.Account, bool) {
+	acc, ok := a.AccountFor(r)
+	if !ok {
+		sendError(w, http.StatusUnauthorized, "not logged in")
+	}
+	return acc, ok
+}
+
+// limited: this address made too many attempts; it replies 429.
+func (a *Service) limited(w http.ResponseWriter, r *http.Request) bool {
+	if a.allow(r) {
+		return false
+	}
+	sendError(w, http.StatusTooManyRequests, "too many attempts, try again later")
+	return true
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

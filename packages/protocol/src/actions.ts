@@ -67,7 +67,7 @@ export const removeChannel = (channelId: number) => encodeMessage("ChannelRemove
 // joinChannel with the other user's session.
 export const removeUser = (session: number, reason: string, opts: { ban?: boolean } = {}) =>
   encodeMessage("UserRemove", { session, reason, ...(opts.ban ? { ban: true } : {}) });
-export const moderateUser = (session: number, state: { mute: boolean } | { deaf: boolean }) =>
+export const moderateUser = (session: number, state: { mute: boolean } | { deaf: boolean } | { prioritySpeaker: boolean }) =>
   encodeMessage("UserState", { session, ...state });
 
 // What the own user may do in a channel; the answer is a PermissionQuery.
@@ -80,3 +80,8 @@ export const setBans = (bans: readonly Ban[]) => encodeMessage("BanList", { bans
 export const queryRegistered = () => encodeMessage("UserList", {});
 export const renameRegistered = (userId: number, name: string) => encodeMessage("UserList", { users: [{ userId, name }] });
 export const unregister = (userId: number) => encodeMessage("UserList", { users: [{ userId }] });
+
+// A voice target (1 to 30): what voice sent with that target goes to,
+// some users (a whisper) or all in a channel (a shout); null removes it.
+export const setVoiceTarget = (id: number, to: { sessions: number[] } | { channel: number } | null) =>
+  encodeMessage("VoiceTarget", { id, targets: !to ? [] : "sessions" in to ? [{ session: to.sessions }] : [{ channelId: to.channel }] });

@@ -34,6 +34,7 @@ const (
 	sendTimeout = 10 * time.Second
 	maxBody     = 8 << 10
 	maxList     = 1000 // quiet chats, blocked users, loud threads
+	maxAll      = 200  // chats for all messages: looked through on every message
 )
 
 // Note is one push: a short text without the message itself (privacy), the
@@ -41,7 +42,10 @@ const (
 // notifications of a chat replace each other. Title, Icon: the server's
 // name and logo (see Service.Brand). Allowed: the user may still get it,
 // asked again before sending (nil: yes).
+// All: the message pings nobody: only for devices that want every message
+// of its chat.
 type Note struct {
+	All     bool        `json:"-"`
 	Channel int64       `json:"-"`
 	Parent  int64       `json:"-"`
 	Author  string      `json:"-"`
@@ -112,14 +116,16 @@ func (s *Service) Stop() {
 	s.workers.Wait()
 }
 
-// due: no push for a user's chat in the window before now (then counted).
-func (s *Service) due(user string, channel int64, now time.Time) bool {
+// due: no push of this kind (a ping, or one for all messages: it must not
+// take a ping's turn) for a user's chat in the window before now (then
+// counted).
+func (s *Service) due(user string, channel int64, all bool, now time.Time) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.last == nil {
 		s.last = map[string]time.Time{}
 	}
-	key := fmt.Sprintf("%s\x00%d", user, channel)
+	key := fmt.Sprintf("%s\x00%d\x00%v", user, channel, all)
 	if t, ok := s.last[key]; ok && now.Sub(t) < collapseWindow {
 		return false
 	}
@@ -132,11 +138,11 @@ func (s *Service) due(user string, channel int64, now time.Time) bool {
 	return true
 }
 
-// Notify queues a push to a user's browsers (by name): one per user and
-// chat in collapseWindow, none when the queue is full or stopped. After
+// Notify queues a push to a user's browsers (by name): one per user, chat
+// and kind in collapseWindow, none when the queue is full or stopped. After
 // Start.
 func (s *Service) Notify(name string, n Note) {
-	if s.ctx == nil || s.ctx.Err() != nil || !s.due(names.Key(name), n.Channel, s.Now()) { // not started, or stopped
+	if s.ctx == nil || s.ctx.Err() != nil || !s.due(names.Key(name), n.Channel, n.All, s.Now()) { // not started, or stopped
 		return
 	}
 	select {
@@ -155,6 +161,13 @@ func quiet(sub store.PushSubscription, n Note) bool {
 		n.Parent != 0 && slices.Contains(sub.Quiet, n.Parent) && !slices.Contains(sub.Loud, n.Channel)
 }
 
+// wantsAll: a device has the note's chat on "All messages"; a thread
+// takes its channel's setting unless it has one of its own.
+func wantsAll(sub store.PushSubscription, n Note) bool {
+	return slices.Contains(sub.All, n.Channel) ||
+		n.Parent != 0 && slices.Contains(sub.All, n.Parent) && !slices.Contains(sub.Loud, n.Channel)
+}
+
 // deliver sends a note to a user's browsers, but not to those that keep
 // its chat quiet or blocked its author, and not when the note is no longer
 // allowed. Gone subscriptions are dropped.
@@ -169,6 +182,9 @@ func (s *Service) deliver(ctx context.Context, name string, n Note) {
 		return
 	}
 	topic := fmt.Sprintf("chat-%d", n.Channel)
+	if n.All { // of its own: it must not replace a mention's notification
+		topic += "-all"
+	}
 	n.Tag = topic
 	if s.Brand != nil {
 		n.Title, n.Icon = s.Brand()
@@ -179,7 +195,7 @@ func (s *Service) deliver(ctx context.Context, name string, n Note) {
 		if ctx.Err() != nil {
 			return
 		}
-		if quiet(sub, n) || slices.Contains(sub.Blocked, author) {
+		if quiet(sub, n) || n.All && !wantsAll(sub, n) || slices.Contains(sub.Blocked, author) {
 			continue
 		}
 		sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
@@ -229,6 +245,7 @@ type subscription struct {
 	Quiet   []int64  `json:"quiet"`
 	Blocked []string `json:"blocked"`
 	Loud    []int64  `json:"loud"`
+	All     []int64  `json:"all"`
 }
 
 // validKeys: a P-256 point and a 16-byte secret (RFC 8291), base64url.
@@ -307,14 +324,14 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusForbidden, "push notifications need an account with a password")
 	case !knownPushService(sub.Endpoint):
 		fail(w, http.StatusBadRequest, "unknown push service")
-	case !validKeys(sub.Keys.P256dh, sub.Keys.Auth) || len(sub.Quiet) > maxList || len(sub.Blocked) > maxList || len(sub.Loud) > maxList:
+	case !validKeys(sub.Keys.P256dh, sub.Keys.Auth) || len(sub.Quiet) > maxList || len(sub.Blocked) > maxList || len(sub.Loud) > maxList || len(sub.All) > maxAll:
 		fail(w, http.StatusBadRequest, "invalid subscription")
 	default:
 		blocked := make([]string, len(sub.Blocked))
 		for i, name := range sub.Blocked {
 			blocked[i] = names.Key(name)
 		}
-		p := store.PushSubscription{Endpoint: sub.Endpoint, P256dh: sub.Keys.P256dh, Auth: sub.Keys.Auth, Quiet: sub.Quiet, Blocked: blocked, Loud: sub.Loud}
+		p := store.PushSubscription{Endpoint: sub.Endpoint, P256dh: sub.Keys.P256dh, Auth: sub.Keys.Auth, Quiet: sub.Quiet, Blocked: blocked, Loud: sub.Loud, All: sub.All}
 		if err := s.Store.SetPushSubscription(session, p, s.Now()); err != nil {
 			fail(w, http.StatusInternalServerError, "cannot store the subscription")
 			return

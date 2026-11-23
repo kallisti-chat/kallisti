@@ -71,8 +71,14 @@ describe("channel settings", () => {
 
   it("lists for push: quiet chats, and those with a setting of their own (threads of quiet channels)", () => {
     const prefs = { [A]: { 1: { level: "nothing" as const }, 7: { mutedUntil: 0 }, 8: { mutedUntil: 10 }, 11: { level: "mentions" as const } } };
-    expect(pushLists(prefs, A, [7, 8])).toEqual({ quiet: [1, 7], loud: [11] }); // thread settings have a level
-    expect(pushLists({}, A, [7])).toEqual({ quiet: [], loud: [] });
+    expect(pushLists(prefs, A, [7, 8], 5)).toEqual({ quiet: [1, 7], loud: [11], all: [] }); // thread settings have a level
+    expect(pushLists({}, A, [7], 5)).toEqual({ quiet: [], loud: [], all: [] });
+  });
+
+  it("lists for push the chats set to all messages, but not the muted ones", () => {
+    const all = "all" as const;
+    const prefs = { [A]: { 2: { level: all }, 3: { level: all, mutedUntil: 0 }, 4: { level: all, mutedUntil: 99 }, 5: { level: all, mutedUntil: 3 } } };
+    expect(pushLists(prefs, A, [], 5)).toEqual({ quiet: [], loud: [2, 3, 4, 5], all: [2, 5] }); // 5: the mute is over
   });
 });
 

@@ -32,7 +32,7 @@ func (a *Service) servers(w http.ResponseWriter, r *http.Request) {
 		Account string `json:"account"`
 	}
 	if r.Method != http.MethodGet && json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		sendError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	if !meant(w, r, acc, body.Account) {
@@ -49,11 +49,11 @@ func (a *Service) servers(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		body.Name = strings.TrimSpace(body.Name)
 		if !a.otherOrigin(body.Origin) || !validListName(body.Name) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "not a server's address and name"})
+			sendError(w, http.StatusBadRequest, "not a server's address and name")
 			return
 		}
 		if err = a.Store.AddAccountServer(acc.ID, body.AccountServer, maxAccountServers); errors.Is(err, store.ErrTooManyServers) {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "your list is full"})
+			sendError(w, http.StatusConflict, "your list is full")
 			return
 		} else if err == nil {
 			writeJSON(w, http.StatusOK, map[string]any{})
@@ -68,7 +68,7 @@ func (a *Service) servers(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot change the server list"})
+	sendError(w, http.StatusInternalServerError, "cannot change the server list")
 }
 
 // homeListAccount: the logged-in account, for a list it keeps on its home
@@ -80,11 +80,11 @@ func (a *Service) homeListAccount(w http.ResponseWriter, r *http.Request, what s
 	}
 	acc, ok := a.AccountFor(r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
+		sendError(w, http.StatusUnauthorized, "not logged in")
 		return store.Account{}, false
 	}
 	if acc.Temporary {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "set a password first: guest accounts keep no " + what})
+		sendError(w, http.StatusForbidden, "set a password first: guest accounts keep no "+what)
 		return store.Account{}, false
 	}
 	return acc, true
@@ -98,7 +98,7 @@ func meant(w http.ResponseWriter, r *http.Request, acc store.Account, account st
 		account = r.URL.Query().Get("account")
 	}
 	if account != "" && names.Key(account) != names.Key(acc.Name) {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "another login is active here now"})
+		sendError(w, http.StatusConflict, "another login is active here now")
 		return false
 	}
 	return true

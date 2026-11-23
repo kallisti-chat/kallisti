@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/netip"
+	"strings"
 	"time"
 
 	"kallisti.chat/server/internal/msgrules"
@@ -570,18 +571,27 @@ func (d *DB) SetLastChannel(id, channel uint32) error {
 // UserNames returns the names of the registered users among ids.
 func (d *DB) UserNames(ids []uint32) (map[uint32]string, error) {
 	out := map[uint32]string{}
-	for _, id := range ids {
+	if len(ids) == 0 {
+		return out, nil
+	}
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := d.db.Query(`SELECT id, name FROM mumble_users WHERE id IN (?`+strings.Repeat(",?", len(ids)-1)+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uint32
 		var name string
-		err := d.db.QueryRow(`SELECT name FROM mumble_users WHERE id = ?`, id).Scan(&name)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
-		if err != nil {
+		if err := rows.Scan(&id, &name); err != nil {
 			return nil, err
 		}
 		out[id] = name
 	}
-	return out, nil
+	return out, rows.Err()
 }
 
 func deleteACLs(tx *sql.Tx, channel uint32) error {

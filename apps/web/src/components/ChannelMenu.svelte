@@ -22,6 +22,7 @@
     canCreateSub = false,
     recording,
     onRecord,
+    shout,
     notify,
     onNotify,
     onEdit,
@@ -64,6 +65,9 @@
     // record.
     recording?: boolean;
     onRecord?: (on: boolean) => void;
+    // Voice channels, while we are in voice: a shout to everyone in it
+    // (see lib/whisper), on or off.
+    shout?: { on: boolean; set: (on: boolean) => void };
     // Text channels and direct chats: notification settings (see
     // lib/channelPrefs; direct chats only mute); undefined: none. desktop:
     // desktop notifications are on.
@@ -164,6 +168,10 @@
       {#if thread?.onInherit}<button onclick={act(thread.onInherit)}>{t("sidebar.sameAsChannel")}</button>{/if}
       {#if !notify.desktop}<p class="none">{t("sidebar.desktopNotificationsOff")}</p>{/if}
     </div>
+    {#if listed}<div class="sep"></div>{/if}
+  {/if}
+  {#if shout}
+    <button onclick={act(() => shout.set(!shout.on))}>{t(shout.on ? "sidebar.stopShout" : "sidebar.shout")}</button>
     {#if listed}<div class="sep"></div>{/if}
   {/if}
   {#if recording !== undefined && onRecord}

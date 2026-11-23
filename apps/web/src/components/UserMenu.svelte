@@ -18,6 +18,7 @@
     byId = false,
     isMe,
     audio,
+    whisper,
     x,
     y,
     onAudio,
@@ -41,12 +42,15 @@
     fediHandle,
     onClose,
   }: {
-    user: Pick<User, "name" | "comment" | "mute" | "deaf">;
+    user: Pick<User, "name" | "comment" | "mute" | "deaf" | "prioritySpeaker">;
     // A member we do not see (offline, or in a channel hidden from us): no
     // voice items (volume, mute).
     byId?: boolean;
     isMe: boolean;
     audio: UserAudio;
+    // A whisper to this user (see lib/whisper): on, and turning it on or
+    // off. None: we are not in voice, or do not see them there.
+    whisper?: { on: boolean; set: (on: boolean) => void };
     x: number;
     y: number;
     onAudio: (patch: Partial<UserAudio>) => void;
@@ -146,6 +150,12 @@
         {t("sidebar.muteUser")}
         <span class="box" class:on={audio.muted} aria-hidden="true"></span>
       </button>
+      {#if whisper}
+        <button role="switch" aria-checked={whisper.on} onclick={act(() => whisper.set(!whisper.on))}>
+          {t("sidebar.whisper")}
+          <span class="box" class:on={whisper.on} aria-hidden="true"></span>
+        </button>
+      {/if}
     {/if}
     <button role="switch" aria-checked={blocked} onclick={onBlock}>
       {t("sidebar.blockMessages")}
@@ -181,6 +191,10 @@
         <button role="switch" aria-checked={user.deaf} onclick={() => onModerate({ kind: "deaf", on: !user.deaf })}>
           {t("sidebar.serverDeafen")}
           <span class="box" class:on={user.deaf} aria-hidden="true"></span>
+        </button>
+        <button role="switch" aria-checked={user.prioritySpeaker} onclick={() => onModerate({ kind: "priority", on: !user.prioritySpeaker })}>
+          {t("sidebar.prioritySpeaker")}
+          <span class="box" class:on={user.prioritySpeaker} aria-hidden="true"></span>
         </button>
       {/if}
       {#if moderation.moveTo.length}

@@ -117,3 +117,23 @@ func TestNosniffWebSocket(t *testing.T) {
 		t.Fatalf("echo: %v %q", kind, data)
 	}
 }
+
+// /healthz: 200 while the database answers, 503 when it does not.
+func TestHealth(t *testing.T) {
+	db, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	get := func() int {
+		w := httptest.NewRecorder()
+		health(db.DB())(w, httptest.NewRequest("GET", "/healthz", nil))
+		return w.Code
+	}
+	if got := get(); got != http.StatusOK {
+		t.Fatalf("got %d", got)
+	}
+	db.Close()
+	if got := get(); got != http.StatusServiceUnavailable {
+		t.Fatalf("closed database: got %d", got)
+	}
+}

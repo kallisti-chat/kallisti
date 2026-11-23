@@ -27,11 +27,11 @@ describe("push from added servers", () => {
   it("follows the home server's push, here and from another tab", async () => {
     const { push, synced, set } = setup();
     await tick();
-    push.syncFor({ origin: "https://b.example", name: "al", token: "tb" })({ quiet: [], loud: [], blocked: [] });
+    push.syncFor({ origin: "https://b.example", name: "al", token: "tb" })({ quiet: [], loud: [], all: [], blocked: [] });
     set(false);
     dispatchEvent(new StorageEvent("storage", { key: "pushOwner" })); // another tab turned it off
     await tick();
-    push.syncFor({ origin: "https://b.example", name: "al", token: "tb" })({ quiet: [], loud: [], blocked: [] });
+    push.syncFor({ origin: "https://b.example", name: "al", token: "tb" })({ quiet: [], loud: [], all: [], blocked: [] });
     expect(synced).toEqual([["https://b.example", true], ["https://b.example", false]]);
     push.dispose();
   });

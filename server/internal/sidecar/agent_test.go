@@ -1,12 +1,16 @@
 package sidecar
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"kallisti.chat/server/internal/mumble"
 )
@@ -101,5 +105,140 @@ func TestAgentPostsThroughTheGates(t *testing.T) {
 	path := fmt.Sprintf("/api/agent/channels/%d/messages", h.channels[0].ID)
 	if code, v := agentCall(t, srv, "POST", path, "w", map[string]any{"text": "hi"}); code != http.StatusBadRequest {
 		t.Fatalf("read-only guest posted: %d %v", code, v)
+	}
+}
+
+// openAgentEvents opens the event stream; next gives the next event.
+func openAgentEvents(t *testing.T, srv *httptest.Server, token string) (next func() (string, map[string]any), code int) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	req, _ := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/agent/events", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { resp.Body.Close() })
+	lines := bufio.NewScanner(resp.Body)
+	return func() (string, map[string]any) {
+		t.Helper()
+		var event string
+		for lines.Scan() {
+			line := lines.Text()
+			if name, ok := strings.CutPrefix(line, "event: "); ok {
+				event = name
+			} else if data, ok := strings.CutPrefix(line, "data: "); ok {
+				var v map[string]any
+				json.Unmarshal([]byte(data), &v)
+				return event, v
+			}
+		}
+		return "", nil // the stream ended
+	}, resp.StatusCode
+}
+
+// The event stream: new messages and reactions of the chats the account
+// may read, as the app gets them.
+func TestAgentEvents(t *testing.T) {
+	h, _, _ := privateHub(t) // #secret is hidden from alice (user 7)
+	srv := agentServer(t, h)
+	bob := joinAs(t, h, mumble.Identity{Session: 1, Name: "bob", Registered: true, UserID: 20}) // session 1 sees it
+	general, secret := h.channels[0].ID, h.channels[1].ID
+	next, code := openAgentEvents(t, srv, "r")
+	if code != http.StatusOK {
+		t.Fatalf("stream: %d", code)
+	}
+	if event, v := next(); event != "ready" || v == nil {
+		t.Fatalf("first: %s %v", event, v)
+	}
+	postTo(t, h, bob, secret, "not for alice")
+	id := postTo(t, h, bob, general, "hello")
+	event, v := next()
+	if msg, _ := v["message"].(map[string]any); event != "message" || msg["text"] != "hello" {
+		t.Fatalf("got %s %v", event, v)
+	}
+	// A reaction, through the API (it needs a token that may post).
+	path := fmt.Sprintf("/api/agent/channels/%d/messages/%d/reactions", general, id)
+	if code, _ := agentCall(t, srv, "POST", path, "r", map[string]any{"emoji": "👍"}); code != http.StatusForbidden {
+		t.Fatalf("read token reacted: %d", code)
+	}
+	if code, v := agentCall(t, srv, "POST", path, "w", map[string]any{"emoji": "👍"}); code != http.StatusNoContent {
+		t.Fatalf("react: %d %v", code, v)
+	}
+	event, v = next()
+	if list, _ := v["reactions"].([]any); event != "reactions" || len(list) != 1 {
+		t.Fatalf("got %s %v", event, v)
+	}
+	if code, _ := agentCall(t, srv, "POST", path, "w", map[string]any{"emoji": "👍", "on": false}); code != http.StatusNoContent {
+		t.Fatalf("remove: %d", code)
+	}
+	if event, v = next(); event != "reactions" || v["reactions"] != nil && len(v["reactions"].([]any)) != 0 {
+		t.Fatalf("got %s %v", event, v)
+	}
+	// Refusals: not an emoji, a message of another channel.
+	if code, v := agentCall(t, srv, "POST", path, "w", map[string]any{"emoji": "nope"}); code != http.StatusBadRequest || v["error"] == "" {
+		t.Fatalf("bad emoji: %d %v", code, v)
+	}
+	other := fmt.Sprintf("/api/agent/channels/%d/messages/%d/reactions", general, id+999)
+	if code, _ := agentCall(t, srv, "POST", other, "w", map[string]any{"emoji": "👍"}); code != http.StatusNotFound {
+		t.Fatalf("unknown message: %d", code)
+	}
+}
+
+// At most agentStreams streams per account.
+func TestAgentEventStreamsAreLimited(t *testing.T) {
+	h := newHub(t, "general")
+	h.SetVoice(&fakeVoice{}, "")
+	srv := agentServer(t, h)
+	for range agentStreams {
+		if _, code := openAgentEvents(t, srv, "r"); code != http.StatusOK {
+			t.Fatalf("stream: %d", code)
+		}
+	}
+	if _, code := openAgentEvents(t, srv, "r"); code != http.StatusTooManyRequests {
+		t.Fatalf("one too many: %d", code)
+	}
+}
+
+// A banned account's token does nothing, and its open stream ends.
+func TestAgentAPIRefusesBannedAccounts(t *testing.T) {
+	h := newHub(t, "general")
+	v := &fakeVoice{}
+	h.SetVoice(v, "")
+	srv := agentServer(t, h)
+	old := agentKeepAlive
+	agentKeepAlive = 20 * time.Millisecond
+	t.Cleanup(func() { agentKeepAlive = old })
+	next, _ := openAgentEvents(t, srv, "r")
+	next() // ready
+	v.mu.Lock()
+	v.banned = map[uint32]bool{7: true}
+	v.mu.Unlock()
+	if code, _ := agentCall(t, srv, "GET", "/api/agent/channels", "r", nil); code != http.StatusForbidden {
+		t.Fatalf("banned: %d", code)
+	}
+	ended := make(chan struct{})
+	go func() {
+		defer close(ended)
+		for event, _ := next(); event != ""; event, _ = next() {
+		}
+	}()
+	select {
+	case <-ended:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the stream stays open")
+	}
+}
+
+// At shutdown the streams end: the HTTP server waits for open requests.
+func TestCloseStreamsEndsTheEventStreams(t *testing.T) {
+	h := newHub(t, "general")
+	h.SetVoice(&fakeVoice{}, "")
+	next, _ := openAgentEvents(t, agentServer(t, h), "r")
+	next() // ready
+	h.CloseStreams()
+	if event, _ := next(); event != "" {
+		t.Fatalf("got %q after the close", event)
 	}
 }

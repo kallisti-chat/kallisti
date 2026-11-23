@@ -319,7 +319,10 @@ type Hub struct {
 	visitsMu sync.Mutex
 	visits   map[uint32]*visit
 	conns    map[*Conn]struct{}
-	tokens   map[string]uploadToken
+	// The agent API's event streams (see agent.go), with their user:
+	// they get what a chat's readers get, and nothing else.
+	streams map[*Conn]uint32
+	tokens  map[string]uploadToken
 	// One status change at a time, from the change to its broadcast (taken
 	// before mu and Conn.mu; see status.go). Also guards online: the
 	// members online as last told, with their sessions (see members.go).
@@ -336,21 +339,31 @@ type Hub struct {
 	slow       slowPosts // see slowmode.go
 }
 
-// emoji: a token for adding this custom emoji (not for a file); personal:
-// to the user's own emoji (see useremoji.go).
+// tokenKind: what an upload token is for. It is redeemed only as that
+// (the zero value as nothing).
+type tokenKind int
+
+const (
+	fileToken tokenKind = iota + 1
+	emojiToken
+	userEmojiToken
+	stickerToken
+	logoToken
+	webhookPictureToken
+)
+
 type uploadToken struct {
-	author   string
-	emoji    string
-	user     uint32
-	personal bool
-	sticker  *store.Sticker // a token for adding this sticker
-	logo     bool           // for the server's logo
-	webhook  int64          // for this webhook's picture
-	expires  time.Time
+	kind    tokenKind
+	author  string
+	emoji   string         // emojiToken, userEmojiToken: its name
+	user    uint32         // userEmojiToken
+	sticker *store.Sticker // stickerToken: the sticker to add
+	webhook int64          // webhookPictureToken
+	expires time.Time
 }
 
 func NewHub(s *store.Store, now func() time.Time) (*Hub, error) {
-	h := &Hub{store: s, now: now, conns: map[*Conn]struct{}{}, tokens: map[string]uploadToken{}}
+	h := &Hub{store: s, now: now, conns: map[*Conn]struct{}{}, streams: map[*Conn]uint32{}, tokens: map[string]uploadToken{}}
 	if err := h.reloadChannels(); err != nil {
 		return nil, err
 	}
@@ -428,6 +441,7 @@ func (c *Conn) Close() {
 	c.mu.Unlock()
 	c.hub.mu.Lock()
 	delete(c.hub.conns, c)
+	delete(c.hub.streams, c)
 	// Murmur reuses session numbers: the next guest owns none of these.
 	if id != nil && !id.Registered {
 		for m, session := range c.hub.guestMessages {
@@ -1538,7 +1552,11 @@ func (c *Conn) uploadTokens(id mumble.Identity, count int) {
 }
 
 func (h *Hub) issueUploadToken(author, emoji string) string {
-	return h.issueToken(uploadToken{author: author, emoji: emoji})
+	kind := fileToken
+	if emoji != "" {
+		kind = emojiToken
+	}
+	return h.issueToken(uploadToken{kind: kind, author: author, emoji: emoji})
 }
 
 func (h *Hub) issueToken(t uploadToken) string {
@@ -1560,20 +1578,21 @@ func (h *Hub) issueToken(t uploadToken) string {
 
 // RedeemUploadToken returns the author a file upload token was issued to.
 func (h *Hub) RedeemUploadToken(token string) (string, bool) {
-	t, ok := h.redeem(token)
-	if !ok || t.emoji != "" || t.personal || t.sticker != nil || t.logo || t.webhook != 0 {
-		return "", false
-	}
-	return t.author, true
+	t, ok := h.redeem(token, fileToken)
+	return t.author, ok
 }
 
-// redeem: a token works once and only before it expires.
-func (h *Hub) redeem(token string) (uploadToken, bool) {
+// redeem: a token works once, only before it expires, and only as its
+// kind.
+func (h *Hub) redeem(token string, kind tokenKind) (uploadToken, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	t, ok := h.tokens[token]
 	delete(h.tokens, token)
-	return t, ok && !h.now().After(t.expires)
+	if !ok || t.kind != kind || h.now().After(t.expires) {
+		return uploadToken{}, false
+	}
+	return t, true
 }
 
 // Text channel names as Discord has them: lower case, "-" for spaces.

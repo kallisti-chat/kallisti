@@ -20,18 +20,15 @@ func (c *Conn) mayChangeLogo(id mumble.Identity) bool {
 
 func (c *Conn) logoToken(id mumble.Identity) {
 	if c.mayChangeLogo(id) {
-		c.send(map[string]any{"type": "upload-token", "token": c.hub.issueToken(uploadToken{author: id.Name, logo: true})})
+		c.send(map[string]any{"type": "upload-token", "token": c.hub.issueToken(uploadToken{kind: logoToken, author: id.Name})})
 	}
 }
 
 // RedeemLogoToken returns who may upload a logo with a token (once,
 // before it expires).
 func (h *Hub) RedeemLogoToken(token string) (author string, ok bool) {
-	t, ok := h.redeem(token)
-	if !ok || !t.logo {
-		return "", false
-	}
-	return t.author, true
+	t, ok := h.redeem(token, logoToken)
+	return t.author, ok
 }
 
 func (c *Conn) removeLogo(id mumble.Identity) {

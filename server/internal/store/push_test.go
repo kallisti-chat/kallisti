@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -133,5 +134,40 @@ func TestVAPIDKeysAreMadeOnce(t *testing.T) {
 	}
 	if _, _, err := open(t).VAPIDKeys(func() (string, string, error) { return "", "", errors.New("no") }); err == nil {
 		t.Fatal("generator error")
+	}
+}
+
+// Chats a device set to "All messages": who has a device that wants the
+// pushes of a chat (or of a thread's channel).
+func TestPushNamesForAllMessages(t *testing.T) {
+	s := open(t)
+	now := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
+	for i, name := range []string{"alice", "bob", "carol"} {
+		acc, _ := s.CreateAccount(Account{Name: name, PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+		session := fmt.Sprint("s", i)
+		s.CreateSession(session, acc.ID, now.Add(time.Hour))
+		all := [][]int64{{3, 5}, {5}, nil}[i]
+		if err := s.SetPushSubscription(session, PushSubscription{Endpoint: "https://push.example/" + name, P256dh: "p", Auth: "a", All: all}, now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if subs, _ := s.PushSubscriptions("alice", now); len(subs) != 1 || !slices.Equal(subs[0].All, []int64{3, 5}) {
+		t.Fatalf("stored as given: %+v", subs)
+	}
+	for _, c := range []struct {
+		chats []int64
+		want  []string
+	}{
+		{[]int64{3}, []string{"alice"}},
+		{[]int64{5}, []string{"alice", "bob"}},
+		{[]int64{9, 3}, []string{"alice"}}, // a thread (9) of channel 3
+		{[]int64{4}, nil},
+	} {
+		if got, err := s.PushNamesForAll(now, c.chats...); err != nil || !slices.Equal(got, c.want) {
+			t.Errorf("%v: got %v, %v", c.chats, got, err)
+		}
+	}
+	if got, _ := s.PushNamesForAll(now.Add(2*time.Hour), 5); len(got) != 0 {
+		t.Errorf("ended sessions: %v", got)
 	}
 }

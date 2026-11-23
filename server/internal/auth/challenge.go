@@ -135,6 +135,6 @@ func (a *Service) proven(w http.ResponseWriter, c credentials) bool {
 	if need == 0 || a.challenges.use(c.Challenge, c.Nonce, need, a.Now()) {
 		return true
 	}
-	writeJSON(w, http.StatusForbidden, map[string]string{"error": "the browser check did not pass, please try again"})
+	sendError(w, http.StatusForbidden, "the browser check did not pass, please try again")
 	return false
 }

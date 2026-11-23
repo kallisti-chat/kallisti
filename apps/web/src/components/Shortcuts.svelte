@@ -36,29 +36,16 @@
 <style>
   dialog {
     width: min(480px, 92vw);
-    padding: 24px;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-main);
-    color: var(--text);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
   }
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    padding-bottom: 0;
   }
   h2 {
-    margin: 0;
     font-size: 20px;
   }
   .close {
     border: none;
     background: none;
-    color: var(--text-muted);
-    font-size: 24px;
     cursor: pointer;
   }
   dl {

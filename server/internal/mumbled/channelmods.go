@@ -82,7 +82,7 @@ func (s *Server) SetChannelModerator(actor, user, channel uint32, on bool) error
 	}
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	if user == 0 || !s.registeredIDs([]uint32{user})[user] {
+	if user == 0 || !s.isRegistered(user) {
 		return errors.New("not a registered user")
 	}
 	s.mu.Lock()

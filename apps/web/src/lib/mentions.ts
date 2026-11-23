@@ -127,6 +127,14 @@ export const mentionNames = (s: { online: readonly string[]; authors: readonly s
   ...(s.all ? MENTION_ALL : []),
 ];
 
+// The list of names before, when the new one has the same names: a
+// derived list then stays the same object, and what reads it (each shown
+// message) is not made again on every event.
+export const keepNames = () => {
+  let before: readonly string[] = [];
+  return (now: readonly string[]) => (now.length === before.length && now.every((n, i) => n === before[i]) ? before : (before = now));
+};
+
 export const SUGGESTIONS = 8; // at most, in a suggestion list
 const byName = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
 

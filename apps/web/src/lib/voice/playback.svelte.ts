@@ -1,5 +1,5 @@
 import type { AudioPacket } from "@kallisti/protocol";
-import { SvelteSet } from "svelte/reactivity";
+import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import { createLimiter } from "./limiter";
 import { playoutFor, type PlaybackBuffer } from "./buffer";
 import { createMusicDetector, trackMusic, type MusicDetector } from "./music";
@@ -7,6 +7,7 @@ import { chunkOutcome, nextStart, startsAnew, type PlayoutConfig } from "./sched
 import type { Counters } from "../connectionQuality";
 import { voiceDecoder, type VoiceDecoder } from "./codec";
 import { voiceOutput } from "./output";
+import { heardAs, type Heard } from "../whisper";
 
 const SAMPLE_RATE = 48_000;
 // Mumble counts frames in 10 ms steps.
@@ -41,6 +42,9 @@ export const createPlayback = (ctx: AudioContext) => {
   // their local mute and volume: their voice is dropped.
   const gains = new Map<number, number>();
   const speaking = new SvelteSet<number>();
+  // Who of them whispers or shouts to me now (see lib/whisper).
+  const heard = new SvelteMap<number, Heard>();
+  const silent = (session: number) => (heard.delete(session), speaking.delete(session));
   const output = ctx.createGain();
   const limiter = createLimiter(ctx);
   output.connect(limiter.input);
@@ -90,7 +94,7 @@ export const createPlayback = (ctx: AudioContext) => {
     speaker.decoder.close();
     speaker.gain.disconnect();
     speakers.delete(session);
-    speaking.delete(session);
+    silent(session);
   };
 
   const speakerFor = (session: number): Speaker => {
@@ -120,21 +124,25 @@ export const createPlayback = (ctx: AudioContext) => {
     return speaker;
   };
 
-  const markSpeaking = (session: number, speaker: Speaker, terminator: boolean) => {
+  const markSpeaking = (session: number, speaker: Speaker, terminator: boolean, context: number) => {
     clearTimeout(speaker.timer);
-    if (terminator) return speaking.delete(session);
+    if (terminator) return silent(session);
     speaking.add(session);
-    speaker.timer = setTimeout(() => speaking.delete(session), SPEAKING_TIMEOUT_MS);
+    const as = heardAs(context);
+    if (!as) heard.delete(session);
+    else if (heard.get(session) !== as) heard.set(session, as);
+    speaker.timer = setTimeout(() => silent(session), SPEAKING_TIMEOUT_MS);
   };
 
   return {
     speaking: speaking as ReadonlySet<number>,
+    heard: heard as ReadonlyMap<number, Heard>,
     // Must not throw: it runs inside the control connection's message handler.
     handle: (packet: AudioPacket) => {
       if (deaf || !gains.has(packet.session)) return;
       try {
         const speaker = speakerFor(packet.session);
-        markSpeaking(packet.session, speaker, packet.terminator);
+        markSpeaking(packet.session, speaker, packet.terminator, packet.target);
         // Locally muted: keep the speaking ring, skip the decoding work.
         if (gains.get(packet.session) === 0) return;
         const at = packet.frameNumber * FRAME_US;

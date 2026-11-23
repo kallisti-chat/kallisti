@@ -36,6 +36,7 @@
     inVoice,
     isLobby,
     isTextOnly,
+    TEXT_ONLY,
     joinChannel,
     listedUsers,
     messagesIn,
@@ -106,7 +107,8 @@
   } from "../lib/moderation";
   import { chatSeen, notificationBody, notifier, shouldNotify } from "../lib/notify";
   import { createNotifyLeader } from "../lib/notifyLeader";
-  import { isMentionAll, mentionNames, pingsMe, replyPing } from "../lib/mentions";
+  import { isMentionAll, keepNames, mentionNames, pingsMe, replyPing } from "../lib/mentions";
+  import { duckedGain, mayReach, sameTarget, type WhisperTarget } from "../lib/whisper";
   import { userPreferences, channelLists, channelPrefs, collapsedCategories, directPrefs, settings } from "../lib/settings.svelte";
   import { textGroups, textOrder } from "../lib/categories";
   import { befriendable, type FriendRow } from "../lib/friends";
@@ -584,8 +586,31 @@
   // Per-user volume and local mute, by user name. Playback drops a
   // speaker's voice until this set it.
   const audioOf = (name: string) => preferences.audioOf(name);
+  // While a priority speaker talks, the others are quieter (see
+  // lib/whisper).
+  // Not one I muted for me: I hear nothing to make room for.
+  const prioritySpeakers = $derived(new Set(users.filter((u) => u.prioritySpeaker && gainOf(audioOf(u.name)) > 0).map((u) => u.session)));
   $effect(() => {
-    for (const u of users) connection.playback?.setUserGain(u.session, gainOf(audioOf(u.name)));
+    const talking = prioritySpeakers.size ? (connection.playback?.speaking ?? new Set<number>()) : new Set<number>();
+    for (const u of users) connection.playback?.setUserGain(u.session, duckedGain(gainOf(audioOf(u.name)), u.session, talking, prioritySpeakers));
+  });
+  // A whisper or shout: who alone hears me (see lib/whisper). It ends
+  // when we leave voice.
+  const whisperingTo = (to: WhisperTarget) => sameTarget(connection.whisper, to);
+  // Offered where my voice gets through (see mayReach).
+  const reaches = (channel: number, shout: boolean) => voiceOn && channel !== TEXT_ONLY && mayReach(server.channelPermissions[channel], shout);
+  const whisperName = $derived.by(() => {
+    const w = connection.whisper;
+    return !w ? null : "session" in w ? (server.users[w.session]?.name ?? null) : (server.channels[w.channel]?.name ?? null);
+  });
+  // A deafened user hears no whisper: the bar says so.
+  const whisperDeaf = $derived.by(() => {
+    const w = connection.whisper;
+    const user = w && "session" in w ? server.users[w.session] : undefined;
+    return !!user && (user.deaf || user.selfDeaf);
+  });
+  $effect(() => {
+    if (!voiceOn && untrack(() => connection.whisper)) connection.setWhisper(null);
   });
   const localMuted = $derived(new Set(users.filter((u) => audioOf(u.name).muted).map((u) => u.session)));
 
@@ -747,7 +772,12 @@
     statusOfSession({ statuses: text.statuses, own: text.ownStatus, me: server.session, away, now: statusNow }, session);
   // Custom server emoji and our personal ones, for messages, reactions and
   // pickers below.
-  const customEmoji = $derived(customEmojiSet(text.emoji, connection.httpBase, text.myEmoji, text.removedEmoji));
+  // From the lists themselves, not from `text` (new on every event): a
+  // new set makes every shown message again.
+  const emojiList = $derived(text.emoji);
+  const myEmoji = $derived(text.myEmoji);
+  const removedEmoji = $derived(text.removedEmoji);
+  const customEmoji = $derived(customEmojiSet(emojiList, connection.httpBase, myEmoji, removedEmoji));
   // The stickers with absolute image URLs (see lib/stickers).
   const stickers = $derived(text.stickers.map((s) => ({ ...s, url: connection.httpBase + s.url })));
   setCustomEmoji(() => customEmoji);
@@ -880,6 +910,12 @@
     reopen = null;
     untrack(() => openChat(id));
   });
+  // Mutes end on their own: checked every half minute.
+  let muteNow = $state(Date.now());
+  $effect(() => {
+    const timer = setInterval(() => (muteNow = Date.now()), 30_000);
+    return () => clearInterval(timer);
+  });
   // Push notifications (see lib/push), for accounts with a password: on
   // start and when channel settings or blocks change, the server learns
   // this session, the quiet chats (see pushLists) and the blocked users
@@ -888,7 +924,7 @@
   const pushName = $derived(!pushSync && account && !account.temporary && browserPushSupport() !== "none" ? me?.name : undefined);
   const pushPrefsKey = $derived(
     JSON.stringify({
-      ...pushLists(channelPrefs.value, connection.httpBase, Object.keys(text.directs).map(Number)),
+      ...pushLists(channelPrefs.value, connection.httpBase, Object.keys(text.directs).map(Number), muteNow),
       blocked: [...preferences.list].sort(),
     }),
   );
@@ -962,12 +998,6 @@
     view = first ? { kind: "text", id: first.id } : { kind: "voice" };
   });
   // Muted text channels show no unread marker (mentions still count).
-  // Mutes end on their own: checked every half minute.
-  let muteNow = $state(Date.now());
-  $effect(() => {
-    const timer = setInterval(() => (muteNow = Date.now()), 30_000);
-    return () => clearInterval(timer);
-  });
   // The settings as they hold: threads without their own take their
   // channel's (see lib/channelPrefs).
   const chatPrefs = $derived(withParents(channelPrefs.value, connection.httpBase, text.threads));
@@ -1167,9 +1197,8 @@
   // itself: a new map (and new chat lines) only when the channels change.
   const textChannelList = $derived(text.channels);
   const channelIds = $derived(new Map(textChannelList.map((c) => [c.name.toLowerCase(), c.id])));
-  const textChat = $derived(
-    chatId === null ? [] : (text.messages[chatId] ?? []).map((m) => toChatMessage(m, connection.httpBase, channelIds)),
-  );
+  const chatMessages = $derived(chatId === null ? undefined : text.messages[chatId]);
+  const textChat = $derived((chatMessages ?? []).map((m) => toChatMessage(m, connection.httpBase, channelIds)));
   // Server settings (bans, registered users) for moderators and admins.
   let showModeration = $state(false);
   const moderation = $derived({ ...moderationRights(server), emoji: canManageText(server, text) });
@@ -1210,13 +1239,17 @@
   const slow = $derived(slowIn(textId, textChat));
   // Names "@" suggests (see lib/mentions); everyone and here only for
   // moderators of stored chats.
+  // The same list while the names are (see keepNames).
+  const keepPeople = keepNames();
   const people = $derived(
-    mentionNames({
-      online: users.map((u) => u.name),
-      authors: textChat.flatMap((m) => (m.actorName ? [m.actorName] : [])),
-      members: Object.values(text.members),
-      all: (textId ?? voiceChatId) !== null && canManageText(server, text),
-    }),
+    keepPeople(
+      mentionNames({
+        online: users.map((u) => u.name),
+        authors: textChat.flatMap((m) => (m.actorName ? [m.actorName] : [])),
+        members: Object.values(text.members),
+        all: (textId ?? voiceChatId) !== null && canManageText(server, text),
+      }),
+    ),
   );
   // One send of files at a time, the files one after another. Settles once
   // the server stored the message, or fails (the message box keeps the
@@ -1872,6 +1905,7 @@
     canCreateSub={m.canCreateSub}
     recording={m.kind === "voice" && staffRecords ? recorded.has(m.id) : undefined}
     onRecord={(on) => connection.manage({ record: m.id, on })}
+    shout={m.kind === "voice" && reaches(m.id, true) ? { on: whisperingTo({ channel: m.id }), set: (on) => connection.setWhisper(on ? { channel: m.id } : null) } : undefined}
     onMembers={() => channels.startMembers(m.kind, m.id)}
     onModerators={() => channels.startModerators(m.kind, m.id)}
     onWebhooks={m.kind === "text" && canManageText(server, text) ? () => (webhooksOf = { channel: m.id, name: m.name }) : undefined}
@@ -2043,6 +2077,9 @@
     user={menuUser}
     isMe={menuUser.session === server.session}
     audio={audioOf(menuUser.name)}
+    whisper={menuUser.session !== server.session && reaches(menuUser.channelId, false)
+      ? { on: whisperingTo({ session: menuUser.session }), set: (on) => connection.setWhisper(on ? { session: menuUser.session } : null) }
+      : undefined}
     x={menu.x}
     y={menu.y}
     onAudio={(patch) => preferences.updateAudio(menuUser.name, patch)}
@@ -2089,7 +2126,7 @@
 {:else if menu && memberUser}
   {@const p = memberUser}
   <UserMenu
-    user={{ name: p.name, comment: text.bios[p.id] ?? "", mute: false, deaf: false }}
+    user={{ name: p.name, comment: text.bios[p.id] ?? "", mute: false, deaf: false, prioritySpeaker: false }}
     byId
     status={p.session === undefined ? null : statusOf(p.session)}
     isMe={false}
@@ -2265,6 +2302,7 @@
     <ChannelSidebar
       {server}
       {speaking}
+      heard={connection.playback?.heard}
       {localMuted}
       {unread}
       textChannels={text.channels}
@@ -2326,6 +2364,12 @@
         {/if}
         {#if soundHint(audioState, voiceOn)}
           <p class="sound-hint" role="status">{t("client.soundHint")}</p>
+        {/if}
+        {#if connection.whisper && whisperName !== null}
+          <p class="whisper" role="status">
+            <span class="ellipsis">{t(whisperDeaf ? "client.whisperDeaf" : "session" in connection.whisper ? "client.whisperingTo" : "client.shoutingTo", { name: whisperName })}</span>
+            <button type="button" onclick={() => connection.setWhisper(null)}>{t("client.stopWhisper")}</button>
+          </p>
         {/if}
         <VoiceBar
           channel={channelName}
@@ -2544,6 +2588,22 @@
 </div>
 
 <style>
+  .whisper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--bg-input);
+  }
+  .whisper button {
+    flex: none;
+    font-weight: 600;
+    text-decoration: underline;
+  }
   .sound-hint {
     margin: 0;
     padding: 6px 8px;

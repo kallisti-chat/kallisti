@@ -1,6 +1,11 @@
 package sidecar
 
-import "kallisti.chat/server/internal/mumble"
+import (
+	"maps"
+	"slices"
+
+	"kallisti.chat/server/internal/mumble"
+)
 
 // chat is where stored messages live: a text channel, a voice channel's
 // chat, or a direct chat of two users. Access and delivery go through it.
@@ -66,7 +71,8 @@ func (h *Hub) may(id mumble.Identity, c chat, write bool) bool {
 	return h.voice.MayRead(id.Session, c.voice)
 }
 
-// readers are the connections whose user may read the chat.
+// readers are the connections whose user may read the chat: the ready
+// ones, and the agent API's event streams.
 func (h *Hub) readers(c chat) []*Conn {
 	var out []*Conn
 	h.eachReady(func(conn *Conn, id mumble.Identity) {
@@ -74,6 +80,17 @@ func (h *Hub) readers(c chat) []*Conn {
 			out = append(out, conn)
 		}
 	})
+	h.mu.Lock()
+	streams := slices.Collect(maps.Keys(h.streams))
+	h.mu.Unlock()
+	for _, conn := range streams {
+		conn.mu.Lock()
+		id := conn.identity
+		conn.mu.Unlock()
+		if id != nil && h.may(*id, c, false) {
+			out = append(out, conn)
+		}
+	}
 	return out
 }
 

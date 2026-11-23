@@ -23,7 +23,7 @@ func (a *Service) mayRegister(w http.ResponseWriter, token string, temporary boo
 	}
 	if !registrationError(w, err) {
 		slog.Error("check registration", "err", err)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "Cannot check registration right now. Please try again."})
+		sendError(w, http.StatusServiceUnavailable, "Cannot check registration right now. Please try again.")
 	}
 	return false
 }

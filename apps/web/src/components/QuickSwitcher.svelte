@@ -81,13 +81,6 @@
     width: min(540px, 92vw);
     margin-top: 15vh;
     padding: 16px;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-main);
-    color: var(--text);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
   }
   input {
     width: 100%;

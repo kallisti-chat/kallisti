@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"html/template"
 	"log/slog"
@@ -334,7 +333,7 @@ func (a *Service) serveFedi(w http.ResponseWriter, r *http.Request) bool {
 		if s, ok := a.Fedi.signups.get(a.cookie(r, signupCookie), a.Now(), false); ok {
 			writeJSON(w, http.StatusOK, map[string]string{"name": s.name, "handle": s.id.Handle, "host": s.id.Host, "remote": remoteName(s.id)})
 		} else {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "the fediverse login expired, please try again"})
+			sendError(w, http.StatusNotFound, "the fediverse login expired, please try again")
 		}
 	case p == fediPath+"/signup" && post:
 		if a.ownSite(w, r, "create an account on the server's own site") {
@@ -349,7 +348,7 @@ func (a *Service) serveFedi(w http.ResponseWriter, r *http.Request) bool {
 	case p == fediPath+"/handle" && get:
 		h, err := a.Store.PublicFediHandle(r.URL.Query().Get("name"))
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again later"})
+			sendError(w, http.StatusInternalServerError, "please try again later")
 			return true
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"handle": h})
@@ -363,8 +362,7 @@ func (a *Service) serveFedi(w http.ResponseWriter, r *http.Request) bool {
 // authorize URL. A link needs the account's password, if it has one:
 // else a stolen session could add a lasting way in.
 func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c struct {
@@ -377,38 +375,35 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 		// A handoff's page (an origin; "": the instance's).
 		To string `json:"to"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if c.Handoff && (c.Link || c.Purpose != "") || !c.Handoff && c.To != "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		sendError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	if c.To != "" && !a.Fedi.webOrigin(c.To) {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+		sendError(w, http.StatusBadRequest, "invalid request")
 		return
 	}
 	var inst fedi.Instance
 	var err error
 	flow := fediFlow{handoff: c.Handoff}
 	if c.Purpose == "reauth" {
-		acc, ok := a.AccountFor(r)
+		acc, ok := a.account(w, r)
 		if !ok {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 			return
 		}
 		id, lookupErr := a.Store.FediIdentityOf(acc.ID)
 		if lookupErr != nil {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "log in with the fediverse account linked to this account"})
+			sendError(w, http.StatusConflict, "log in with the fediverse account linked to this account")
 			return
 		}
 		inst, err = a.Fedi.reauthInstance(id.Host, c.Instance)
 		flow.link, flow.session, flow.reauth = acc.ID, a.SessionKey(r), true
 	} else if c.Link {
-		acc, ok := a.AccountFor(r)
+		acc, ok := a.account(w, r)
 		if !ok {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 			return
 		}
 		if acc.PasswordHash != "" {
@@ -417,7 +412,7 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 			release()
 		}
 		if !ok {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "the password is wrong"})
+			sendError(w, http.StatusUnauthorized, "the password is wrong")
 			return
 		}
 		flow.link, flow.session = acc.ID, a.SessionKey(r)
@@ -426,17 +421,17 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 		inst, err = a.Fedi.Client.ResolveInstance(r.Context(), c.Instance, a.Fedi.Dev)
 	}
 	if errors.Is(err, fedi.ErrInstance) {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "enter your fediverse server or @user@domain"})
+		sendError(w, http.StatusBadRequest, "enter your fediverse server or @user@domain")
 		return
 	}
 	if err != nil {
 		slog.Info("fediverse discovery", "err", err)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "cannot discover this account's server; try its server address instead"})
+		sendError(w, http.StatusBadGateway, "cannot discover this account's server; try its server address instead")
 		return
 	}
 	flow.inst, flow.to = inst, cmp.Or(c.To, inst.Base)
 	if !a.Fedi.allowsHome(inst.Host) {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "this server does not take logins from " + inst.Host})
+		sendError(w, http.StatusForbidden, "this server does not take logins from "+inst.Host)
 		return
 	}
 	if flow.app, err = a.fediApp(r.Context(), inst); err == nil {
@@ -448,14 +443,14 @@ func (a *Service) fediStart(w http.ResponseWriter, r *http.Request) {
 		flow.misskey, discoveryErr = a.Fedi.Client.DiscoverMisskeyOAuth(r.Context(), inst)
 		if discoveryErr != nil || flow.misskey == nil {
 			slog.Info("fediverse app registration", "instance", inst.Host, "err", err, "discovery_err", discoveryErr)
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "cannot reach " + inst.Host + ", or it does not offer logins for apps"})
+			sendError(w, http.StatusBadGateway, "cannot reach "+inst.Host+", or it does not offer logins for apps")
 			return
 		}
 		flow.verifier = fedi.NewVerifier()
 	}
 	authorize, ok := a.beginFlow(w, r, flow)
 	if !ok {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "too many logins right now, try again later"})
+		sendError(w, http.StatusServiceUnavailable, "too many logins right now, try again later")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"url": authorize})
@@ -717,13 +712,11 @@ func (a *Service) fediReauth(acc store.Account, session string, id store.FediIde
 // fediSignup makes the account for a remote account without one, with the
 // chosen name: the same checks as other new accounts (name, browser check).
 func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
-	if !a.allow(r) {
-		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "too many attempts, try again later"})
+	if a.limited(w, r) {
 		return
 	}
 	var c credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	if !a.mayRegister(w, c.Invite, false) {
@@ -732,13 +725,13 @@ func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
 	key := a.cookie(r, signupCookie)
 	s, ok := a.Fedi.signups.get(key, a.Now(), false) // kept for another name after a clash
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "the fediverse login expired, please try again"})
+		sendError(w, http.StatusNotFound, "the fediverse login expired, please try again")
 		return
 	}
 	// Blocked since the callback (a sign-up may wait 15 minutes).
 	if !a.Fedi.allowsIdentity(s.id) {
 		a.Fedi.signups.get(key, a.Now(), true)
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "this server does not take logins from " + s.id.Host})
+		sendError(w, http.StatusForbidden, "this server does not take logins from "+s.id.Host)
 		return
 	}
 	// No name: its remote one (name@home); else one of here (the name step,
@@ -762,7 +755,7 @@ func (a *Service) fediSignup(w http.ResponseWriter, r *http.Request) {
 	a.setFediCookie(w, r, signupCookie, "", 0)
 	if s.handoff != "" {
 		if !a.handOff(w, r, acc, s.id, s.handoff, s.ask) {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "please try again"})
+			sendError(w, http.StatusServiceUnavailable, "please try again")
 			return
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{"name": acc.Name, "handoff": true})
@@ -792,14 +785,13 @@ func (a *Service) fediAvatar(acc store.Account, avatarURL string, onlyIfNone boo
 }
 
 func (a *Service) fediUnlink(w http.ResponseWriter, r *http.Request) {
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
 	// Named after its home (name@home): the name needs the link behind it.
 	if _, host := names.Split(acc.Name); host != "" {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "an account named after its home server stays linked to it"})
+		sendError(w, http.StatusConflict, "an account named after its home server stays linked to it")
 		return
 	}
 	err := a.revokeHandoffs(acc.ID, func() error {
@@ -817,33 +809,31 @@ func (a *Service) fediUnlink(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, store.ErrLastLogin):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "set a password first: this is your only way to log in"})
+		sendError(w, http.StatusConflict, "set a password first: this is your only way to log in")
 	default:
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot unlink, please try again"})
+		sendError(w, http.StatusInternalServerError, "cannot unlink, please try again")
 	}
 }
 
 // fediPublic shows or hides the linked handle on the profile.
 func (a *Service) fediPublic(w http.ResponseWriter, r *http.Request) {
-	acc, ok := a.AccountFor(r)
+	acc, ok := a.account(w, r)
 	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "not logged in"})
 		return
 	}
 	var c struct {
 		On bool `json:"on"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	switch err := a.Store.SetFediPublic(acc.ID, c.On); {
 	case err == nil:
 		w.WriteHeader(http.StatusNoContent)
 	case errors.Is(err, store.ErrNotFound):
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "no fediverse account is linked"})
+		sendError(w, http.StatusConflict, "no fediverse account is linked")
 	default:
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cannot save, please try again"})
+		sendError(w, http.StatusInternalServerError, "cannot save, please try again")
 	}
 }
 
@@ -913,8 +903,7 @@ func (a *Service) takeHandoff(w http.ResponseWriter, r *http.Request) {
 	var c struct {
 		Allow string `json:"allow"`
 	}
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&c) != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	if !readJSON(w, r, &c) {
 		return
 	}
 	a.Fedi.handoffMu.Lock()
@@ -932,7 +921,7 @@ func (a *Service) takeHandoff(w http.ResponseWriter, r *http.Request) {
 		} else if !a.Fedi.allowsIdentity(id) {
 			a.Fedi.handoffs.get(key, a.Now(), true)
 			a.setFediCookie(w, r, handoffCookie, "", 0)
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "this server does not take accounts from your home server"})
+			sendError(w, http.StatusForbidden, "this server does not take accounts from your home server")
 			return
 		}
 	}
@@ -942,19 +931,19 @@ func (a *Service) takeHandoff(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ask": h.ask, "name": acc.Name, "origin": h.origin})
 		return
 	case ok && h.ask != "" && subtle.ConstantTimeCompare([]byte(c.Allow), []byte(h.ask)) != 1:
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "another login replaced this one, please try again"})
+		sendError(w, http.StatusForbidden, "another login replaced this one, please try again")
 		return
 	}
 	// Taken once, with expiry checked again before session creation.
 	h, ok = a.Fedi.handoffs.get(key, a.Now(), true)
 	a.setFediCookie(w, r, handoffCookie, "", 0)
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "the login expired, please try again"})
+		sendError(w, http.StatusNotFound, "the login expired, please try again")
 		return
 	}
 	token, err := a.newSession(acc)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "please try again"})
+		sendError(w, http.StatusInternalServerError, "please try again")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")

@@ -29,37 +29,16 @@
 
 <style>
   dialog {
-    width: min(440px, 92vw);
     max-height: 80vh;
-    padding: 24px;
-    border: none;
-    border-radius: 8px;
-    background: var(--bg-main);
-    color: var(--text);
-  }
-  dialog::backdrop {
-    background: rgb(0 0 0 / 0.6);
   }
   header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding-bottom: 8px;
-  }
-  h2 {
-    margin: 0;
-    font-size: 18px;
   }
   h3 {
     margin: 12px 0 6px;
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    color: var(--text-muted);
-  }
-  .close {
-    font-size: 24px;
-    line-height: 1;
     color: var(--text-muted);
   }
   .note {
