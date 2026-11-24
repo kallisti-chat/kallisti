@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initialTextState, parseServerEvent, reduceText, toChatMessage, type TextMessage } from "../src/lib/textChannels";
-import { reactedBy } from "../src/lib/reactions";
+import { reactedBy, whoReacted } from "../src/lib/reactions";
 
 const msg = (id: number, extra: Partial<TextMessage> = {}): TextMessage => ({ id, channel: 1, author: "a", text: "x", at: 1, ...extra });
 
@@ -34,5 +34,17 @@ describe("reactions", () => {
     // SuperUser is 0; no id (a classic guest): never ours.
     expect(reactedBy({ emoji: "👍", users: ["SuperUser"], ids: [0] }, 0)).toBe(true);
     expect(reactedBy({ emoji: "👍", users: ["x"], ids: [0] }, null)).toBe(false);
+  });
+});
+
+describe("who reacted (the hover card)", () => {
+  const r = (users: string[]) => ({ emoji: "👀", users, ids: users.map((_, i) => i + 1) });
+  it("names up to three, ours as you at the end", () => {
+    expect(whoReacted(r(["tam", "me", "justin"]), 2)).toEqual({ names: ["tam", "justin"], you: true, more: 0 });
+    expect(whoReacted(r(["tam", "justin"]), null)).toEqual({ names: ["tam", "justin"], you: false, more: 0 });
+  });
+  it("counts the others", () => {
+    expect(whoReacted(r(["a", "b", "c", "d", "e"]), null)).toEqual({ names: ["a", "b", "c"], you: false, more: 2 });
+    expect(whoReacted(r(["a", "b", "c", "d", "e"]), 5)).toEqual({ names: ["a", "b"], you: true, more: 2 });
   });
 });

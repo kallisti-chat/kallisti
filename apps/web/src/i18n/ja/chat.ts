@@ -62,6 +62,9 @@ export default {
   "chat.showMore": "もっと見る",
   "chat.showLess": "折りたたむ",
   "chat.reactionLabel": "{emoji} {count}、{names}",
+  "chat.reactedWith": "{names}が{emoji}でリアクションしました",
+  "chat.reactedYou": "あなた",
+  "chat.reactedMore": { other: "他{count}人" },
   "chat.cannotOpenMessage": "このメッセージはここでは開けません",
 
   "chat.showSpoilerFile": "ネタバレ、添付ファイルを表示",

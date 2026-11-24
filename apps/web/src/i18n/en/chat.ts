@@ -71,6 +71,10 @@ export default {
   "chat.showLess": "Show less",
   // A reaction button: emoji, count, who.
   "chat.reactionLabel": "{emoji} {count}, from {names}",
+  // The card over a reaction: who reacted ("Tam, Kim and you"), with what.
+  "chat.reactedWith": "{names} reacted with {emoji}",
+  "chat.reactedYou": "you",
+  "chat.reactedMore": { one: "{count} other", other: "{count} others" },
   "chat.cannotOpenMessage": "You cannot open this message here",
 
   // Attachments.

@@ -74,6 +74,9 @@ export default {
   "chat.showMore": "Mostrar más",
   "chat.showLess": "Mostrar menos",
   "chat.reactionLabel": "{emoji} {count}, de {names}",
+  "chat.reactedWith": "Reacción de {names} con {emoji}",
+  "chat.reactedYou": "ti",
+  "chat.reactedMore": { one: "{count} más", other: "{count} más" },
   "chat.cannotOpenMessage": "No puedes abrir este mensaje aquí",
 
   "chat.showSpoilerFile": "Spoiler, mostrar el archivo adjunto",

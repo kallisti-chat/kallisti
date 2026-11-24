@@ -62,6 +62,9 @@ export default {
   "chat.showMore": "顯示更多",
   "chat.showLess": "顯示較少",
   "chat.reactionLabel": "{emoji} {count}，來自 {names}",
+  "chat.reactedWith": "{names}用 {emoji} 回應了",
+  "chat.reactedYou": "你",
+  "chat.reactedMore": { other: "另外 {count} 人" },
   "chat.cannotOpenMessage": "你無法在這裡開啟這則訊息",
 
   "chat.showSpoilerFile": "暴雷內容，顯示附件",

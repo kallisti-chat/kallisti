@@ -26,7 +26,7 @@
   import VideoPlayer from "./VideoPlayer.svelte";
   import { opensLightbox } from "../lib/lightbox";
   import { gridCells, splitFiles } from "../lib/fileGrid";
-  import { COMMON_EMOJI, reactedBy, type Reaction } from "../lib/reactions";
+  import { COMMON_EMOJI, reactedBy, whoReacted, type Reaction } from "../lib/reactions";
   import type { LinkPreview } from "../lib/linkPreview";
   import { highlightMentions, pingsMe, replyPing, suggestNames, SUGGESTIONS } from "../lib/mentions";
   import { quoted, typedFilter, typedWord } from "../lib/suggest";
@@ -825,6 +825,13 @@
   };
   // Who reacted (ReactionsSheet), and a message's info (MessageInfo): by
   // id, so they follow updates and close when it is deleted.
+  // The card over a reaction (after half a second, as Discord's): "Tam,
+  // Kim and you reacted with :eyes:".
+  const reactionCard = (r: Reaction) => {
+    const who = whoReacted(r, myId);
+    const names = [...who.names, ...(who.you ? [t("chat.reactedYou")] : []), ...(who.more ? [t("chat.reactedMore", { count: who.more })] : [])];
+    return t("chat.reactedWith", { names: new Intl.ListFormat(i18n.locale, { type: "conjunction" }).format(names), emoji: refsAsNames(r.emoji) });
+  };
   let reactionsFor = $state<{ id: number; start: string } | null>(null);
   let infoFor = $state<number | null>(null);
   const storedById = (id: number | null | undefined): DisplayMessage | undefined => {
@@ -1940,7 +1947,7 @@
           class:mine
           aria-pressed={mine}
           aria-label={t("chat.reactionLabel", { emoji: refsAsNames(r.emoji), count: r.users.length, names: r.users.join(", ") })}
-          title={r.users.join(", ")}
+          {@attach tip(reactionCard(r), { delay: 500, emoji: true })}
           aria-disabled={!canReact}
           data-own-press
           use:longPress

@@ -270,6 +270,24 @@ html[data-window-hidden] *::after {
   background: inherit;
   transform: rotate(45deg);
 }
+/* A reaction's card (see lib/tooltip): a large emoji above who reacted. */
+.tooltip.card {
+  max-width: 240px;
+  padding: 10px 12px;
+  text-align: center;
+  white-space: normal;
+}
+.tip-emoji {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+  font-size: 40px;
+  line-height: 1;
+}
+.tip-emoji img.emoji {
+  width: 48px;
+  height: 48px;
+}
 .tooltip.below::after {
   top: -4px;
   bottom: auto;
