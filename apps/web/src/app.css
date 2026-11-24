@@ -276,6 +276,7 @@ html[data-window-hidden] *::after {
   padding: 10px 12px;
   text-align: center;
   white-space: normal;
+  overflow-wrap: anywhere;
 }
 .tip-emoji {
   display: flex;
