@@ -3129,3 +3129,7 @@ Channel, ACL, role, ban and time-out changes in mumbled apply in memory and go t
 ## 2026-11-23: Android: the phone stays awake while in voice
 
 pwm reported choppy voice for the others when the phone's screen goes off (Android app, noise suppression on). The foreground service keeps Android from freezing the app, but nothing kept the phone awake: no wake lock, and the web view's process (capture, noise suppression, the Opus encoder) lost its priority when hidden. While the voice service runs it now holds a partial wake lock and a Wi-Fi lock (high performance: the newer low-latency mode holds only with the screen on, and a Wi-Fi in power save holds packets back), and the web view keeps `RENDERER_PRIORITY_IMPORTANT` when not visible. New permission: WAKE_LOCK. No unit test (Android services); the Kotlin compiles (`:app:compileArm64DebugKotlin`). Not reproduced and not checked on a phone: the emulator showed no throttling the last time (2026-11-12), so the reporter tests it. Result: pwm tested v0.15.0 and reported that it works.
+
+## 2026-11-24: TestFlight 0.15.0 (0.15.0.7)
+
+The v0.15.0 release, the first iOS build since 0.11.0.6. Same steps as before: `tauri ios build --export-method app-store-connect --build-number 7`, then `xcodebuild -exportArchive` with destination upload and `-allowProvisioningUpdates`. The Xcode sign-in had expired again ("No Accounts"); after the user signed in, the upload worked without a new build.
