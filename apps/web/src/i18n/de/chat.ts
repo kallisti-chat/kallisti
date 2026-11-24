@@ -62,6 +62,9 @@ export default {
   "chat.showMore": "Mehr anzeigen",
   "chat.showLess": "Weniger anzeigen",
   "chat.reactionLabel": "{emoji} {count}, von {names}",
+  "chat.reactedWith": "Reaktion von {names} mit {emoji}",
+  "chat.reactedYou": "dir",
+  "chat.reactedMore": { one: "{count} weiteren Person", other: "{count} weiteren" },
   "chat.cannotOpenMessage": "Du kannst diese Nachricht hier nicht öffnen",
 
   "chat.showSpoilerFile": "Spoiler, Anhang anzeigen",
