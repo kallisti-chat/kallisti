@@ -181,6 +181,9 @@ func TestAccessChangesSendTheChannelsAgain(t *testing.T) {
 	if m := next(t, bob); m["type"] != "listen-only" {
 		t.Fatalf("bob got %v", m)
 	}
+	if m := next(t, bob); m["type"] != "read-only" {
+		t.Fatalf("bob got %v", m)
+	}
 	next(t, staff)
 	m = next(t, staff)
 	if p := m["channels"].([]any); len(p) != 1 || len(p[0].(map[string]any)["members"].([]any)) != 2 {
@@ -220,10 +223,9 @@ func TestStaffMakeChannelsPrivate(t *testing.T) {
 	if len(synced) != 3 || !synced[2].Private || synced[0].Private || synced[1].Private {
 		t.Fatalf("synced %+v", synced)
 	}
-	for _, c := range []*Conn{staff, carol, carol, carol} {
-		next(t, c) // the private and listen-only channels; carol's list
+	for _, c := range []*Conn{staff, staff, staff, carol, carol, carol, carol} {
+		next(t, c) // the private, listen-only and read-only channels; carol's list
 	}
-	next(t, staff)
 	// A new private voice channel.
 	carol.Handle([]byte(`{"type":"create-private-voice","name":"Lounge"}`))
 	if m := next(t, carol); m["type"] != "error" {

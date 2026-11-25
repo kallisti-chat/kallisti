@@ -78,7 +78,7 @@ type Config struct {
 	// the server lock (see Pictures).
 	OnPictureChanged func(id uint32, picture bool)
 	// OnListenOnlyChanged runs after a channel's ACL changed (see
-	// ListenOnly).
+	// ListenOnly and ReadOnlyChannels).
 	OnListenOnlyChanged func()
 	// OnPrivateChanged runs after a channel's ACL changed (see Private).
 	OnPrivateChanged func()

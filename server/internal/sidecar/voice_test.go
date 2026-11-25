@@ -47,6 +47,8 @@ type fakeVoice struct {
 	added map[uint32]bool
 	// The last SetListenOnly.
 	listenOnly []ListenOnlyChannel
+	// The last SetReadOnlyChannel.
+	readOnly []ListenOnlyChannel
 	// Registered users' names, and those on a Mumble client (private
 	// texts reach them; sent: "from>to:text").
 	names    map[uint32]string
@@ -432,27 +434,66 @@ func TestGuestsImagesAreNotStored(t *testing.T) {
 	}
 }
 
-// Session 1 may: the fake keeps the last change.
-func (f *fakeVoice) SetListenOnly(session, channel uint32, on bool, speakers []uint32) error {
+// Session 1 may: the fake keeps the last change (listen-only or
+// read-only).
+func (f *fakeVoice) restrict(list *[]ListenOnlyChannel, session, channel uint32, on bool, users []uint32) error {
 	if session != 1 {
-		return errors.New("only admins and moderators make channels listen-only")
+		return errors.New("only admins and moderators may")
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.listenOnly = nil
+	*list = nil
 	if on {
-		f.listenOnly = []ListenOnlyChannel{{Channel: channel, Speakers: []Speaker{}}}
-		for _, id := range speakers {
-			f.listenOnly[0].Speakers = append(f.listenOnly[0].Speakers, Speaker{ID: id, Name: "user" + strconv.Itoa(int(id))})
+		*list = []ListenOnlyChannel{{Channel: channel, Speakers: []Speaker{}}}
+		for _, id := range users {
+			(*list)[0].Speakers = append((*list)[0].Speakers, Speaker{ID: id, Name: "user" + strconv.Itoa(int(id))})
 		}
 	}
 	return nil
+}
+
+func (f *fakeVoice) SetListenOnly(session, channel uint32, on bool, speakers []uint32) error {
+	return f.restrict(&f.listenOnly, session, channel, on, speakers)
+}
+
+func (f *fakeVoice) SetReadOnlyChannel(session, channel uint32, on bool, posters []uint32) error {
+	return f.restrict(&f.readOnly, session, channel, on, posters)
 }
 
 func (f *fakeVoice) ListenOnly() []ListenOnlyChannel {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return slices.Clone(f.listenOnly)
+}
+
+func (f *fakeVoice) ReadOnlyChannels() []ListenOnlyChannel {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.readOnly)
+}
+
+func TestReadOnlyChannels(t *testing.T) {
+	h := newHub(t, "general")
+	h.SetVoice(&fakeVoice{}, "")
+	mod := h.Connect()
+	t.Cleanup(mod.Close)
+	mod.SetIdentity(mumble.Identity{Session: 1, Name: "mod"})
+	if ro, ok := next(t, mod)["readOnly"].([]any); !ok || len(ro) != 0 {
+		t.Fatal("no read-only list in ready")
+	}
+	bob := readyAs(t, h, 2, "bob")
+	bob.Handle([]byte(`{"type":"set-read-only","voice":4,"on":true}`))
+	if m := next(t, bob); m["type"] != "error" || m["about"] != "manage" {
+		t.Fatalf("bob got %v", m)
+	}
+	mod.Handle([]byte(`{"type":"set-read-only","voice":4,"on":true,"users":[9]}`))
+	// The voice server reports the change; everyone gets the list.
+	h.ReadOnlyChanged()
+	for _, c := range []*Conn{mod, bob} {
+		if m := next(t, c); m["type"] != "read-only" || len(m["channels"].([]any)) != 1 {
+			t.Fatalf("got %v", m)
+		}
+	}
 }
 
 func TestListenOnlyChannels(t *testing.T) {

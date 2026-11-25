@@ -19,7 +19,7 @@ func (h *Hub) readyFor(id mumble.Identity) map[string]any {
 	}
 	if h.voice != nil {
 		ready["roles"], ready["listenOnly"], ready["timeouts"] = h.roles().forUser(h, id), h.listenOnlyFor(id), h.timeouts()
-		ready["channelTimeouts"] = h.channelTimeoutsFor(id)
+		ready["channelTimeouts"], ready["readOnly"] = h.channelTimeoutsFor(id), h.readOnlyFor(id)
 		ready["private"], ready["members"] = h.privateFor(id), h.members()
 		ready["guestsReadOnly"], ready["captcha"] = h.voice.GuestsReadOnly(), h.voice.Captcha()
 		ready["qualityLimits"] = h.voice.QualityLimits()
