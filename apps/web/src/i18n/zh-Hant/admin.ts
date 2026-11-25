@@ -2,6 +2,8 @@ import type en from "../en/admin";
 import type { Translation } from "../types";
 
 export default {
+  "admin.randomImageNames": "隨機產生圖片檔案名稱",
+  "admin.randomImageNamesNote": "將新上傳圖片的原始檔案名稱替換為隨機名稱。現有上傳檔案和 EXIF 中繼資料保持不變。",
   "admin.serverSettingsTitle": "伺服器設定",
   "admin.sectionOverview": "概覽",
   "admin.sectionQuality": "語音與直播",

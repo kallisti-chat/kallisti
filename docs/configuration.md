@@ -45,12 +45,20 @@ brackets.
   in front of a Murmur it is read at each start.
 - `UPLOAD_DIR` (`uploads`), `UPLOAD_MAX_MB` (10 per file),
   `UPLOAD_QUOTA_MB` (100 per user per day).
-  New image uploads get a random 12-character hexadecimal filename and a suitable extension,
-  rather than sharing the original filename. Spoiler markers are preserved. This
-  applies to detected pictures, common image extensions and uploads declared as
-  images; an unrecognized image with neither an image extension nor an image
-  content type can retain its name. Existing uploads are not renamed. Image
-  contents and metadata (including EXIF) are not changed.
+- `UPLOAD_RANDOM_IMAGE_NAMES=1` (off by default): replace original image
+  filenames with 12 random hexadecimal characters and a suitable extension.
+  With the built-in Mumble server, admins can change **Randomize image filenames**
+  in the web client's server settings. The environment supplies the initial
+  default until an admin saves a choice; the saved value then wins, including
+  an explicit off, and survives restarts. With `MUMBLE_HOST` set, the environment
+  variable alone controls this behavior.
+  Changes apply to new uploads only. When off, original filenames are kept
+  (with the usual filename sanitization). When on, detected pictures, common
+  image extensions and uploads declared as images are renamed; an unrecognized
+  image with neither an image extension nor an image content type can retain
+  its name. Spoiler markers are preserved. Existing uploads, image contents and
+  metadata (including EXIF) are not changed. Docker and Helm deployments can
+  supply `UPLOAD_RANDOM_IMAGE_NAMES=1` through their container environment.
 - `EXPERIMENTAL_PRIVATE_ROOM_MEDIA=1` (off by default): files of private
   rooms only for who may read the room (built-in server only). See
   [private-room media](#private-room-media-experiment).

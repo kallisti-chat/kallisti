@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -77,7 +78,8 @@ func upload(t *testing.T, srv *httptest.Server, token, name, ctype string, body 
 }
 
 func TestUploadAndServeAnImage(t *testing.T) {
-	srv, s := setup(t, 1<<20)
+	srv, s, h := setupHandler(t, 1<<20)
+	h.RandomImageNames = func() bool { return true }
 	img := pngBytes(t)
 	resp, v := upload(t, srv, "good", "my cat.png", "image/png", img)
 	if resp.StatusCode != http.StatusOK {
@@ -107,10 +109,10 @@ func TestUploadAndServeAnImage(t *testing.T) {
 	if get.StatusCode != 200 || !bytes.Equal(data, img) {
 		t.Fatalf("serve: %d, %d bytes", get.StatusCode, len(data))
 	}
-	h := get.Header
-	if h.Get("Content-Type") != "image/png" || !strings.HasPrefix(h.Get("Content-Disposition"), "inline") ||
-		h.Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(h.Get("Content-Security-Policy"), "sandbox") {
-		t.Fatalf("headers: %v", h)
+	headers := get.Header
+	if headers.Get("Content-Type") != "image/png" || !strings.HasPrefix(headers.Get("Content-Disposition"), "inline") ||
+		headers.Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(headers.Get("Content-Security-Policy"), "sandbox") {
+		t.Fatalf("headers: %v", headers)
 	}
 	// ?download: the same file as an attachment (a download button).
 	dl, err := http.Get(srv.URL + v["url"].(string) + "?download")
@@ -124,7 +126,8 @@ func TestUploadAndServeAnImage(t *testing.T) {
 }
 
 func TestImageNamesAreUniqueAndPreserveSpoilers(t *testing.T) {
-	srv, _ := setup(t, 1<<20)
+	srv, _, h := setupHandler(t, 1<<20)
+	h.RandomImageNames = func() bool { return true }
 	img := pngBytes(t)
 	_, first := upload(t, srv, "good", "SPOILER_private.jpg", "image/jpeg", img)
 	_, second := upload(t, srv, "good", "SPOILER_private.jpg", "image/jpeg", img)
@@ -148,7 +151,8 @@ func TestImageDownloadsDoNotExposeOriginalNames(t *testing.T) {
 		{"private.unknown", "image/x-example", ".bin"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			srv, _ := setup(t, 1<<20)
+			srv, _, h := setupHandler(t, 1<<20)
+			h.RandomImageNames = func() bool { return true }
 			resp, v := upload(t, srv, "good", tc.name, tc.ctype, []byte("sample image data"))
 			got, _ := v["name"].(string)
 			if resp.StatusCode != http.StatusOK || len(got) != 12+len(tc.ext) || strings.Contains(got, "private") || !strings.HasSuffix(got, tc.ext) || v["type"] != "application/octet-stream" {
@@ -436,5 +440,56 @@ func TestSaveKeepsTheDailyQuota(t *testing.T) {
 	}
 	if _, err := h.Save("bob", "b.png", "image/png", make([]byte, 8)); err == nil {
 		t.Fatal("over the quota")
+	}
+}
+
+func TestImageNameSetting(t *testing.T) {
+	for _, mode := range []string{"upload", "save"} {
+		t.Run(mode, func(t *testing.T) {
+			srv, db, h := setupHandler(t, 1<<20)
+			img := pngBytes(t)
+			const original = "SPOILER_diagram-v2.png"
+			save := func() store.Upload {
+				t.Helper()
+				if mode == "save" {
+					u, err := h.Save("alice", original, "image/png", img)
+					if err != nil {
+						t.Fatal(err)
+					}
+					return u
+				}
+				resp, v := upload(t, srv, "good", original, "image/png", img)
+				if resp.StatusCode != http.StatusOK {
+					t.Fatalf("upload: %d %v", resp.StatusCode, v)
+				}
+				key, _ := v["key"].(string)
+				u, err := db.UploadByKey(key)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return u
+			}
+			if u := save(); u.Name != original {
+				t.Fatalf("default name: %q", u.Name)
+			}
+			var enabled atomic.Bool
+			h.RandomImageNames = enabled.Load
+			if u := save(); u.Name != original {
+				t.Fatalf("disabled name: %q", u.Name)
+			}
+			enabled.Store(true)
+			renamed := save()
+			if renamed.Name == original || len(renamed.Name) != len("SPOILER_")+12+len(".png") || !strings.HasPrefix(renamed.Name, "SPOILER_") || !strings.HasSuffix(renamed.Name, ".png") {
+				t.Fatalf("enabled name: %q", renamed.Name)
+			}
+			enabled.Store(false)
+			if u := save(); u.Name != original {
+				t.Fatalf("disabled again: %q", u.Name)
+			}
+			saved, err := db.UploadByKey(renamed.Key)
+			if err != nil || saved.Name != renamed.Name {
+				t.Fatalf("existing upload changed: %+v %v", saved, err)
+			}
+		})
 	}
 }

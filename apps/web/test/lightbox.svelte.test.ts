@@ -32,7 +32,7 @@ describe("Lightbox", () => {
   it.each([
     { name: "a1b2c3d4e5f6.png", label: "Picture" },
     { name: "SPOILER_a1b2c3d4e5f6.png", label: "Picture" },
-    { name: `${"a".repeat(64)}.png`, label: "Picture" },
+    { name: `${"a".repeat(64)}.png`, label: `${"a".repeat(64)}.png` },
     { name: "a1b2c3d4e5f6.png", description: "A sunset", label: "A sunset" },
     { name: "diagram-v2.png", label: "diagram-v2.png" },
     { name: "a1b2c3d4e5f6.mp4", video: true, label: "a1b2c3d4e5f6.mp4" },

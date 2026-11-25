@@ -99,7 +99,8 @@ type Config struct {
 	// Recording), outside the server lock.
 	Recordings         *recording.Library
 	OnRecordingChanged func()
-	DB                 *DB // nil: nothing is saved
+	RandomImageNames   bool // default when no image filename setting is saved
+	DB                 *DB  // nil: nothing is saved
 }
 
 const (
@@ -185,6 +186,8 @@ type Server struct {
 	bans atomic.Pointer[[]BanEntry]
 	// Read for every stream frame (see QualityLimits): not under mu either.
 	quality atomic.Pointer[QualityLimits]
+	// read for each image upload without the voice path lock.
+	randomImageNames atomic.Bool
 	// The agent API's sessions' registrations, by session (see
 	// apisession.go). Under mu.
 	apiUsers map[uint32]*Registered
@@ -279,8 +282,12 @@ func New(cfg Config) (*Server, error) {
 	var rules msgrules.Rules
 	var homeRules homes.Rules
 	quality := DefaultQualityLimits()
+	randomImageNames := cfg.RandomImageNames
 	if cfg.DB != nil {
 		var err error
+		if _, err = cfg.DB.setting("upload_random_image_names", &randomImageNames); err != nil {
+			return nil, err
+		}
 		if _, err = cfg.DB.setting("home_servers", &homeRules); err != nil {
 			return nil, err
 		}
@@ -316,6 +323,7 @@ func New(cfg Config) (*Server, error) {
 	}
 	srv.bans.Store(&bans)
 	srv.quality.Store(&quality)
+	srv.randomImageNames.Store(randomImageNames)
 	if err := srv.loadTimeouts(); err != nil {
 		return nil, err
 	}

@@ -53,9 +53,11 @@ const (
 )
 
 type Handler struct {
-	Store    *store.Store
-	Dir      string
-	MaxBytes int64
+	// current image filename policy, read for each upload; nil keeps original names.
+	RandomImageNames func() bool
+	Store            *store.Store
+	Dir              string
+	MaxBytes         int64
 	// Bytes one author may upload in 24 hours.
 	QuotaBytes int64
 	Now        func() time.Time
@@ -195,7 +197,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	// the first 512 bytes) have no size: downloads.
 	ctype := storedType(head, name)
 	media := measure(dst, ctype)
-	name = imageUploadName(ctype, name, r.Header.Get("Content-Type"))
+	name = h.imageUploadName(ctype, name, r.Header.Get("Content-Type"))
 	if isPicture(ctype) && media.Width == 0 {
 		ctype = "application/octet-stream"
 	}
@@ -212,7 +214,10 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 }
 
 // imageUploadName keeps the image-renaming policy in one place.
-func imageUploadName(ctype, name, declaredType string) string {
+func (h *Handler) imageUploadName(ctype, name, declaredType string) string {
+	if h.RandomImageNames == nil || !h.RandomImageNames() {
+		return name
+	}
 	ext := imageExtension(ctype, name, declaredType)
 	if ext == "" {
 		return name
@@ -487,6 +492,7 @@ func (h *Handler) Save(author, name, ctype string, data []byte) (store.Upload, e
 		return store.Upload{}, err
 	}
 	media := store.Media(mediasize.Probe(bytes.NewReader(data), n, ctype))
+	name = h.imageUploadName(ctype, name, ctype)
 	u, err := h.Store.AddUpload(store.Upload{Key: key, Name: cleanName(name), Type: ctype, Size: n, Author: author, Media: media}, h.Now())
 	if err != nil {
 		os.Remove(dst)

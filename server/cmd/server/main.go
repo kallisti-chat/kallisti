@@ -140,7 +140,14 @@ func run() error {
 	if err := os.MkdirAll(cfg.UploadDir, 0o700); err != nil {
 		return fmt.Errorf("create upload directory: %w", err)
 	}
+	var named atomic.Pointer[mumbled.Server]
 	fileHandler := &files.Handler{
+		RandomImageNames: func() bool {
+			if srv := named.Load(); srv != nil {
+				return srv.RandomImageNames()
+			}
+			return cfg.UploadRandomImageNames
+		},
 		Store:                db,
 		Dir:                  cfg.UploadDir,
 		MaxBytes:             cfg.UploadMaxBytes,
@@ -179,7 +186,6 @@ func run() error {
 	// The server's name and logo (admins set them; with Murmur:
 	// Kallisti's), for the page, the manifest and pushes. Atomic: push
 	// workers may ask while the built-in server starts.
-	var named atomic.Pointer[mumbled.Server]
 	brand := func() site.Brand {
 		var out site.Brand
 		if srv := named.Load(); srv != nil {

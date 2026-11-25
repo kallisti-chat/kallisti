@@ -2211,6 +2211,8 @@
     onDeleteRegistrationInvite={(id) => connection.request({ deleteRegistrationInvite: id })}
     guestsReadOnly={mayChangeGuests(server, text) ? text.guestsReadOnly : null}
     onGuestsReadOnly={(on) => connection.request({ guestsReadOnly: on })}
+    randomImageNames={mayChangeGuests(server, text) ? text.randomImageNames : null}
+    onRandomImageNames={mayChangeGuests(server, text) ? (on) => connection.request({ randomImageNames: on }) : undefined}
     captcha={text.captcha}
     onCaptcha={(level) => connection.request({ captcha: level })}
     connections={text.connections}

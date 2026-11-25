@@ -2,6 +2,8 @@ import type en from "../en/admin";
 import type { Translation } from "../types";
 
 export default {
+  "admin.randomImageNames": "画像のファイル名をランダム化",
+  "admin.randomImageNamesNote": "新しくアップロードする画像の元のファイル名をランダムな名前に置き換えます。既存のアップロードとEXIFメタデータは変更されません。",
   "admin.serverSettingsTitle": "サーバー設定",
   "admin.sectionOverview": "概要",
   "admin.sectionQuality": "音声と配信",
