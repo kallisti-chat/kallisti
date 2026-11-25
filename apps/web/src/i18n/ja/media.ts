@@ -81,9 +81,9 @@ export default {
   "media.mute": "ミュート",
   "media.unmute": "ミュート解除",
 
-  "media.previousPicture": "前の画像",
-  "media.nextPicture": "次の画像",
-  "media.pictureCount": "{index}/{count}",
+  "media.viewerBefore": "前へ",
+  "media.viewerNext": "次へ",
+  "media.viewerCount": "{index}/{count}",
   "media.downloadOriginal": "元の画像をダウンロード",
   "media.openOriginal": "元の画像を開く",
 

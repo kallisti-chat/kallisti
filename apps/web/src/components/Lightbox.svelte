@@ -1,18 +1,56 @@
 <script lang="ts">
-  import { step, swipeStep } from "../lib/fileGrid";
+  import { untrack } from "svelte";
+  import { swipeStep } from "../lib/fileGrid";
+  import { jumpStep } from "../lib/jump";
+  import { viewerStep } from "../lib/lightbox";
   import { t } from "../lib/i18n.svelte";
 
-  // Images large over the app, one at a time from `start`: the arrow keys,
-  // the buttons or a swipe go to the next or the one before. Closes with
-  // Escape, the button, or a click outside the image; the browser puts
-  // focus back. download: the original of a picture shown by its preview
-  // (see lib/media lightboxOf); description: its alt text.
-  type Item = { url: string; name: string; download?: string; description?: string };
-  let { items, start = 0, onClose }: { items: readonly Item[]; start?: number; onClose: () => void } = $props();
+  // Pictures and videos large over the app, one at a time from `start`:
+  // the arrow keys, the buttons or a swipe go to the next or the one
+  // before. Closes with Escape, the button, or a click outside the image;
+  // the browser puts focus back. download: the original of a picture shown
+  // by its preview (see lib/media lightboxOf); description: its alt text;
+  // video: a player with poster.
+  type Item = { url: string; name: string; download?: string; description?: string; video?: boolean; poster?: string };
+  // more: a chat's older messages can load (onOlder; loading: meanwhile).
+  let {
+    items,
+    start = 0,
+    more = false,
+    loading = false,
+    onOlder,
+    onClose,
+  }: { items: readonly Item[]; start?: number; more?: boolean; loading?: boolean; onOlder?: () => void; onClose: () => void } = $props();
+  // By URL: the list grows while it is open (older messages above, new
+  // ones below), and the item shown stays.
   // svelte-ignore state_referenced_locally
-  let index = $state(start); // each opening is a new Lightbox
+  let at = $state(items[start]?.url); // each opening is a new Lightbox
+  const index = $derived(Math.max(0, items.findIndex((i) => i.url === at)));
   const item = $derived(items[index] ?? items[0]!);
-  const go = (by: number) => (index = step(index, by, items.length));
+  // A step back from the first item loads older messages, page by page
+  // until one has media (a few pages at most, see jumpStep), then goes on.
+  const hasOlder = $derived(more && !!onOlder);
+  let seeking = $state(false);
+  let pages = 0;
+  const go = (by: number) => {
+    const next = viewerStep(index, by, items.length, hasOlder);
+    seeking = next === "older";
+    pages = 0;
+    if (next !== "older") at = items[next]?.url;
+  };
+  $effect(() => {
+    if (!seeking) return;
+    const next = jumpStep({ loaded: index > 0, more, loading, pages });
+    untrack(() => {
+      if (next === "load") {
+        pages++;
+        onOlder?.();
+      } else if (next !== "wait") {
+        seeking = false;
+        if (next === "jump") at = items[index - 1]?.url;
+      }
+    });
+  });
   let swipeFrom: { x: number; y: number } | null = null;
 
   let dialog: HTMLDialogElement | undefined = $state();
@@ -27,7 +65,8 @@
 <!-- On the window: a step button that ends disabled takes the focus away. -->
 <svelte:window
   onkeydown={(e) => {
-    if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.altKey && !e.metaKey && !e.ctrlKey) {
+    // Not from a video: there they seek.
+    if (!(e.target instanceof HTMLVideoElement) && (e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.altKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       go(e.key === "ArrowRight" ? 1 : -1);
     }
@@ -50,12 +89,20 @@
   onpointercancel={() => (swipeFrom = null)}
 >
   <div class="stage">
-    {#if items.length > 1}
-      <button type="button" class="step before" disabled={index === 0} onclick={() => go(-1)} aria-label={t("media.previousPicture")}>‹</button>
+    {#if items.length > 1 || hasOlder}
+      <button type="button" class="step before" disabled={index === 0 && !hasOlder} onclick={() => go(-1)} aria-label={t("media.viewerBefore")}>‹</button>
     {/if}
-    <img src={item.url} alt={item.description || item.name} />
+    {#if item.video}
+      <!-- Keyed: the next video starts at its beginning. -->
+      {#key item.url}
+        <!-- svelte-ignore a11y_media_has_caption (uploads come without captions) -->
+        <video src={item.url} poster={item.poster} controls playsinline aria-label={item.description || item.name}></video>
+      {/key}
+    {:else}
+      <img src={item.url} alt={item.description || item.name} />
+    {/if}
     {#if items.length > 1}
-      <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label={t("media.nextPicture")}
+      <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label={t("media.viewerNext")}
         >›</button
       >
     {/if}
@@ -66,7 +113,7 @@
   <footer>
     <span class="name ellipsis">{item.name}</span>
     {#if items.length > 1}
-      <span class="count" aria-live="polite">{t("media.pictureCount", { index: index + 1, count: items.length })}</span>
+      <span class="count" aria-live="polite">{t("media.viewerCount", { index: index + 1, count: items.length })}</span>
     {/if}
     {#if item.download}
       <a href={item.download}>{t("media.downloadOriginal")}</a>
@@ -107,7 +154,8 @@
     justify-content: center;
     padding: 24px;
   }
-  img {
+  img,
+  video {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;

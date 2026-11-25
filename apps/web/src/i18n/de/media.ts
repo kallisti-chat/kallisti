@@ -81,9 +81,9 @@ export default {
   "media.mute": "Stummschalten",
   "media.unmute": "Stummschaltung aufheben",
 
-  "media.previousPicture": "Vorheriges Bild",
-  "media.nextPicture": "Nächstes Bild",
-  "media.pictureCount": "{index} von {count}",
+  "media.viewerBefore": "Zurück",
+  "media.viewerNext": "Weiter",
+  "media.viewerCount": "{index} von {count}",
   "media.downloadOriginal": "Original herunterladen",
   "media.openOriginal": "Original öffnen",
 

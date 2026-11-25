@@ -24,7 +24,7 @@
   import { settings } from "../lib/settings.svelte";
   import AudioPlayer from "./AudioPlayer.svelte";
   import VideoPlayer from "./VideoPlayer.svelte";
-  import { opensLightbox } from "../lib/lightbox";
+  import { chatMedia, opensLightbox } from "../lib/lightbox";
   import { gridCells, splitFiles } from "../lib/fileGrid";
   import { COMMON_EMOJI, reactedBy, whoReacted, type Reaction } from "../lib/reactions";
   import type { LinkPreview } from "../lib/linkPreview";
@@ -621,10 +621,18 @@
     draft = "";
   };
 
-  // The images shown large, from `start` (see Lightbox): a message's pictures.
+  // The viewer (see Lightbox), from the picture clicked at `start`: all
+  // pictures and videos of the chat as shown (see chatMedia), more as
+  // older messages load. A video in the chat plays where it is.
   type Shown = NonNullable<DisplayMessage["uploads"]>[number];
-  const viewerItem = (u: Shown) => ({ ...lightboxOf(u), ...(u.description && { description: u.description }) });
-  let lightbox = $state<{ items: ReturnType<typeof viewerItem>[]; start: number } | null>(null);
+  const viewOf = (u: Shown) => attachmentView(u, unplayable.has(u.url));
+  const media = () => chatMedia(items, (g) => unblocked.has(groupKey(g)), viewOf, (u) => !!u.spoiler && !shownFiles.has(u.url));
+  const viewerItem = (u: Shown) => ({
+    ...(viewOf(u) === "video" ? { url: u.url, name: u.name, video: true, poster: u.preview } : lightboxOf(u)),
+    ...(u.description && { description: u.description }),
+  });
+  let lightbox = $state<{ start: number } | null>(null);
+  const viewerItems = $derived(lightbox ? media().map(viewerItem) : []);
   const showHidden = (u: Shown) => (shownFiles = new Set([...shownFiles, u.url]));
   const hideAgain = (u: Shown) => (shownFiles = new Set([...shownFiles].filter((url) => url !== u.url)));
   // Attachments that cannot play or show (see attachmentView): files.
@@ -1741,8 +1749,15 @@
 {#if notice.n}
   {#key notice.n}<Toast text={notice.text} />{/key}
 {/if}
-{#if lightbox}
-  <Lightbox {...lightbox} onClose={() => (lightbox = null)} />
+{#if lightbox && viewerItems.length}
+  <Lightbox
+    items={viewerItems}
+    start={lightbox.start}
+    {more}
+    loading={loadingOlder || messages !== incoming}
+    onOlder={onLoadOlder}
+    onClose={() => (lightbox = null)}
+  />
 {/if}
 {#if menuFor}
   <MessageMenu x={menuFor.x} y={menuFor.y} anchor={menuFor.anchor} items={sheetItems(menuFor.m)} onClose={() => (menuFor = null)} />
@@ -2125,7 +2140,7 @@
               <span>{t("chat.spoiler")}</span>
             </button>
           {:else}
-            {@render imageLink(upload, split.grid, i)}
+            {@render imageLink(upload, true)}
             {#if upload.spoiler}
               <button type="button" class="rehide" onclick={() => hideAgain(upload)}>{t("chat.hideSpoiler")}</button>
             {/if}
@@ -2153,8 +2168,8 @@
   {/each}
 {/snippet}
 
-<!-- A picture that opens the viewer, at its place in `all`. -->
-{#snippet imageLink(upload: Shown, all: readonly Shown[], at: number)}
+<!-- A picture that opens the viewer (fill: see picture). -->
+{#snippet imageLink(upload: Shown, fill = false)}
   <a
     class="image"
     href={lightboxOf(upload).url}
@@ -2164,19 +2179,17 @@
     onclick={(e) => {
       if (!opensLightbox(e)) return;
       e.preventDefault();
-      // Not the spoilers still hidden.
-      const shown = all.filter((u, i) => i === at || !u.spoiler || shownFiles.has(u.url));
-      lightbox = { items: shown.map(viewerItem), start: shown.indexOf(upload) };
+      lightbox = { start: Math.max(0, media().indexOf(upload)) };
     }}
   >
-    {@render picture(upload, upload.description || upload.name, all.length > 1)}
+    {@render picture(upload, upload.description || upload.name, fill)}
   </a>
 {/snippet}
 
 {#snippet uploadView(upload: Shown)}
   {@const view = attachmentView(upload, unplayable.has(upload.url))}
   {#if view === "image"}
-    {@render imageLink(upload, [upload], 0)}
+    {@render imageLink(upload)}
   {:else if view !== "file"}
     {@const failed = () => (unplayable = new Set([...unplayable, upload.url]))}
     {#if view === "audio"}

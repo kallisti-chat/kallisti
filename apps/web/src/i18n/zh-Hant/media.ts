@@ -81,9 +81,9 @@ export default {
   "media.mute": "靜音",
   "media.unmute": "取消靜音",
 
-  "media.previousPicture": "上一張圖片",
-  "media.nextPicture": "下一張圖片",
-  "media.pictureCount": "第 {index} 張，共 {count} 張",
+  "media.viewerBefore": "上一個",
+  "media.viewerNext": "下一個",
+  "media.viewerCount": "第 {index} 個，共 {count} 個",
   "media.downloadOriginal": "下載原始檔",
   "media.openOriginal": "開啟原始檔",
 
