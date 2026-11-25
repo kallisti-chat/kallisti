@@ -90,6 +90,7 @@ export const confirmsManage = (a: ManageAction): ((ev: ServerEvent) => boolean) 
   if ("redeemInvite" in a) return is("invite-joined");
   if ("moderator" in a || "admin" in a || "channelModerator" in a) return is("roles");
   if ("listenOnly" in a) return is("listen-only");
+  if ("readOnly" in a) return is("read-only");
   if ("timeout" in a || "channelTimeout" in a) return is("timeouts");
   if ("connections" in a) return is("connections");
   if ("recordings" in a) return is("recordings");

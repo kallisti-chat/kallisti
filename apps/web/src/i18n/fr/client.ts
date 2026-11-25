@@ -47,6 +47,7 @@ export default {
   "client.uploadStep": "Envoi de {n} sur {total}…",
   "client.timedOut": "Tu es exclu temporairement jusqu'à {until}.",
   "client.timedOutChannel": "Tu es exclu temporairement de ce salon jusqu'à {until}.",
+  "client.readOnlyChannel": "Seules certaines personnes peuvent écrire dans ce salon.",
   "client.deleteThreadConfirm": "Supprimer le fil « {name} » et ses messages ?",
   "client.createThread": "Créer un fil",
   "client.renameThread": "Renommer le fil",

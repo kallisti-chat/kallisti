@@ -47,6 +47,7 @@ export default {
   "client.uploadStep": "Lade {n} von {total} hoch…",
   "client.timedOut": "Du hast einen Timeout bis {until}.",
   "client.timedOutChannel": "Du hast in diesem Kanal einen Timeout bis {until}.",
+  "client.readOnlyChannel": "In diesem Kanal können nur bestimmte Personen schreiben.",
   "client.deleteThreadConfirm": "Den Thread „{name}“ und seine Nachrichten löschen?",
   "client.createThread": "Thread erstellen",
   "client.renameThread": "Thread umbenennen",

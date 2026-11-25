@@ -79,6 +79,7 @@
   import { hiddenMembers, offlineMembers, pictureNames, readerGroups } from "../lib/members";
   import { adminAction, badgeOf, mayDeleteUser, moderatorAction, myUserId, roleOf } from "../lib/roles";
   import { loginAction, mayChangeGuests, mayWrite, readOnlyNote } from "../lib/guests";
+  import { mayPost } from "../lib/readOnly";
   import { missingVoiceApis, unsupportedVoiceMessage } from "../lib/voice/support";
   import { createTextView } from "../lib/textView.svelte";
   import { playPing } from "../lib/ping";
@@ -1388,6 +1389,9 @@
   // Personal emoji: registered users but guests (the server checks again).
   const mayAddEmoji = $derived(text.available && me?.userId != null && !guestAccount);
   const readOnly = $derived(!mayWrite(server, text, guestAccount));
+  // A read-only text channel (see lib/readOnly): a note in the message box;
+  // no reactions or threads there either (the server needs TextMessage).
+  const channelReadOnly = $derived(!mayPost(server, text, viewMumble));
   const loginToWrite = $derived(
     readOnly ? { note: readOnlyNote(guestAccount), action: loginAction(guestAccount), onAction: guestAccount ? () => openSettingsAt("account") : onLogIn } : null,
   );
@@ -1460,7 +1464,9 @@
         ? t("client.timedOut", { until: untilText(myTimeout) })
         : myChannelTimeout !== null
           ? t("client.timedOutChannel", { until: untilText(myChannelTimeout) })
-          : null,
+          : channelReadOnly
+            ? t("client.readOnlyChannel")
+            : null,
     mayEdit: mine,
     mayDelete: (m: DisplayMessage) => mine(m) || canModerate(server, text, viewMumble),
     onEdit: readOnly ? undefined : connection.editMessage,
@@ -1475,7 +1481,7 @@
       if (inviteOf(href) && onInvite?.(href)) return "opened";
       return onServerLink?.(href) ? "opened" : null;
     },
-    onReact: readOnly ? undefined : connection.react,
+    onReact: readOnly || channelReadOnly ? undefined : connection.react,
     onVote: readOnly ? undefined : connection.vote,
     onEndPoll: readOnly ? undefined : connection.endPoll,
     myId: me?.userId ?? null,
@@ -2511,7 +2517,7 @@
       {onTyping}
       threadOf={textId === null ? undefined : (id) => threadByStart.get(id)}
       onOpenThread={openThread}
-      onCreateThread={textId === null || readOnly ? undefined : (id, body) => (naming = { create: id, name: defaultThreadName(body) })}
+      onCreateThread={textId === null || readOnly || channelReadOnly ? undefined : (id, body) => (naming = { create: id, name: defaultThreadName(body) })}
       onThreads={textId === null ? undefined : () => openSide(toggleSide(side, !threadAside && (!phone || panel === "members"), "threads"))}
       threadsOpen={side === "threads" && !threadAside}
     />

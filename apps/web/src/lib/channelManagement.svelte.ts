@@ -16,6 +16,7 @@ import {
 } from "./channelManagement";
 import { channelModActions } from "./roles";
 import { listenOnlyAction, speakerCandidates, type ListenOnly } from "./listenOnly";
+import { readOnlyAction } from "./readOnly";
 import { accessChannel, membersAction, membersOf, privateAction, type Member } from "./privateChannels";
 import { moveInList, moveVoiceChannel } from "./channelOrder";
 import type { Connection } from "./connection.svelte";
@@ -28,6 +29,7 @@ export type ChannelValues = {
   description: string;
   temporary: boolean;
   listenOnly?: ListenOnly;
+  readOnly?: ListenOnly;
   private?: boolean;
   slowMode?: number;
   category?: number; // a text channel's (0: none)
@@ -102,6 +104,13 @@ export const createChannelManagement = (current: () => Connection) => {
     return { private: { on: access in text.private, members: text.private[access] ?? [] } };
   };
 
+  // The read-only switch on a text channel's edit (staff, with a mirror).
+  const readOnlyField = (kind: ChannelKind, id: number) => {
+    const mirror = kind === "text" ? textChannel(id)?.mumble : undefined;
+    if (!canManageText(server, text) || mirror === undefined) return {};
+    return { readOnly: { on: mirror in text.readOnly, speakers: text.readOnly[mirror] ?? [], users: speakerCandidates(server) } };
+  };
+
   const nameOf = (kind: ChannelKind, id: number) =>
     (kind === "text" ? textChannel(id) : kind === "category" ? text.categories.find((c) => c.id === id) : server.channels[id])?.name ?? "";
 
@@ -165,6 +174,7 @@ export const createChannelManagement = (current: () => Connection) => {
             ? { listenOnly: { on: id in text.listenOnly, speakers: text.listenOnly[id] ?? [], users: speakerCandidates(server) } }
             : {}),
           ...privateField(kind, id),
+          ...readOnlyField(kind, id),
           ...(kind === "text" && canModerate(server, text, accessChannel(kind, id, text.channels, text.categories))
             ? { slowMode: text.channels.find((c) => c.id === id)?.slowMode ?? 0 }
             : {}),
@@ -232,6 +242,9 @@ export const createChannelManagement = (current: () => Connection) => {
           if (v.description.trim() !== f.description) ask({ topic: id, text: v.description.trim() });
           if (v.slowMode !== undefined && v.slowMode !== f.slowMode) ask({ slowMode: id, seconds: v.slowMode });
           if (v.category !== undefined && f.categories && v.category !== f.category) ask({ setCategory: id, category: v.category });
+          const mirror = textChannel(id)?.mumble;
+          const readOnly = f.readOnly && v.readOnly && mirror !== undefined && readOnlyAction(mirror, f.readOnly, v.readOnly);
+          if (readOnly) ask(readOnly);
         } else {
           const changes = {
             ...(v.name !== f.name ? { name: v.name } : {}),

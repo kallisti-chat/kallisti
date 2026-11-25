@@ -18,6 +18,8 @@ export type ChannelForm =
       // Voice channels with the built-in server; users: who may become a
       // speaker.
       listenOnly?: ListenOnly & { users: Speaker[] };
+      // Text channels with a mirror (staff): the same for who may post.
+      readOnly?: ListenOnly & { users: Speaker[] };
       private?: { on: boolean; members: Member[] };
       // Text channels with the built-in server: seconds (see lib/slowMode).
       slowMode?: number;

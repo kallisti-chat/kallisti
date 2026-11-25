@@ -56,7 +56,8 @@ func (h *Hub) isPrivate(channel uint32) bool {
 }
 
 // sendAccess sends a client what depends on the channels it sees: the
-// text channels, the private channels, listen-only channels and streams.
+// text channels, the private, listen-only and read-only channels and
+// streams.
 func (c *Conn) sendAccess(id mumble.Identity) {
 	h := c.hub
 	c.send(h.channelsEvent(id))
@@ -65,6 +66,7 @@ func (c *Conn) sendAccess(id mumble.Identity) {
 	}
 	c.send(map[string]any{"type": "private", "channels": h.privateFor(id)})
 	c.send(map[string]any{"type": "listen-only", "channels": h.listenOnlyFor(id)})
+	c.send(map[string]any{"type": "read-only", "channels": h.readOnlyFor(id)})
 	if h.LiveStreams != nil {
 		c.send(map[string]any{"type": "streams", "streams": h.liveStreams(id)})
 	}

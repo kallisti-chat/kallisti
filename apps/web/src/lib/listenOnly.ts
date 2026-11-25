@@ -17,11 +17,17 @@ export const speakerCandidates = (server: ServerState): Speaker[] =>
 
 const speakerIds = (v: ListenOnly) => (v.on ? v.speakers.map((s) => s.id).sort((a, b) => a - b) : []);
 
+// The users to send after the dialog (null: no change); also for
+// read-only text channels.
+export const changedUsers = (before: ListenOnly, after: ListenOnly) => {
+  const ids = speakerIds(after);
+  return before.on === after.on && speakerIds(before).join() === ids.join() ? null : ids;
+};
+
 // What to ask the server for after the dialog (null: no change).
 export const listenOnlyAction = (channel: number, before: ListenOnly, after: ListenOnly) => {
-  const ids = speakerIds(after);
-  const same = before.on === after.on && speakerIds(before).join() === ids.join();
-  return same ? null : { listenOnly: channel, on: after.on, users: ids };
+  const users = changedUsers(before, after);
+  return users && { listenOnly: channel, on: after.on, users };
 };
 
 // Who is in a listen-only channel: whoever speaks there is a speaker, and

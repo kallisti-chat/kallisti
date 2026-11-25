@@ -10,7 +10,9 @@ import (
 
 // Listen-only channels: plain ACL entries in the channel, so Mumble
 // clients see and edit the same thing. "all" may not speak; each listed
-// user may.
+// user may. Read-only text channels (readonly.go) are the same for
+// TextMessage: p below is the permission that "all" lose and the listed
+// users keep.
 
 // Speaker is a registered user who may speak in a listen-only channel.
 type Speaker struct {
@@ -26,42 +28,43 @@ type ListenOnlyChannel struct {
 
 var listenOnlyDeny = ACL{ApplyHere: true, Group: "all", Deny: Speak}
 
-func isSpeakerEntry(a ACL) bool {
-	return a.HasUser && a.ApplyHere && a.Allow == Speak && a.Deny == 0
+func isUserAllow(a ACL, p Perm) bool {
+	return a.HasUser && a.ApplyHere && a.Allow == p && a.Deny == 0
 }
 
-// isDenyEntry: "all" may not speak here (also an entry from a Mumble
-// client, with more bits).
-func isDenyEntry(a ACL) bool {
-	return !a.HasUser && a.Group == "all" && a.ApplyHere && a.Deny&Speak != 0
+// isAllDeny: "all" may not do p here (also an entry from a Mumble client,
+// with more bits).
+func isAllDeny(a ACL, p Perm) bool {
+	return !a.HasUser && a.Group == "all" && a.ApplyHere && a.Deny&p != 0
 }
 
-// withoutListenOnly drops the speakers and takes Speak out of the denies.
-func withoutListenOnly(acls []ACL) []ACL {
+// withoutRestriction drops the users' entries and the other allows, and
+// takes p out of the denies.
+func withoutRestriction(acls []ACL, p Perm, allows []ACL) []ACL {
 	var out []ACL
 	for _, a := range acls {
-		if isDenyEntry(a) {
-			a.Deny &^= Speak
+		if isAllDeny(a, p) {
+			a.Deny &^= p
 			if a.Allow == 0 && a.Deny == 0 {
 				continue
 			}
 		}
-		if !isSpeakerEntry(a) {
+		if !isUserAllow(a, p) && !slices.Contains(allows, a) {
 			out = append(out, a)
 		}
 	}
 	return out
 }
 
-// listenOnlySpeakers: the channel's speakers, if "all" may not speak there
+// allowedUsers: the users who may do p in the channel, if "all" may not
 // (by an entry of its own, also one from a Mumble client).
-func listenOnlySpeakers(ch *Channel) ([]uint32, bool) {
+func allowedUsers(ch *Channel, p Perm) ([]uint32, bool) {
 	on := false
 	var ids []uint32
 	for _, a := range ch.ACLs {
-		if isDenyEntry(a) {
+		if isAllDeny(a, p) {
 			on = true
-		} else if isSpeakerEntry(a) {
+		} else if isUserAllow(a, p) {
 			ids = append(ids, a.UserID)
 		}
 	}
@@ -70,13 +73,19 @@ func listenOnlySpeakers(ch *Channel) ([]uint32, bool) {
 
 // ListenOnly lists the listen-only channels, with their speakers' names.
 func (s *Server) ListenOnly() []ListenOnlyChannel {
+	return s.restricted(Speak, func(id uint32) bool { return id != 0 && !s.state.mirror(id) })
+}
+
+// restricted lists the channels (of those kept, under mu) where "all" may
+// not do p, with the names of the users who may.
+func (s *Server) restricted(p Perm, keep func(id uint32) bool) []ListenOnlyChannel {
 	s.mu.Lock()
 	var out []ListenOnlyChannel
 	ids := map[uint32]bool{}
 	for _, id := range slices.Sorted(maps.Keys(s.state.Channels)) {
-		if speakers, on := listenOnlySpeakers(s.state.Channels[id]); on && id != 0 && !s.state.mirror(id) {
+		if users, on := allowedUsers(s.state.Channels[id], p); on && keep(id) {
 			c := ListenOnlyChannel{Channel: id}
-			for _, u := range speakers {
+			for _, u := range users {
 				c.Speakers = append(c.Speakers, Speaker{ID: u})
 				ids[u] = true
 			}
@@ -120,34 +129,46 @@ func (s *Server) userNames(ids []uint32) (map[uint32]string, error) {
 // registered users, or not. It needs Write in the channel (admins and
 // moderators).
 func (s *Server) SetListenOnly(actor, channel uint32, on bool, speakers []uint32) error {
-	if len(speakers) > maxACLEntries {
-		return errors.New("too many speakers")
+	return s.restrict(actor, channel, Speak, []ACL{listenOnlyDeny}, on, speakers, func(u *User) error {
+		switch {
+		case channel == 0 || s.state.mirror(channel):
+			return errors.New("only voice channels can be listen-only")
+		case s.state.aclPermissions(u, channel)&Write == 0: // not a channel moderator's (see modPermissions)
+			return errors.New("only admins and moderators make channels listen-only")
+		}
+		return nil
+	})
+}
+
+// restrict puts the entries (the deny for "all" first) and an allow of p
+// for each of the users into the channel, or takes them out. refuse
+// checks the actor and the channel, under mu.
+func (s *Server) restrict(actor, channel uint32, p Perm, entries []ACL, on bool, users []uint32, refuse func(*User) error) error {
+	if len(users) > maxACLEntries {
+		return errors.New("too many users")
 	}
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	known, err := s.registeredIDs(speakers) // DB lookups outside the lock
+	known, err := s.registeredIDs(users) // DB lookups outside the lock
 	if err != nil {
 		return errLookup
 	}
 	s.mu.Lock()
 	ch, u := s.state.Channels[channel], s.state.Users[actor]
-	switch {
-	case ch == nil || u == nil:
+	if ch == nil || u == nil {
 		s.mu.Unlock()
 		return errors.New("no such channel")
-	case channel == 0 || s.state.mirror(channel):
-		s.mu.Unlock()
-		return errors.New("only voice channels can be listen-only")
-	case s.state.aclPermissions(u, channel)&Write == 0: // not a channel moderator's (see modPermissions)
-		s.mu.Unlock()
-		return errors.New("only admins and moderators make channels listen-only")
 	}
-	ch.ACLs = withoutListenOnly(ch.ACLs)
+	if err := refuse(u); err != nil {
+		s.mu.Unlock()
+		return err
+	}
+	ch.ACLs = withoutRestriction(ch.ACLs, p, entries[1:])
 	if on {
-		ch.ACLs = append(ch.ACLs, listenOnlyDeny)
-		for _, id := range slices.Compact(slices.Sorted(slices.Values(speakers))) {
+		ch.ACLs = append(ch.ACLs, entries...)
+		for _, id := range slices.Compact(slices.Sorted(slices.Values(users))) {
 			if known[id] {
-				ch.ACLs = append(ch.ACLs, ACL{ApplyHere: true, HasUser: true, UserID: id, Allow: Speak})
+				ch.ACLs = append(ch.ACLs, ACL{ApplyHere: true, HasUser: true, UserID: id, Allow: p})
 			}
 		}
 	}
@@ -164,7 +185,8 @@ func (s *Server) SetListenOnly(actor, channel uint32, on bool, speakers []uint32
 	return nil
 }
 
-// listenOnlyChanged tells the Kallisti server (not under s.mu).
+// listenOnlyChanged tells the Kallisti server (not under s.mu): listen-only
+// or read-only channels can have changed.
 func (s *Server) listenOnlyChanged() {
 	if s.cfg.OnListenOnlyChanged != nil {
 		s.cfg.OnListenOnlyChanged()

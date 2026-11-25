@@ -177,7 +177,8 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 	streams, streamTokens := stream.New(sv), stream.NewTokens()
 	onMoved := func(session, _, to uint32) { streams.Moved(session, to) }
 	if hub != nil {
-		onRoles, onListenOnly, onPrivateChannels, onTimeouts = hub.RolesChanged, hub.ListenOnlyChanged, hub.PrivateChanged, hub.TimeoutsChanged
+		onRoles, onPrivateChannels, onTimeouts = hub.RolesChanged, hub.PrivateChanged, hub.TimeoutsChanged
+		onListenOnly = func() { hub.ListenOnlyChanged(); hub.ReadOnlyChanged() } // any ACL change
 		onGuestsReadOnly, onRecording = hub.GuestsReadOnlyChanged, hub.RecordingChanged
 		checkText = hub.MumbleTextAllowed
 		onUser, onPicture = hub.UserChanged, hub.PictureChanged
@@ -341,8 +342,16 @@ func (v voiceServer) Online() map[uint32]sidecar.OnlineUser {
 }
 
 func (v voiceServer) ListenOnly() []sidecar.ListenOnlyChannel {
+	return restricted(v.Server.ListenOnly())
+}
+
+func (v voiceServer) ReadOnlyChannels() []sidecar.ListenOnlyChannel {
+	return restricted(v.Server.ReadOnlyChannels())
+}
+
+func restricted(cs []mumbled.ListenOnlyChannel) []sidecar.ListenOnlyChannel {
 	var out []sidecar.ListenOnlyChannel
-	for _, c := range v.Server.ListenOnly() {
+	for _, c := range cs {
 		speakers := make([]sidecar.Speaker, len(c.Speakers))
 		for i, sp := range c.Speakers {
 			speakers[i] = sidecar.Speaker{ID: sp.ID, Name: sp.Name}

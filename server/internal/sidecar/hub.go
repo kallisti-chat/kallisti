@@ -78,6 +78,11 @@ type Voice interface {
 	// ListenOnly lists the listen-only voice channels (speaker lists are
 	// never nil).
 	ListenOnly() []ListenOnlyChannel
+	// SetReadOnlyChannel makes a text channel's mirror read-only for all
+	// but staff and the given registered users, or not (staff).
+	// ReadOnlyChannels lists them (Speakers: who may post).
+	SetReadOnlyChannel(session, channel uint32, on bool, posters []uint32) error
+	ReadOnlyChannels() []ListenOnlyChannel
 	// SyncTextTree keeps a Mumble channel per category and per text
 	// channel (in its category's, in order) and returns them.
 	SyncTextTree(cats []MirrorCategory, want []Mirror) (catIDs, ids []uint32, err error)
@@ -708,7 +713,7 @@ type request struct {
 	User          uint32           `json:"user"`                    // set-moderator, set-admin, dm, bio, delete-messages, recovery-link: registered user id
 	Moderator     bool             `json:"moderator"`               // set-moderator
 	Admin         bool             `json:"admin"`                   // set-admin
-	Users         []uint32         `json:"users"`                   // set-listen-only: who may speak
+	Users         []uint32         `json:"users"`                   // set-listen-only: who may speak; set-read-only: who may post
 	Messages      []int64          `json:"messages"`                // previews, file-links
 	Emoji         string           `json:"emoji"`                   // react; add-user-emoji, remove-emoji-image; sticker-token, rename-sticker: the related emoji
 	Sticker       int64            `json:"sticker"`                 // send: a sticker message; rename-sticker, delete-sticker
@@ -1003,6 +1008,14 @@ func (c *Conn) dispatch(user mumble.Identity, req request) {
 		if c.hub.voice == nil {
 			c.manageError("listen-only channels need the built-in Mumble server")
 		} else if err := c.hub.voice.SetListenOnly(id.Session, req.Voice, req.On, req.Users); err != nil {
+			c.manageError(err.Error())
+		}
+		return
+	case "set-read-only":
+		// The voice server reports the change (ReadOnlyChanged).
+		if c.hub.voice == nil {
+			c.manageError("read-only channels need the built-in Mumble server")
+		} else if err := c.hub.voice.SetReadOnlyChannel(id.Session, req.Voice, req.On, req.Users); err != nil {
 			c.manageError(err.Error())
 		}
 		return
@@ -1424,15 +1437,30 @@ func (h *Hub) RolesChanged() {
 	h.PrivateChanged() // staff see all channels
 }
 
-// listenOnly lists the listen-only voice channels (a list, never null in
-// JSON; Voice gives speaker lists).
-func (h *Hub) listenOnly() []ListenOnlyChannel {
-	return append([]ListenOnlyChannel{}, h.voice.ListenOnly()...)
-}
-
 // listenOnlyFor: the listen-only channels the user sees.
 func (h *Hub) listenOnlyFor(id mumble.Identity) []ListenOnlyChannel {
-	return slices.DeleteFunc(h.listenOnly(), func(c ListenOnlyChannel) bool { return !h.voice.Sees(id.Session, c.Channel) })
+	return h.seen(id, h.voice.ListenOnly())
+}
+
+// readOnlyFor: the read-only text channels (by mirror) the user sees.
+func (h *Hub) readOnlyFor(id mumble.Identity) []ListenOnlyChannel {
+	return h.seen(id, h.voice.ReadOnlyChannels())
+}
+
+// seen: the channels the user sees (a list, never null in JSON; Voice
+// gives user lists).
+func (h *Hub) seen(id mumble.Identity, cs []ListenOnlyChannel) []ListenOnlyChannel {
+	return slices.DeleteFunc(append([]ListenOnlyChannel{}, cs...), func(c ListenOnlyChannel) bool { return !h.voice.Sees(id.Session, c.Channel) })
+}
+
+// ReadOnlyChanged sends everyone the read-only text channels it sees.
+func (h *Hub) ReadOnlyChanged() {
+	if h.voice == nil {
+		return
+	}
+	h.eachReady(func(c *Conn, id mumble.Identity) {
+		c.send(map[string]any{"type": "read-only", "channels": h.readOnlyFor(id)})
+	})
 }
 
 // ListenOnlyChanged sends everyone the listen-only voice channels it sees.
