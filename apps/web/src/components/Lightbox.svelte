@@ -65,7 +65,8 @@
 <!-- On the window: a step button that ends disabled takes the focus away. -->
 <svelte:window
   onkeydown={(e) => {
-    if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.altKey && !e.metaKey && !e.ctrlKey) {
+    // Not from a video: there they seek.
+    if (!(e.target instanceof HTMLVideoElement) && (e.key === "ArrowLeft" || e.key === "ArrowRight") && !e.altKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       go(e.key === "ArrowRight" ? 1 : -1);
     }
@@ -94,6 +95,7 @@
     {#if item.video}
       <!-- Keyed: the next video starts at its beginning. -->
       {#key item.url}
+        <!-- svelte-ignore a11y_media_has_caption (uploads come without captions) -->
         <video src={item.url} poster={item.poster} controls playsinline aria-label={item.description || item.name}></video>
       {/key}
     {:else}

@@ -35,6 +35,14 @@ describe("Lightbox", () => {
     expect((media() as HTMLVideoElement).controls).toBe(true);
   });
 
+  it("leaves the arrow keys to a video that has the focus", () => {
+    open([item("p.png"), item("v.mp4", true)], 1);
+    const e = new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true });
+    media().dispatchEvent(e);
+    flushSync();
+    expect([media().getAttribute("src"), e.defaultPrevented]).toEqual(["v.mp4", false]);
+  });
+
   it("keeps the item shown while older ones come in", () => {
     const props = open([item("b"), item("c")], 1);
     props.items = [item("a"), item("b"), item("c")];
