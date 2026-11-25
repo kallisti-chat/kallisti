@@ -7,7 +7,7 @@ import Lightbox from "../src/components/Lightbox.svelte";
 HTMLDialogElement.prototype.showModal = function () { this.open = true; };
 HTMLDialogElement.prototype.close = function () { this.open = false; };
 
-type Item = { url: string; name: string; video?: boolean };
+type Item = { url: string; name: string; description?: string; video?: boolean };
 const item = (url: string, video?: boolean): Item => ({ url, name: url, ...(video && { video }) });
 let shown: ReturnType<typeof mount> | undefined;
 afterEach(async () => {
@@ -29,6 +29,19 @@ const key = (k: string) => {
 };
 
 describe("Lightbox", () => {
+  it.each([
+    { name: "a1b2c3d4e5f6.png", label: "Picture" },
+    { name: "SPOILER_a1b2c3d4e5f6.png", label: "Picture" },
+    { name: `${"a".repeat(64)}.png`, label: "Picture" },
+    { name: "a1b2c3d4e5f6.png", description: "A sunset", label: "A sunset" },
+    { name: "diagram-v2.png", label: "diagram-v2.png" },
+    { name: "a1b2c3d4e5f6.mp4", video: true, label: "a1b2c3d4e5f6.mp4" },
+  ])("labels $name as $label", ({ label, ...entry }) => {
+    open([{ url: "/files/example", ...entry }]);
+    expect(document.querySelector("dialog")?.getAttribute("aria-label")).toBe(label);
+    expect(media().getAttribute(entry.video ? "aria-label" : "alt")).toBe(label);
+  });
+
   it("plays a video", () => {
     open([item("p.png"), item("v.mp4", true)], 1);
     expect(media()).toBeInstanceOf(HTMLVideoElement);

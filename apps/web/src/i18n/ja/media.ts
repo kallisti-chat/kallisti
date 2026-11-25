@@ -2,6 +2,7 @@ import type en from "../en/media";
 import type { Translation } from "../types";
 
 export default {
+  "media.picture": "画像",
   "media.streams": "配信",
   "media.focusView": "フォーカス表示",
   "media.gridView": "グリッド表示",

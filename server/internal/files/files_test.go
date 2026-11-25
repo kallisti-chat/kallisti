@@ -88,11 +88,11 @@ func TestUploadAndServeAnImage(t *testing.T) {
 	}
 	key, _ := v["key"].(string)
 	name, _ := v["name"].(string)
-	if len(key) < 32 || len(name) != 68 || !strings.HasSuffix(name, ".png") || v["type"] != "image/png" || v["size"] != float64(len(img)) {
+	if len(key) < 32 || len(name) != 16 || !strings.HasSuffix(name, ".png") || v["type"] != "image/png" || v["size"] != float64(len(img)) {
 		t.Fatalf("response %v", v)
 	}
 	if _, err := hex.DecodeString(strings.TrimSuffix(name, ".png")); err != nil {
-		t.Fatalf("image name is not a hash: %q", name)
+		t.Fatalf("image name is not hexadecimal: %q", name)
 	}
 	u, err := s.UploadByKey(key)
 	if err != nil || u.Author != "alice" || u.Name != name {
@@ -139,13 +139,22 @@ func TestImageNamesAreUniqueAndPreserveSpoilers(t *testing.T) {
 }
 
 func TestImageDownloadsDoNotExposeOriginalNames(t *testing.T) {
-	srv, _ := setup(t, 1<<20)
-	for _, name := range []string{"IMG_private.HEIC", "private.tiff", "private.svg"} {
-		resp, v := upload(t, srv, "good", name, "application/octet-stream", []byte("sample image data"))
-		got, _ := v["name"].(string)
-		if resp.StatusCode != http.StatusOK || strings.Contains(got, "private") || !strings.HasSuffix(got, strings.ToLower(filepath.Ext(name))) || v["type"] != "application/octet-stream" {
-			t.Fatalf("%s: %d %v", name, resp.StatusCode, v)
-		}
+	for _, tc := range []struct {
+		name, ctype, ext string
+	}{
+		{"IMG_private.HEIC", "application/octet-stream", ".heic"},
+		{"private.tiff", "application/octet-stream", ".tiff"},
+		{"private.svg", "application/octet-stream", ".svg"},
+		{"private.unknown", "image/x-example", ".bin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv, _ := setup(t, 1<<20)
+			resp, v := upload(t, srv, "good", tc.name, tc.ctype, []byte("sample image data"))
+			got, _ := v["name"].(string)
+			if resp.StatusCode != http.StatusOK || len(got) != 12+len(tc.ext) || strings.Contains(got, "private") || !strings.HasSuffix(got, tc.ext) || v["type"] != "application/octet-stream" {
+				t.Fatalf("%s: %d %v", tc.name, resp.StatusCode, v)
+			}
+		})
 	}
 }
 

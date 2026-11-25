@@ -77,7 +77,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <dialog
   bind:this={dialog}
-  aria-label={item.description || (generatedImageName(item.name) ? t("admin.picture") : item.name)}
+  aria-label={item.description || (!item.video && generatedImageName(item.name) ? t("media.picture") : item.name)}
   onclose={onClose}
   onclick={(e) => {
     if (e.target === e.currentTarget || (e.target as Element).classList.contains("stage")) close();
@@ -100,7 +100,7 @@
         <video src={item.url} poster={item.poster} controls playsinline aria-label={item.description || item.name}></video>
       {/key}
     {:else}
-      <img src={item.url} alt={item.description || (generatedImageName(item.name) ? t("admin.picture") : item.name)} />
+      <img src={item.url} alt={item.description || (generatedImageName(item.name) ? t("media.picture") : item.name)} />
     {/if}
     {#if items.length > 1}
       <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label={t("media.viewerNext")}

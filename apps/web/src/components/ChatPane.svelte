@@ -2175,14 +2175,14 @@
     href={lightboxOf(upload).url}
     target="_blank"
     rel="noopener noreferrer"
-    aria-label={t("chat.viewImage", { name: upload.description || (generatedImageName(upload.name) ? t("admin.picture") : upload.name) })}
+    aria-label={t("chat.viewImage", { name: upload.description || (generatedImageName(upload.name) ? t("media.picture") : upload.name) })}
     onclick={(e) => {
       if (!opensLightbox(e)) return;
       e.preventDefault();
       lightbox = { start: Math.max(0, media().indexOf(upload)) };
     }}
   >
-    {@render picture(upload, upload.description || (generatedImageName(upload.name) ? t("admin.picture") : upload.name), fill)}
+    {@render picture(upload, upload.description || (generatedImageName(upload.name) ? t("media.picture") : upload.name), fill)}
   </a>
 {/snippet}
 

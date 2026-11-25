@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"cmp"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -168,8 +167,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	http.NewResponseController(w).SetReadDeadline(time.Now().Add(uploadTimeout))
 	key := randomKey()
 	dst := filepath.Join(h.Dir, key)
-	digest := sha256.New()
-	size, head, err := h.save(dst, io.TeeReader(r.Body, digest))
+	size, head, err := h.save(dst, r.Body)
 	switch {
 	case errors.Is(err, errTooLarge):
 		jsonError(w, "file too large", http.StatusRequestEntityTooLarge)
@@ -197,16 +195,7 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	// the first 512 bytes) have no size: downloads.
 	ctype := storedType(head, name)
 	media := measure(dst, ctype)
-	ext := imageExtension(ctype, name, r.Header.Get("Content-Type"))
-	if ext != "" {
-		// include the random upload key so identical images have distinct names.
-		io.WriteString(digest, key)
-		prefix := ""
-		if strings.HasPrefix(cleanName(name), "SPOILER_") {
-			prefix = "SPOILER_"
-		}
-		name = prefix + hex.EncodeToString(digest.Sum(nil)) + ext
-	}
+	name = imageUploadName(ctype, name, r.Header.Get("Content-Type"))
 	if isPicture(ctype) && media.Width == 0 {
 		ctype = "application/octet-stream"
 	}
@@ -220,6 +209,19 @@ func (h *Handler) upload(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"key": u.Key, "name": u.Name, "type": u.Type, "size": u.Size, "url": sidecar.FileURL(u),
 	})
+}
+
+// imageUploadName keeps the image-renaming policy in one place.
+func imageUploadName(ctype, name, declaredType string) string {
+	ext := imageExtension(ctype, name, declaredType)
+	if ext == "" {
+		return name
+	}
+	prefix := ""
+	if strings.HasPrefix(cleanName(name), "SPOILER_") {
+		prefix = "SPOILER_"
+	}
+	return prefix + randomKey()[:12] + ext
 }
 
 // imageExtension also recognizes common image downloads that cannot be shown inline.

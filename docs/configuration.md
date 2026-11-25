@@ -45,7 +45,7 @@ brackets.
   in front of a Murmur it is read at each start.
 - `UPLOAD_DIR` (`uploads`), `UPLOAD_MAX_MB` (10 per file),
   `UPLOAD_QUOTA_MB` (100 per user per day).
-  New image uploads get a unique hash-based filename and a suitable extension,
+  New image uploads get a random 12-character hexadecimal filename and a suitable extension,
   rather than sharing the original filename. Spoiler markers are preserved. This
   applies to detected pictures, common image extensions and uploads declared as
   images; an unrecognized image with neither an image extension nor an image
