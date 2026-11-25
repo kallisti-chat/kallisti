@@ -81,9 +81,9 @@ export default {
   "media.mute": "Silenciar",
   "media.unmute": "Dejar de silenciar",
 
-  "media.previousPicture": "La imagen anterior",
-  "media.nextPicture": "La imagen siguiente",
-  "media.pictureCount": "{index} de {count}",
+  "media.viewerBefore": "Anterior",
+  "media.viewerNext": "Siguiente",
+  "media.viewerCount": "{index} de {count}",
   "media.downloadOriginal": "Descargar original",
   "media.openOriginal": "Abrir original",
 

@@ -82,9 +82,9 @@ export default {
   "media.mute": "Couper le son",
   "media.unmute": "Rétablir le son",
 
-  "media.previousPicture": "L'image précédente",
-  "media.nextPicture": "L'image suivante",
-  "media.pictureCount": "{index} sur {count}",
+  "media.viewerBefore": "Précédent",
+  "media.viewerNext": "Suivant",
+  "media.viewerCount": "{index} sur {count}",
   "media.downloadOriginal": "Télécharger l'original",
   "media.openOriginal": "Ouvrir l'original",
 

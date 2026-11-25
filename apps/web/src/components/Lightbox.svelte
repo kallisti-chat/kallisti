@@ -2,12 +2,13 @@
   import { step, swipeStep } from "../lib/fileGrid";
   import { t } from "../lib/i18n.svelte";
 
-  // Images large over the app, one at a time from `start`: the arrow keys,
-  // the buttons or a swipe go to the next or the one before. Closes with
-  // Escape, the button, or a click outside the image; the browser puts
-  // focus back. download: the original of a picture shown by its preview
-  // (see lib/media lightboxOf); description: its alt text.
-  type Item = { url: string; name: string; download?: string; description?: string };
+  // Pictures and videos large over the app, one at a time from `start`:
+  // the arrow keys, the buttons or a swipe go to the next or the one
+  // before. Closes with Escape, the button, or a click outside the image;
+  // the browser puts focus back. download: the original of a picture shown
+  // by its preview (see lib/media lightboxOf); description: its alt text;
+  // video: a player with poster.
+  type Item = { url: string; name: string; download?: string; description?: string; video?: boolean; poster?: string };
   let { items, start = 0, onClose }: { items: readonly Item[]; start?: number; onClose: () => void } = $props();
   // svelte-ignore state_referenced_locally
   let index = $state(start); // each opening is a new Lightbox
@@ -51,11 +52,18 @@
 >
   <div class="stage">
     {#if items.length > 1}
-      <button type="button" class="step before" disabled={index === 0} onclick={() => go(-1)} aria-label={t("media.previousPicture")}>‹</button>
+      <button type="button" class="step before" disabled={index === 0} onclick={() => go(-1)} aria-label={t("media.viewerBefore")}>‹</button>
     {/if}
-    <img src={item.url} alt={item.description || item.name} />
+    {#if item.video}
+      <!-- Keyed: the next video starts at its beginning. -->
+      {#key item.url}
+        <video src={item.url} poster={item.poster} controls playsinline aria-label={item.description || item.name}></video>
+      {/key}
+    {:else}
+      <img src={item.url} alt={item.description || item.name} />
+    {/if}
     {#if items.length > 1}
-      <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label={t("media.nextPicture")}
+      <button type="button" class="step next" disabled={index === items.length - 1} onclick={() => go(1)} aria-label={t("media.viewerNext")}
         >›</button
       >
     {/if}
@@ -66,7 +74,7 @@
   <footer>
     <span class="name ellipsis">{item.name}</span>
     {#if items.length > 1}
-      <span class="count" aria-live="polite">{t("media.pictureCount", { index: index + 1, count: items.length })}</span>
+      <span class="count" aria-live="polite">{t("media.viewerCount", { index: index + 1, count: items.length })}</span>
     {/if}
     {#if item.download}
       <a href={item.download}>{t("media.downloadOriginal")}</a>
@@ -107,7 +115,8 @@
     justify-content: center;
     padding: 24px;
   }
-  img {
+  img,
+  video {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;

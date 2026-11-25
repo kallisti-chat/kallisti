@@ -81,9 +81,9 @@ export default {
   "media.mute": "静音",
   "media.unmute": "取消静音",
 
-  "media.previousPicture": "上一张图片",
-  "media.nextPicture": "下一张图片",
-  "media.pictureCount": "第 {index} 张，共 {count} 张",
+  "media.viewerBefore": "上一个",
+  "media.viewerNext": "下一个",
+  "media.viewerCount": "第 {index} 个，共 {count} 个",
   "media.downloadOriginal": "下载原图",
   "media.openOriginal": "打开原图",
 

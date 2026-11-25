@@ -87,10 +87,10 @@ export default {
   "media.mute": "Mute",
   "media.unmute": "Unmute",
 
-  // The large picture view.
-  "media.previousPicture": "The picture before",
-  "media.nextPicture": "The next picture",
-  "media.pictureCount": "{index} of {count}",
+  // The viewer of pictures and videos.
+  "media.viewerBefore": "Previous",
+  "media.viewerNext": "Next",
+  "media.viewerCount": "{index} of {count}",
   "media.downloadOriginal": "Download original",
   "media.openOriginal": "Open original",
 
