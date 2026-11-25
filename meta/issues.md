@@ -35,5 +35,3 @@
 
 - [ ] [Code audit follow-ups](issues/code-audit-followups.md)
   - [ ] [Desktop macOS: declare camera privacy permissions](issues/macos-camera-permissions.md)
-- [ ] [Arrow keys through all media of a channel](issues/channel-media-viewer.md)
-- [ ] [Read-only text channels](issues/read-only-channels.md)

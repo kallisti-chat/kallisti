@@ -411,3 +411,5 @@
 - [x] [Claimed users keep their certificate](issues/claimed-users-keep-their-certificate.md)
 - [x] [Agent API: a stream of events, and reactions](issues/agent-api-events-and-reactions.md)
 - [x] [Whisper, shout and priority speaker in the web client](issues/web-whisper-and-priority-speaker.md)
+- [x] [Arrow keys through all media of a channel](issues/channel-media-viewer.md)
+- [x] [Read-only text channels](issues/read-only-channels.md)
