@@ -3133,3 +3133,7 @@ pwm reported choppy voice for the others when the phone's screen goes off (Andro
 ## 2026-11-24: TestFlight 0.15.0 (0.15.0.7)
 
 The v0.15.0 release, the first iOS build since 0.11.0.6. Same steps as before: `tauri ios build --export-method app-store-connect --build-number 7`, then `xcodebuild -exportArchive` with destination upload and `-allowProvisioningUpdates`. The Xcode sign-in had expired again ("No Accounts"); after the user signed in, the upload worked without a new build.
+
+## 2026-11-25: The viewer goes through all media of a chat
+
+kaia asked for the arrow keys to go through a channel's pictures and videos. The viewer opened from a picture now gets all pictures and videos of the loaded messages in the order the chat shows them (`chatMedia` in lib/lightbox.ts: a message's grid of pictures first), without spoilers still hidden and without blocked users' messages still hidden. Videos play in the viewer; a video clicked in the chat still plays where it is (the viewer is for looking through, the inline player stays the quick way). A step back from the first item loads older messages page by page with the jump paging (`jumpStep`, ten pages at most) and goes on; the item shown is kept by URL while the list grows, so the count changes ("3 of 12" becomes "8 of 17") but the picture does not. The viewer's texts no longer say "picture". Not checked in a browser: the component tests run in jsdom.

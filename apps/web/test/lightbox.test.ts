@@ -22,7 +22,7 @@ describe("chatMedia", () => {
   type U = { url: string; type: string; spoiler?: true };
   const file = (url: string, type = "image/png", spoiler?: true): U => ({ url, type, ...(spoiler && { spoiler }) });
   const msg = (actorName: string, at: number, uploads: U[]) =>
-    ({ actor: null, actorName, channelIds: [], treeIds: [], sessions: [], text: "", at, uploads }) as ChatMessage;
+    ({ actor: null, actorName, channelIds: [], treeIds: [], sessions: [], peer: null, text: "", at, uploads }) as ChatMessage;
   const view = (u: U) => u.type.split("/")[0]!;
   const urls = (items: ChatItem[], opened = () => false, hidden = (u: U) => !!u.spoiler) =>
     chatMedia<U>(items, opened, view, hidden).map((u) => u.url);
