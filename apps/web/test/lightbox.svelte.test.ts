@@ -34,4 +34,23 @@ describe("Lightbox", () => {
     expect(media()).toBeInstanceOf(HTMLVideoElement);
     expect((media() as HTMLVideoElement).controls).toBe(true);
   });
+
+  it("keeps the item shown while older ones come in", () => {
+    const props = open([item("b"), item("c")], 1);
+    props.items = [item("a"), item("b"), item("c")];
+    flushSync();
+    expect([media().getAttribute("src"), count()]).toEqual(["c", "3 of 3"]);
+  });
+
+  it("loads older messages before the first item, then steps on into them", () => {
+    const props = open([item("b"), item("c")]);
+    key("ArrowLeft");
+    expect(props.onOlder).toHaveBeenCalledOnce();
+    props.loading = true;
+    flushSync();
+    props.items = [item("a"), item("b"), item("c")];
+    props.loading = false;
+    flushSync();
+    expect([media().getAttribute("src"), count()]).toEqual(["a", "1 of 3"]);
+  });
 });

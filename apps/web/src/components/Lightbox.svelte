@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { step, swipeStep } from "../lib/fileGrid";
+  import { untrack } from "svelte";
+  import { swipeStep } from "../lib/fileGrid";
+  import { jumpStep } from "../lib/jump";
+  import { viewerStep } from "../lib/lightbox";
   import { t } from "../lib/i18n.svelte";
 
   // Pictures and videos large over the app, one at a time from `start`:
@@ -9,11 +12,45 @@
   // by its preview (see lib/media lightboxOf); description: its alt text;
   // video: a player with poster.
   type Item = { url: string; name: string; download?: string; description?: string; video?: boolean; poster?: string };
-  let { items, start = 0, onClose }: { items: readonly Item[]; start?: number; onClose: () => void } = $props();
+  // more: a chat's older messages can load (onOlder; loading: meanwhile).
+  let {
+    items,
+    start = 0,
+    more = false,
+    loading = false,
+    onOlder,
+    onClose,
+  }: { items: readonly Item[]; start?: number; more?: boolean; loading?: boolean; onOlder?: () => void; onClose: () => void } = $props();
+  // By URL: the list grows while it is open (older messages above, new
+  // ones below), and the item shown stays.
   // svelte-ignore state_referenced_locally
-  let index = $state(start); // each opening is a new Lightbox
+  let at = $state(items[start]?.url); // each opening is a new Lightbox
+  const index = $derived(Math.max(0, items.findIndex((i) => i.url === at)));
   const item = $derived(items[index] ?? items[0]!);
-  const go = (by: number) => (index = step(index, by, items.length));
+  // A step back from the first item loads older messages, page by page
+  // until one has media (a few pages at most, see jumpStep), then goes on.
+  const hasOlder = $derived(more && !!onOlder);
+  let seeking = $state(false);
+  let pages = 0;
+  const go = (by: number) => {
+    const next = viewerStep(index, by, items.length, hasOlder);
+    seeking = next === "older";
+    pages = 0;
+    if (next !== "older") at = items[next]?.url;
+  };
+  $effect(() => {
+    if (!seeking) return;
+    const next = jumpStep({ loaded: index > 0, more, loading, pages });
+    untrack(() => {
+      if (next === "load") {
+        pages++;
+        onOlder?.();
+      } else if (next !== "wait") {
+        seeking = false;
+        if (next === "jump") at = items[index - 1]?.url;
+      }
+    });
+  });
   let swipeFrom: { x: number; y: number } | null = null;
 
   let dialog: HTMLDialogElement | undefined = $state();
@@ -51,8 +88,8 @@
   onpointercancel={() => (swipeFrom = null)}
 >
   <div class="stage">
-    {#if items.length > 1}
-      <button type="button" class="step before" disabled={index === 0} onclick={() => go(-1)} aria-label={t("media.viewerBefore")}>‹</button>
+    {#if items.length > 1 || hasOlder}
+      <button type="button" class="step before" disabled={index === 0 && !hasOlder} onclick={() => go(-1)} aria-label={t("media.viewerBefore")}>‹</button>
     {/if}
     {#if item.video}
       <!-- Keyed: the next video starts at its beginning. -->
