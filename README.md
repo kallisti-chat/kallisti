@@ -99,7 +99,7 @@ of building it, Compose can pull the published image
 | Channel recording | ✓ | – |
 | Slow mode, word and link filter, new-account limits, captcha | ✓ | – |
 | Read-only guests, deleting many messages at once | ✓ | – |
-| Listen-only channels, channel moderators | ✓ | – |
+| Listen-only and read-only channels, channel moderators | ✓ | – |
 | Push notifications; the same account on several devices | ✓ | – |
 
 ### For people with Mumble clients
@@ -142,8 +142,8 @@ On top of that, they get these things, without installing anything:
   stream's sound reaches them as a separate user (the picture is for the
   web app and the desktop app).
 - **Channels as they know them.** Text channel categories and invite-only
-  channels are Mumble channels with ACLs; listen-only channels and channel
-  moderators are plain ACLs and groups they can see.
+  channels are Mumble channels with ACLs; listen-only and read-only
+  channels and channel moderators are plain ACLs and groups they can see.
 - **The same rules.** Slow mode, the word and link filter and the limits for
   new accounts also apply to what they write; when a channel is recorded,
   they are told when they enter.

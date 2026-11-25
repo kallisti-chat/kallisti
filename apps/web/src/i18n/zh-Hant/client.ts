@@ -47,6 +47,7 @@ export default {
   "client.uploadStep": "正在上傳第 {n} 個，共 {total} 個…",
   "client.timedOut": "你已被禁言，直到 {until}。",
   "client.timedOutChannel": "你在這個頻道已被禁言，直到 {until}。",
+  "client.readOnlyChannel": "只有部分的人可以在這個頻道發文。",
   "client.deleteThreadConfirm": "要刪除討論串「{name}」及其訊息嗎？",
   "client.createThread": "建立討論串",
   "client.renameThread": "重新命名討論串",

@@ -23,6 +23,7 @@
       description: string;
       temporary: boolean;
       listenOnly?: ListenOnly;
+      readOnly?: ListenOnly;
       private?: boolean;
       slowMode?: number;
       category?: number;
@@ -41,8 +42,13 @@
   let category = $state(startCategory ?? 0);
   let name = $state(start.mode === "create" ? "" : start.name);
   let description = $state(start.mode === "edit" ? start.description : "");
-  // Voice channels with the built-in server.
-  const startListenOnly = start.mode === "edit" ? start.listenOnly : undefined;
+  // Voice channels with the built-in server: listen only; text channels
+  // (staff): read only. Both are a switch and a list of users.
+  const readOnly = start.mode === "edit" && !!start.readOnly;
+  const startListenOnly = start.mode === "edit" ? (start.listenOnly ?? start.readOnly) : undefined;
+  const words = readOnly
+    ? ({ name: "admin.readOnly", note: "admin.readOnlyNote", who: "admin.whoCanPost", add: "admin.addPoster", nobody: "admin.nobodyCanPost" } as const)
+    : ({ name: "admin.listenOnly", note: "admin.listenOnlyNote", who: "admin.whoCanSpeak", add: "admin.addSpeaker", nobody: "admin.nobodyCanSpeak" } as const);
   let listenOnly = $state(startListenOnly?.on ?? false);
   let speakers = $state<Speaker[]>(startListenOnly?.speakers ?? []);
   const addable = $derived((startListenOnly?.users ?? []).filter((u) => !speakers.some((s) => s.id === u.id)));
@@ -82,7 +88,7 @@
       name: name.trim(),
       description,
       temporary,
-      ...(startListenOnly ? { listenOnly: { on: listenOnly, speakers } } : {}),
+      ...(startListenOnly ? { [readOnly ? "readOnly" : "listenOnly"]: { on: listenOnly, speakers } } : {}),
       ...(canPrivate ? { private: isPrivate } : {}),
       ...(startSlowMode !== undefined ? { slowMode } : {}),
       ...(startCategory !== undefined && kind === "text" ? { category } : {}),
@@ -151,13 +157,13 @@
         <label class="check">
           <input type="checkbox" bind:checked={listenOnly} />
           <span>
-            {t("admin.listenOnly")}
-            <span class="note">{t("admin.listenOnlyNote")}</span>
+            {t(words.name)}
+            <span class="note">{t(words.note)}</span>
           </span>
         </label>
         {#if listenOnly}
           <div class="speakers">
-            <span class="label">{t("admin.whoCanSpeak")}</span>
+            <span class="label">{t(words.who)}</span>
             {#if speakers.length}
               <ul>
                 {#each speakers as s (s.id)}
@@ -169,12 +175,12 @@
               </ul>
             {/if}
             {#if addable.length}
-              <select aria-label={t("admin.addSpeaker")} value="" onchange={addSpeaker}>
+              <select aria-label={t(words.add)} value="" onchange={addSpeaker}>
                 <option value="" disabled>{t("admin.addSpeakerOption")}</option>
                 {#each addable as u (u.id)}<option value={String(u.id)}>{u.name}</option>{/each}
               </select>
             {:else if !speakers.length}
-              <p class="note">{t("admin.nobodyCanSpeak")}</p>
+              <p class="note">{t(words.nobody)}</p>
             {/if}
           </div>
         {/if}

@@ -47,6 +47,7 @@ export default {
   "client.uploadStep": "Subiendo {n} de {total}…",
   "client.timedOut": "Estás en aislamiento temporal hasta {until}.",
   "client.timedOutChannel": "Estás en aislamiento temporal en este canal hasta {until}.",
+  "client.readOnlyChannel": "En este canal solo pueden escribir algunas personas.",
   "client.deleteThreadConfirm": "¿Eliminar el hilo “{name}” y sus mensajes?",
   "client.createThread": "Crear hilo",
   "client.renameThread": "Renombrar hilo",

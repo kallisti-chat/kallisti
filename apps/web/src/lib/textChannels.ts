@@ -151,6 +151,7 @@ export type ServerEvent =
       avatars?: boolean;
       roles?: Roles;
       listenOnly?: ListenOnlyChannel[];
+      readOnly?: ListenOnlyChannel[];
       private?: PrivateChannel[];
       timeouts?: Timeout[];
       channelTimeouts?: ChannelTimeout[];
@@ -226,6 +227,8 @@ export type ServerEvent =
   | { type: "recording-token"; token: string }
   // The listen-only voice channels changed.
   | { type: "listen-only"; channels: ListenOnlyChannel[] }
+  // The read-only text channels changed (speakers: who may post).
+  | { type: "read-only"; channels: ListenOnlyChannel[] }
   // The private channels we see changed (or their members).
   | { type: "private"; channels: PrivateChannel[] }
   // A private channel's invite links (for staff), a new link's token
@@ -345,6 +348,8 @@ export type TextState = {
   roles: Roles;
   // Listen-only voice channels: their speakers.
   listenOnly: Readonly<Record<number, Speaker[]>>;
+  // Read-only text channels, by mirror: who may post there (and staff).
+  readOnly: Readonly<Record<number, Speaker[]>>;
   // Private channels we see, by Mumble channel (a voice channel, or a
   // text channel's mirror): their members (for admins and moderators;
   // others get none).
@@ -445,6 +450,7 @@ export const initialTextState: TextState = {
   avatars: false,
   roles: { admins: [], moderators: [] },
   listenOnly: {},
+  readOnly: {},
   private: {},
   inherited: {},
   invites: {},
@@ -678,6 +684,7 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         ...(v.avatars === true ? { avatars: true } : {}),
         ...(roles ? { roles } : {}),
         ...(isListenOnly(v.listenOnly) ? { listenOnly: v.listenOnly } : {}),
+        ...(isListenOnly(v.readOnly) ? { readOnly: v.readOnly } : {}),
         ...(isPrivateList(v.private) ? { private: v.private } : {}),
         ...(isTimeouts(v.timeouts) ? { timeouts: v.timeouts } : {}),
         ...(isChannelTimeouts(v.channelTimeouts) ? { channelTimeouts: v.channelTimeouts } : {}),
@@ -735,6 +742,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
     }
     case "listen-only":
       return isListenOnly(v.channels) ? { type: "listen-only", channels: v.channels } : null;
+    case "read-only":
+      return isListenOnly(v.channels) ? { type: "read-only", channels: v.channels } : null;
     case "private":
       return isPrivateList(v.channels) ? { type: "private", channels: v.channels } : null;
     case "invites":
@@ -946,6 +955,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
         online: event.online ?? {},
         bios: {},
         listenOnly: listenOnlyMap(event.listenOnly ?? []),
+        readOnly: listenOnlyMap(event.readOnly ?? []),
         private: privateMap(event.private ?? []),
         inherited: inheritedMap(event.private ?? []),
         timeouts: event.timeouts ?? [],
@@ -1000,6 +1010,8 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       return { ...state, bios: { ...state.bios, [event.user]: event.text } };
     case "listen-only":
       return { ...state, listenOnly: listenOnlyMap(event.channels) };
+    case "read-only":
+      return { ...state, readOnly: listenOnlyMap(event.channels) };
     case "private":
       return { ...state, private: privateMap(event.channels), inherited: inheritedMap(event.channels) };
     case "invites":
@@ -1321,6 +1333,7 @@ export type ManageAction =
   // A registered user a moderator of a Mumble channel, or not (staff).
   | { channelModerator: number; channel: number; on: boolean }
   | { listenOnly: number; on: boolean; users: number[] }
+  | { readOnly: number; on: boolean; users: number[] }
   | { topic: number; text: string }
   | { slowMode: number; seconds: number }
   // Moderation, by voice server session: a ban for some seconds (0: for
@@ -1381,6 +1394,7 @@ const manageBody = (a: ManageAction) => {
   if ("admin" in a) return { type: "set-admin", user: a.admin, admin: a.on };
   if ("channelModerator" in a) return { type: "set-channel-moderator", user: a.channelModerator, voice: a.channel, on: a.on };
   if ("listenOnly" in a) return { type: "set-listen-only", voice: a.listenOnly, on: a.on, users: a.users };
+  if ("readOnly" in a) return { type: "set-read-only", voice: a.readOnly, on: a.on, users: a.users };
   if ("topic" in a) return { type: "set-topic", channel: a.topic, text: a.text };
   if ("slowMode" in a) return { type: "set-slow-mode", channel: a.slowMode, seconds: a.seconds };
   if ("ban" in a) return { type: "ban", session: a.ban, text: a.reason, seconds: a.seconds };

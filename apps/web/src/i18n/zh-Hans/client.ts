@@ -47,6 +47,7 @@ export default {
   "client.uploadStep": "正在上传第 {n} 个，共 {total} 个…",
   "client.timedOut": "你已被禁言，直到 {until}。",
   "client.timedOutChannel": "你在此频道已被禁言，直到 {until}。",
+  "client.readOnlyChannel": "只有部分人员可以在此频道发帖。",
   "client.deleteThreadConfirm": "删除子区“{name}”及其消息？",
   "client.createThread": "创建子区",
   "client.renameThread": "重命名子区",

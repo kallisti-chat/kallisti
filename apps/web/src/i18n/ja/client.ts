@@ -47,6 +47,7 @@ export default {
   "client.uploadStep": "アップロード中 ({n}/{total})…",
   "client.timedOut": "{until} までタイムアウト中です。",
   "client.timedOutChannel": "このチャンネルでは {until} までタイムアウト中です。",
+  "client.readOnlyChannel": "このチャンネルに投稿できるのは一部の人だけです。",
   "client.deleteThreadConfirm": "スレッド「{name}」とそのメッセージを削除しますか？",
   "client.createThread": "スレッドを作成",
   "client.renameThread": "スレッドの名前を変更",

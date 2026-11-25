@@ -3133,3 +3133,7 @@ pwm reported choppy voice for the others when the phone's screen goes off (Andro
 ## 2026-11-24: TestFlight 0.15.0 (0.15.0.7)
 
 The v0.15.0 release, the first iOS build since 0.11.0.6. Same steps as before: `tauri ios build --export-method app-store-connect --build-number 7`, then `xcodebuild -exportArchive` with destination upload and `-allowProvisioningUpdates`. The Xcode sign-in had expired again ("No Accounts"); after the user signed in, the upload worked without a new build.
+
+## 2026-11-25: Read-only text channels
+
+kaia asked for channels such as #announcements where only some people post. A text channel's settings now have "Read only" and a list of who else may post, as "Listen only" for voice. Underneath it is the mirror's ACL: deny TextMessage to `all`, allow it to `admin`, `moderator` and each listed user. The allows for staff are needed: staff have no Write in mirrors, so the deny would take their right away too. Every post checks TextMessage already, so the web client, the agent API and Mumble clients get the same rule. The deny also applies to subchannels, so it differs from a category's own entry (a mirror with the category's entry counted as a category). `listenonly.go` now has the shared code for both. Web clients get a `read-only` list (by mirror) in ready, after each ACL change and after an access change; who cannot post sees "Only some people can post in this channel." in the message box. Reactions and threads also need TextMessage, so they are off there for others.
