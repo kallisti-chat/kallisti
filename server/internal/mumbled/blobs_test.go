@@ -177,13 +177,15 @@ func TestGuestsCannotSetAnAvatar(t *testing.T) {
 }
 
 func TestACommentSetBeforeRegisteringIsKept(t *testing.T) {
-	addr, _ := adminServer(t)
+	addr, db := adminServer(t)
 	cert := clientCert(t)
 	alice := dialAs(t, addr, dialOpts{name: "alice", cert: cert})
 	alice.send(mumble.TypeUserState, &pb.UserState{Session: proto.Uint32(alice.session), Comment: proto.String("before")})
 	alice.waitForState(alice.session, func(m *pb.UserState) bool { return m.Comment != nil })
 	alice.send(mumble.TypeUserState, &pb.UserState{Session: proto.Uint32(alice.session), UserId: proto.Uint32(0)})
-	waitForUserID(t, alice, alice.session)
+	id := waitForUserID(t, alice, alice.session)
+	// The comment is saved just after the server sends the new id.
+	eventually(t, func() bool { c, _, err := db.UserContent(id); return err == nil && c == "before" })
 	alice.conn.Close()
 	again, _ := tryDialWith(t, addr, dialOpts{name: "alice", cert: cert})
 	for {
