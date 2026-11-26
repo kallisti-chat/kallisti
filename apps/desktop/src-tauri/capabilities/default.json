@@ -7,6 +7,7 @@
   ],
   "permissions": [
     "core:default",
+    "core:window:allow-set-fullscreen",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "notification:allow-is-permission-granted",
