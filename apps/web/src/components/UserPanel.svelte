@@ -180,7 +180,7 @@
   }
   .item:hover {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .dot {
     width: 10px;

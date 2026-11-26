@@ -218,7 +218,7 @@
   }
   .foot button.primary {
     background: var(--accent-strong);
-    color: #fff;
+    color: var(--text-on-accent);
   }
   .foot button:disabled {
     opacity: 0.5;

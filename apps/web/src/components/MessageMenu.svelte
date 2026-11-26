@@ -46,7 +46,7 @@
   button:hover,
   button:focus-visible {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .danger {
     color: var(--danger);

@@ -89,8 +89,8 @@
     border: 3px solid var(--bg-rail);
     border-radius: 8px;
     box-sizing: content-box;
-    background: #c62f32; /* in both themes: white on it is readable */
-    color: white;
+    background: var(--badge);
+    color: var(--text-on-accent);
     font-size: 11px;
     font-weight: 700;
     line-height: 16px;
@@ -125,6 +125,6 @@
   .server.active,
   .server:hover:not(:disabled) {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
 </style>

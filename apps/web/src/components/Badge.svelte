@@ -16,7 +16,7 @@
     padding: 0 4px;
     border-radius: 8px;
     background: var(--danger);
-    color: white;
+    color: var(--text-on-accent);
     font-size: 11px;
     font-weight: 700;
     line-height: 16px;

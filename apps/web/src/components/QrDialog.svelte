@@ -53,7 +53,7 @@
   }
   dialog :global(.primary) {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   dialog :global(.secondary) {
     background: none;

@@ -122,7 +122,7 @@
     padding: 6px 10px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .item {
     width: 100%;
@@ -134,7 +134,7 @@
   }
   .item:hover {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .danger {
     color: var(--danger);

@@ -970,7 +970,7 @@
     padding: 4px 12px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: #fff;
+    color: var(--text-on-accent);
     font-weight: 600;
   }
   .update .close {

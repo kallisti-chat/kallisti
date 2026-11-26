@@ -306,7 +306,7 @@
   }
   button:hover {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .volume {
     display: flex;
