@@ -2,12 +2,12 @@ package mumbled
 
 import "errors"
 
-// random image names are read atomically for every new image upload.
+// RandomImageNames reads the image filename policy atomically for every upload.
 func (s *Server) RandomImageNames() bool {
 	return s.randomImageNames.Load()
 }
 
-// save the image filename policy before publishing it (admins only).
+// SetRandomImageNames saves the image filename policy before publishing it (admins only).
 func (s *Server) SetRandomImageNames(actor uint32, enabled bool) (bool, error) {
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()

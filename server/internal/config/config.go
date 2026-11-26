@@ -131,6 +131,7 @@ func parsePush(getenv func(string) string) (Push, error) {
 
 // Builtin configures the built-in Mumble server.
 type Builtin struct {
+	// UploadRandomImageNames is the initial policy; a saved admin choice takes precedence.
 	UploadRandomImageNames bool
 	Listen                 string // TCP and UDP for Mumble clients
 	// PublicPort: the Mumble port as clients reach it (the apps send voice
