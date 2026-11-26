@@ -3,6 +3,7 @@
 import copy
 import json
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -19,6 +20,36 @@ def template(references=None, *, use_fixture=True):
     if references is not None:
         command.extend(["--set-json", "imagePullSecrets=" + json.dumps(references)])
     return subprocess.run(command, text=True, capture_output=True, check=False)
+
+
+class ReleaseImagesTest(unittest.TestCase):
+    def test_release_defaults_and_image_overrides(self):
+        metadata = yaml.safe_load((CHART / "Chart.yaml").read_text())
+        defaults = yaml.safe_load((CHART / "values.yaml").read_text())
+        fixture = yaml.safe_load(FIXTURE.read_text())
+        overrides = fixture.pop("images")
+        for images in (defaults["images"], overrides):
+            with self.subTest(images=images), tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as values:
+                settings = copy.deepcopy(fixture)
+                if images is overrides:
+                    settings["images"] = images
+                yaml.safe_dump(settings, values)
+                values.flush()
+                rendered = subprocess.run(
+                    ["helm", "template", "kallisti", str(CHART), "-f", values.name],
+                    text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(rendered.returncode, 0, rendered.stderr)
+                deployment = next(item for item in yaml.safe_load_all(rendered.stdout)
+                                  if item["kind"] == "Deployment")
+                containers = {c["name"]: c["image"] for c in
+                              deployment["spec"]["template"]["spec"]["containers"]}
+                self.assertEqual(containers["kallisti"], images["app"])
+                self.assertEqual(containers["cert-sync"], images["certSync"])
+        self.assertEqual(defaults["images"]["app"],
+                         "ghcr.io/kallisti-chat/kallisti:" + metadata["appVersion"])
+        self.assertEqual(defaults["images"]["certSync"],
+                         "ghcr.io/kallisti-chat/kallisti-cert-sync:" + metadata["appVersion"])
 
 
 class ImagePullSecretsTest(unittest.TestCase):

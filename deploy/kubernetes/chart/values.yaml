@@ -1,8 +1,8 @@
 # This chart is a template, not an installable default. See deploy/kubernetes/README.md.
 host: ""
 images:
-  app: ""
-  certSync: ""
+  app: ghcr.io/kallisti-chat/kallisti:0.15.0
+  certSync: ghcr.io/kallisti-chat/kallisti-cert-sync:0.15.0
   caddy: docker.io/library/caddy:2.11.3-alpine
 storage:
   className: ""  # empty uses the cluster's default StorageClass
