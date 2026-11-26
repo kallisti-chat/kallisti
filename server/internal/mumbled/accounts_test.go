@@ -94,6 +94,8 @@ func TestSelfRegistration(t *testing.T) {
 	alice.move(alice.session, games)
 	alice.waitForMove(alice.session, games)
 	alice.conn.Close()
+	// The last channel is saved when the server sees the disconnect.
+	eventually(t, func() bool { r, err := db.UserByID(id); return err == nil && r.LastChannel == games })
 
 	// Back with the same certificate, under another name: the registered
 	// name, the same id, and the last channel.
