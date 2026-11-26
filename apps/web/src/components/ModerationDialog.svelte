@@ -74,6 +74,8 @@
     onDeleteRegistrationInvite,
     guestsReadOnly = null,
     onGuestsReadOnly,
+    randomImageNames = null,
+    onRandomImageNames,
     captcha = "off",
     onCaptcha,
     threadArchive,
@@ -129,6 +131,8 @@
     onDeleteRegistrationInvite?: (id: number) => Promise<void>;
     guestsReadOnly?: boolean | null;
     onGuestsReadOnly?: (on: boolean) => Promise<void>;
+    randomImageNames?: boolean | null;
+    onRandomImageNames?: (on: boolean) => Promise<void>;
     // Admins (with the guests setting): the browser check for new accounts.
     captcha?: CaptchaLevel;
     onCaptcha?: (level: CaptchaLevel) => Promise<void>;
@@ -196,6 +200,7 @@
     name: createSave(),
     logo: createSave(),
     guests: createSave(),
+    randomImageNames: createSave(),
     captcha: createSave(),
     archive: createSave(),
     rules: createSave(),
@@ -235,6 +240,8 @@
   };
   const setGuests = (el: HTMLInputElement) =>
     onGuestsReadOnly && saves.guests.run(() => onGuestsReadOnly(el.checked), () => (el.checked = guestsReadOnly === true));
+  const setRandomImageNames = (el: HTMLInputElement) =>
+    onRandomImageNames && saves.randomImageNames.run(() => onRandomImageNames(el.checked), () => (el.checked = randomImageNames === true));
   const setCaptcha = (el: HTMLSelectElement) =>
     onCaptcha && saves.captcha.run(() => onCaptcha(el.value as CaptchaLevel), () => (el.value = captcha));
   const setArchive = (el: HTMLSelectElement) =>
@@ -391,6 +398,14 @@
           <SaveStatus save={saves.logo.state} />
         </div>
         <p class="note">{t("admin.logoNote")}</p>
+      {/if}
+      {#if randomImageNames !== null && onRandomImageNames}
+        <label class="check">
+          <input type="checkbox" checked={randomImageNames} disabled={saves.randomImageNames.busy} onchange={(e) => setRandomImageNames(e.currentTarget)} />
+          {t("admin.randomImageNames")}
+        </label>
+        <SaveStatus save={saves.randomImageNames.state} />
+        <p class="note">{t("admin.randomImageNamesNote")}</p>
       {/if}
       {#if onLoadHomeServers}
         <h4>{t("admin.homesHeading")}</h4>

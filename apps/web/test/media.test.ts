@@ -7,6 +7,7 @@ import {
   chatVideo,
   downloadUrl,
   formatDuration,
+  generatedImageName,
   imageBox,
   lazyVideo,
   lightboxOf,
@@ -21,6 +22,15 @@ import {
 } from "../src/lib/media";
 
 describe("previews", () => {
+  it("recognizes generated image names for accessible labels", () => {
+    expect(generatedImageName("a1b2c3d4e5f6.png")).toBe(true);
+    expect(generatedImageName("SPOILER_a1b2c3d4e5f6.heic")).toBe(true);
+    expect(generatedImageName("a1b2c3d4e5f.png")).toBe(false);
+    expect(generatedImageName("a1b2c3d4e5f67.png")).toBe(false);
+    expect(generatedImageName(`${"a".repeat(64)}.png`)).toBe(false);
+    expect(generatedImageName(`SPOILER_${"b".repeat(64)}.heic`)).toBe(false);
+    expect(generatedImageName("family.png")).toBe(false);
+  });
   it("show a picture's preview in the chat, else the picture", () => {
     expect(chatSrc({ url: "/files/k/a.png", preview: "/files/k/a.png?preview" })).toBe("/files/k/a.png?preview");
     expect(chatSrc({ url: "/files/k/a.png" })).toBe("/files/k/a.png");

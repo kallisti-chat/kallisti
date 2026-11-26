@@ -222,7 +222,8 @@ func startBuiltin(cfg *config.Builtin, db *store.Store, hub *sidecar.Hub, public
 	srv, err := mumbled.New(mumbled.Config{
 		Welcome: cfg.Welcome, RootName: cfg.ServerName, Password: cfg.Password, DB: mdb,
 		MaxUsers: cfg.MaxUsers, MaxPerIP: cfg.MaxPerIP,
-		ReservedName: accountExists(db), // names of web accounts are theirs only
+		RandomImageNames: cfg.UploadRandomImageNames,
+		ReservedName:     accountExists(db), // names of web accounts are theirs only
 		AllowGuest: func() bool {
 			on, err := db.InviteOnly()
 			return err == nil && !on
@@ -459,4 +460,12 @@ func (b *builtin) close() {
 	b.ln.Close()
 	b.udp.Close()
 	b.srv.Close()
+}
+
+func (v voiceServer) RandomImageNames() bool {
+	return v.Server.RandomImageNames()
+}
+
+func (v voiceServer) SetRandomImageNames(session uint32, enabled bool) (bool, error) {
+	return v.Server.SetRandomImageNames(session, enabled)
 }

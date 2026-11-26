@@ -174,6 +174,9 @@ type Voice interface {
 	// here (admins).
 	HomeServers(session uint32) (homes.Rules, error)
 	SetHomeServers(session uint32, r homes.Rules) (homes.Rules, error)
+	// random image filename policy for new uploads (admins).
+	RandomImageNames() bool
+	SetRandomImageNames(session uint32, enabled bool) (bool, error)
 	// QualityLimits, SetQualityLimits: voice and stream quality limits (admins).
 	QualityLimits() QualityLimits
 	SetQualityLimits(session uint32, q QualityLimits) (QualityLimits, error)
@@ -734,6 +737,8 @@ type request struct {
 	Rules         *msgrules.Rules  `json:"rules"`                   // set-message-rules
 	Homes         *homes.Rules     `json:"homes"`                   // set-home-servers
 	QualityLimits *QualityLimits   `json:"qualityLimits,omitempty"` // set-quality-limits
+
+	RandomImageNames *bool `json:"randomImageNames,omitempty"`
 }
 
 // Handle answers one request from the browser.
@@ -975,6 +980,17 @@ func (c *Conn) dispatch(user mumble.Identity, req request) {
 			c.manageError(err.Error())
 		} else {
 			c.hub.broadcast(map[string]any{"type": "server-name", "name": name})
+		}
+		return
+	case "set-random-image-names":
+		if c.hub.voice == nil {
+			c.manageError("this setting needs the built-in Mumble server")
+		} else if req.RandomImageNames == nil {
+			c.manageError("missing image filename setting")
+		} else if updated, err := c.hub.voice.SetRandomImageNames(id.Session, *req.RandomImageNames); err != nil {
+			c.manageError(err.Error())
+		} else {
+			c.hub.broadcast(map[string]any{"type": "random-image-names", "randomImageNames": updated})
 		}
 		return
 	case "set-quality-limits":

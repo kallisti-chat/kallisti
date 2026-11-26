@@ -67,6 +67,8 @@ type Config struct {
 	Push Push
 	// Uploaded files, and the size limit per file.
 	UploadDir string
+	// initial image filename policy; a saved admin choice takes precedence.
+	UploadRandomImageNames bool
 	// BackupDir: daily database backups go here (empty: none); the newest
 	// BackupKeep stay.
 	BackupDir      string
@@ -129,7 +131,9 @@ func parsePush(getenv func(string) string) (Push, error) {
 
 // Builtin configures the built-in Mumble server.
 type Builtin struct {
-	Listen string // TCP and UDP for Mumble clients
+	// UploadRandomImageNames is the initial policy; a saved admin choice takes precedence.
+	UploadRandomImageNames bool
+	Listen                 string // TCP and UDP for Mumble clients
 	// PublicPort: the Mumble port as clients reach it (the apps send voice
 	// to it over UDP); default Listen's port, 0: none (voice stays in the
 	// WebSocket).
@@ -250,6 +254,7 @@ func Parse(getenv func(string) string) (Config, error) {
 	if c.Push, err = parsePush(getenv); err != nil {
 		return Config{}, err
 	}
+	c.UploadRandomImageNames = getenv("UPLOAD_RANDOM_IMAGE_NAMES") == "1"
 	c.UploadDir = cmp.Or(getenv("UPLOAD_DIR"), "uploads")
 	mb, ok := positive(getenv("UPLOAD_MAX_MB"), 10)
 	if !ok {
@@ -281,6 +286,7 @@ func Parse(getenv func(string) string) (Config, error) {
 		if c.Builtin, err = parseBuiltin(getenv, c.DBPath); err != nil {
 			return Config{}, err
 		}
+		c.Builtin.UploadRandomImageNames = c.UploadRandomImageNames
 	}
 	return c, nil
 }

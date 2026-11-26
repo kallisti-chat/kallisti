@@ -157,6 +157,7 @@ export type ServerEvent =
       channelTimeouts?: ChannelTimeout[];
       // Guests may only read (see lib/guests).
       guestsReadOnly?: boolean;
+      randomImageNames?: boolean;
       // Voice and streaming quality limits.
       qualityLimits?: QualityLimits;
       // The browser check for new accounts (see lib/captcha).
@@ -247,6 +248,7 @@ export type ServerEvent =
   | { type: "timeouts"; timeouts: Timeout[]; channelTimeouts: ChannelTimeout[] }
   // Admins changed whether guests may only read.
   | { type: "guests-read-only"; on: boolean }
+  | { type: "random-image-names"; randomImageNames: boolean }
   // Quality limits changed.
   | { type: "quality-limits"; qualityLimits: QualityLimits }
   | { type: "captcha"; level: CaptchaLevel }
@@ -365,6 +367,7 @@ export type TextState = {
   timeouts: readonly Timeout[];
   channelTimeouts: readonly ChannelTimeout[];
   guestsReadOnly: boolean;
+  randomImageNames: boolean;
   qualityLimits: QualityLimits;
   // Slow mode: when the server said our wait ends, by channel.
   slowUntil: Readonly<Record<number, number>>;
@@ -459,6 +462,7 @@ export const initialTextState: TextState = {
   timeouts: [],
   channelTimeouts: [],
   guestsReadOnly: false,
+  randomImageNames: false,
   qualityLimits: DEFAULT_QUALITY_LIMITS,
   slowUntil: {},
   captcha: "off",
@@ -689,6 +693,7 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
         ...(isTimeouts(v.timeouts) ? { timeouts: v.timeouts } : {}),
         ...(isChannelTimeouts(v.channelTimeouts) ? { channelTimeouts: v.channelTimeouts } : {}),
         ...(v.guestsReadOnly === true ? { guestsReadOnly: true } : {}),
+        ...(typeof v.randomImageNames === "boolean" ? { randomImageNames: v.randomImageNames } : {}),
         ...(typeof v.inviteOnly === "boolean" ? { inviteOnly: v.inviteOnly } : {}),
         ...(isCaptchaLevel(v.captcha) ? { captcha: v.captcha } : {}),
         ...(typeof v.logo === "string" && v.logo ? { logo: v.logo } : {}),
@@ -775,6 +780,8 @@ export const parseServerEvent = (raw: string): ServerEvent | null => {
       const p = parsePresence(v);
       return p && { type: "own-status", ...p };
     }
+    case "random-image-names":
+      return typeof v.randomImageNames === "boolean" ? { type: "random-image-names", randomImageNames: v.randomImageNames } : null;
     case "guests-read-only":
       return typeof v.on === "boolean" ? { type: "guests-read-only", on: v.on } : null;
     case "quality-limits": {
@@ -961,6 +968,7 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
         timeouts: event.timeouts ?? [],
         channelTimeouts: event.channelTimeouts ?? [],
         guestsReadOnly: event.guestsReadOnly === true,
+        randomImageNames: event.randomImageNames === true,
         qualityLimits: event.qualityLimits ?? DEFAULT_QUALITY_LIMITS,
         captcha: event.captcha ?? "off",
         inviteOnly: event.inviteOnly ?? null,
@@ -1039,6 +1047,8 @@ export const reduceText = (state: TextState, event: ServerEvent): TextState => {
       return { ...state, timeouts: event.timeouts, channelTimeouts: event.channelTimeouts };
     case "guests-read-only":
       return { ...state, guestsReadOnly: event.on };
+    case "random-image-names":
+      return { ...state, randomImageNames: event.randomImageNames };
     case "quality-limits":
       return { ...state, qualityLimits: event.qualityLimits };
     case "captcha":
@@ -1345,6 +1355,7 @@ export type ManageAction =
   // A user's messages of the last seconds (staff): see UserTarget.
   | { deleteMessages: UserTarget; seconds: number }
   | { guestsReadOnly: boolean }
+  | { randomImageNames: boolean }
   | { qualityLimits: QualityLimits }
   | { captcha: CaptchaLevel }
   | { inviteOnly: boolean }
@@ -1402,6 +1413,7 @@ const manageBody = (a: ManageAction) => {
   if ("channelTimeout" in a) return { type: "channel-time-out", session: a.channelTimeout, voice: a.channel, seconds: a.seconds };
   if ("deleteMessages" in a) return { type: "delete-messages", ...a.deleteMessages, seconds: a.seconds };
   if ("guestsReadOnly" in a) return { type: "set-guests-read-only", on: a.guestsReadOnly };
+  if ("randomImageNames" in a) return { type: "set-random-image-names", randomImageNames: a.randomImageNames };
   if ("qualityLimits" in a) return { type: "set-quality-limits", qualityLimits: a.qualityLimits };
   if ("inviteOnly" in a) return { type: "set-invite-only", on: a.inviteOnly };
   if ("registrationInvites" in a) return { type: "registration-invites" };

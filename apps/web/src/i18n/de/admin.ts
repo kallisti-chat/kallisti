@@ -2,6 +2,8 @@ import type en from "../en/admin";
 import type { Translation } from "../types";
 
 export default {
+  "admin.randomImageNames": "Bilddateinamen zufällig vergeben",
+  "admin.randomImageNamesNote": "Ersetzt ursprüngliche Dateinamen bei neuen Bilduploads durch zufällige Namen. Vorhandene Uploads und EXIF-Metadaten bleiben unverändert.",
   "admin.serverSettingsTitle": "Servereinstellungen",
   "admin.sectionOverview": "Übersicht",
   "admin.sectionQuality": "Sprache & Streaming",

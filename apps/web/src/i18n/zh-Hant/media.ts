@@ -2,6 +2,7 @@ import type en from "../en/media";
 import type { Translation } from "../types";
 
 export default {
+  "media.picture": "圖片",
   "media.streams": "直播",
   "media.focusView": "焦點檢視",
   "media.gridView": "網格檢視",

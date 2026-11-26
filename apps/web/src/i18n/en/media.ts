@@ -2,6 +2,7 @@ import type { Messages } from "../../lib/i18n";
 
 // Streams, players, pictures, emoji and stickers.
 export default {
+  "media.picture": "Picture",
   // The stream stage (watched screen shares and cameras).
   "media.streams": "Streams",
   "media.focusView": "Focus view",

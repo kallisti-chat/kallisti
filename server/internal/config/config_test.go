@@ -214,3 +214,27 @@ func TestCORS(t *testing.T) {
 		t.Errorf("with credentials: %v", w.Header())
 	}
 }
+
+func TestUploadRandomImageNames(t *testing.T) {
+	for _, host := range []string{"", "voice.example.org"} {
+		for _, value := range []string{"", "0", "1"} {
+			t.Run(host+"/"+value, func(t *testing.T) {
+				cfg, err := Parse(env(map[string]string{"MUMBLE_HOST": host, "ALLOWED_ORIGINS": "*", "UPLOAD_RANDOM_IMAGE_NAMES": value}))
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := value == "1"
+				if cfg.UploadRandomImageNames != want {
+					t.Fatalf("random names = %v, want %v", cfg.UploadRandomImageNames, want)
+				}
+				if host == "" {
+					if cfg.Builtin == nil || cfg.Builtin.UploadRandomImageNames != want {
+						t.Fatalf("built-in default: %+v", cfg.Builtin)
+					}
+				} else if cfg.Builtin != nil {
+					t.Fatal("external server must not create built-in settings")
+				}
+			})
+		}
+	}
+}

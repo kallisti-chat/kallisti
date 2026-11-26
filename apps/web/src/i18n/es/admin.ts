@@ -2,6 +2,8 @@ import type en from "../en/admin";
 import type { Translation } from "../types";
 
 export default {
+  "admin.randomImageNames": "Usar nombres aleatorios para las imágenes",
+  "admin.randomImageNamesNote": "Sustituye los nombres originales por nombres aleatorios en las nuevas imágenes subidas. Las imágenes existentes y los metadatos EXIF no cambian.",
   "admin.serverSettingsTitle": "Ajustes del servidor",
   "admin.sectionOverview": "Vista general",
   "admin.sectionQuality": "Voz y streaming",

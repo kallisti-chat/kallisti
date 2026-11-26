@@ -2,6 +2,7 @@ import type en from "../en/media";
 import type { Translation } from "../types";
 
 export default {
+  "media.picture": "Imagen",
   "media.streams": "Transmisiones",
   "media.focusView": "Vista centrada",
   "media.gridView": "Vista de cuadrícula",

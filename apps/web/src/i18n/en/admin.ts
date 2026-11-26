@@ -3,6 +3,8 @@ import type { Messages } from "../../lib/i18n";
 // Server settings, moderation, channel and member dialogs, emoji and
 // stickers lists.
 export default {
+  "admin.randomImageNames": "Randomize image filenames",
+  "admin.randomImageNamesNote": "Replace original filenames with random names for new image uploads. Existing uploads and EXIF metadata are unchanged.",
   // Server settings: categories and their groups.
   "admin.serverSettingsTitle": "Server settings",
   "admin.sectionOverview": "Overview",
