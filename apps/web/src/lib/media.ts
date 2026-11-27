@@ -81,10 +81,16 @@ export const shownLength = (seconds: number, knownMs = 0) => finite(seconds) || 
 
 // Full screen for a video, for our own button: a narrow (portrait) player
 // leaves no room for the browser's (Firefox drops it, Chromium hides it in
-// a menu). iPhones have only the video's own full screen. null: neither.
-export const videoFullScreen = (video: HTMLVideoElement): (() => void) | null => {
+// a menu). inWindow: the Linux app's (no HTML full screen, see
+// lib/windowFullScreen; its WebKit keeps a webkitEnterFullscreen that does
+// not work). iPhones have only the video's own full screen. null: none.
+export const videoFullScreen = (
+  video: HTMLVideoElement,
+  inWindow: ((el: HTMLElement) => () => void) | null = null,
+): (() => void) | null => {
   const v = video as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
   if (typeof v.requestFullscreen === "function") return () => void v.requestFullscreen().catch(() => {});
+  if (inWindow) return inWindow(video);
   if (typeof v.webkitEnterFullscreen === "function") return () => v.webkitEnterFullscreen?.();
   return null;
 };
