@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -74,5 +75,52 @@ func TestBeforeStartCopiesTheDatabaseAsItIs(t *testing.T) {
 	var x int
 	if err := cp.QueryRow(`SELECT x FROM old`).Scan(&x); err != nil || x != 42 {
 		t.Fatalf("copy: %d %v", x, err)
+	}
+}
+
+// The daily copy must not wait for the server's one connection: here that
+// connection is taken and has a write in the WAL that is not in the main
+// file yet.
+func TestFromFileDoesNotUseTheServersConnection(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "k.db")
+	db, err := sql.Open("sqlite", "file:"+dbPath+"?_pragma=journal_mode(WAL)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(`CREATE TABLE t (v TEXT); INSERT INTO t VALUES ('hello')`); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := db.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	done := make(chan error, 1)
+	var path string
+	go func() {
+		var err error
+		path, err = FromFile(dbPath, filepath.Join(dir, "backups"), 3, time.Date(2026, 11, 27, 3, 0, 0, 0, time.UTC))
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the copy waits for the server's connection")
+	}
+	// The server can write while it has the connection, too.
+	if _, err := conn.ExecContext(context.Background(), `INSERT INTO t VALUES ('later')`); err != nil {
+		t.Fatal(err)
+	}
+	cp, _ := sql.Open("sqlite", path)
+	defer cp.Close()
+	var v string
+	if err := cp.QueryRow(`SELECT v FROM t`).Scan(&v); err != nil || v != "hello" {
+		t.Fatalf("copy: %q %v", v, err)
 	}
 }
