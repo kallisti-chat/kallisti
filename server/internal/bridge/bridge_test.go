@@ -57,12 +57,12 @@ func dialer(addr string) func(context.Context, Upstream) (net.Conn, error) {
 	}
 }
 
-func startBridge(t *testing.T, opts Options) string {
+func startBridge(t testing.TB, opts Options) string {
 	_, url := startBridgeWith(t, opts)
 	return url
 }
 
-func startBridgeWith(t *testing.T, opts Options) (*Bridge, string) {
+func startBridgeWith(t testing.TB, opts Options) (*Bridge, string) {
 	t.Helper()
 	if opts.AllowedOrigins == nil {
 		opts.AllowedOrigins = []string{"*"}
@@ -82,7 +82,7 @@ func startBridgeWith(t *testing.T, opts Options) (*Bridge, string) {
 	return b, "ws" + strings.TrimPrefix(srv.URL, "http")
 }
 
-func connect(t *testing.T, url, origin string) (*websocket.Conn, *http.Response, error) {
+func connect(t testing.TB, url, origin string) (*websocket.Conn, *http.Response, error) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
