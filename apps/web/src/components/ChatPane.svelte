@@ -2288,7 +2288,7 @@
   }
   .hold.held {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .tools {
     display: flex;
@@ -2421,7 +2421,7 @@
     overflow: hidden;
     border-radius: 0 0 8px 8px;
     background: var(--accent-strong); /* as the "Jump to present" bar */
-    color: #fff;
+    color: var(--text-on-accent);
     font-size: 14px;
   }
   .unread-bar button {
@@ -2500,7 +2500,7 @@
     padding: 1px 5px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -2682,7 +2682,7 @@
   .pending-spoiler[aria-pressed="true"] {
     border-color: transparent;
     background: var(--accent-strong);
-    color: #fff;
+    color: var(--text-on-accent);
   }
   .present {
     position: absolute;
@@ -2697,7 +2697,7 @@
     padding: 4px 4px 4px 12px;
     border-radius: 8px;
     background: var(--accent-strong);
-    color: #fff;
+    color: var(--text-on-accent);
     font-size: 14px;
   }
   .present button {
@@ -3048,7 +3048,7 @@
     padding: 6px 12px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
     font-weight: 600;
   }
   .replying {
@@ -3110,24 +3110,24 @@
     color: var(--text);
   }
   .line.flash {
-    background: rgb(88 101 242 / 0.2);
+    background: color-mix(in srgb, var(--highlight) 20%, transparent);
     transition: background 0.3s;
   }
   .line.mentioned {
-    background: rgb(240 178 50 / 0.1);
-    box-shadow: inset 2px 0 0 rgb(240 178 50);
+    background: color-mix(in srgb, var(--mention) 10%, transparent);
+    box-shadow: inset 2px 0 0 var(--mention);
   }
   /* Mentions as pills (as in Discord): blue, mine yellow. */
   .text :global(.mention) {
     padding: 0 2px;
     border-radius: 3px;
-    background: rgb(88 101 242 / 0.22);
+    background: color-mix(in srgb, var(--highlight) 22%, transparent);
     color: var(--link);
     font-weight: 600;
     cursor: pointer;
   }
   .text :global(.mention.me) {
-    background: rgb(240 178 50 / 0.25);
+    background: color-mix(in srgb, var(--mention) 25%, transparent);
     color: inherit;
   }
   .image {
@@ -3353,7 +3353,7 @@
     padding: 0;
     border-radius: 50%;
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
   }
   @media (pointer: coarse) {
     .send-button {

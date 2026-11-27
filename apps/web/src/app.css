@@ -22,6 +22,12 @@
   --danger: #e98184;
   --border: #1d1d21;
   --border-subtle: #3a3a41;
+  /* The same in both themes. Text on --accent-strong, --danger and --badge
+     (4.5:1, see test/contrast.test.ts). */
+  --text-on-accent: #ffffff;
+  --badge: #c62f32; /* unread count */
+  --highlight: #5865f2; /* a jumped-to message, mentions, selected items */
+  --mention: #f0b232; /* messages and mentions that name me */
   color-scheme: dark;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
@@ -292,4 +298,22 @@ html[data-window-hidden] *::after {
 .tooltip.below::after {
   top: -4px;
   bottom: auto;
+}
+
+/* Full screen in the Linux app (lib/windowFullScreen): the element fills the
+   full-screen window from the top layer. !important: over the player's
+   inline aspect-ratio. */
+.window-fullscreen:popover-open {
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto !important;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  object-fit: contain;
 }

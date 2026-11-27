@@ -2,6 +2,8 @@
   import { downloadUrl, formatDuration, mediaRatio, onlyOne, releaseOnDestroy, shownLength, videoFullScreen, videoPreload } from "../lib/media";
   import { formatSize } from "../lib/textChannels";
   import { t } from "../lib/i18n.svelte";
+  import { currentWindow, linuxApp } from "../lib/desktop";
+  import { windowFullScreen } from "../lib/windowFullScreen";
 
   // A video attachment: a play button and the length until it starts, then
   // the browser's controls; the file below.
@@ -39,7 +41,8 @@
   };
   // Our own full screen button: a portrait video's player is too narrow
   // for the browser's.
-  const fullScreen = $derived(video ? videoFullScreen(video) : null);
+  const inWindow = linuxApp() ? (el: HTMLElement) => windowFullScreen(el, currentWindow) : null;
+  const fullScreen = $derived(video ? videoFullScreen(video, inWindow) : null);
 </script>
 
 <div class="video">

@@ -263,4 +263,11 @@ describe("videoFullScreen", () => {
   it("is null without either (no button)", () => {
     expect(videoFullScreen({} as HTMLVideoElement)).toBeNull();
   });
+  it("uses the window's full screen in the Linux app (WebKitGTK keeps a webkitEnterFullscreen that cannot work)", () => {
+    const enter = vi.fn();
+    const webkitEnterFullscreen = vi.fn();
+    videoFullScreen({ webkitEnterFullscreen } as unknown as HTMLVideoElement, () => enter)?.();
+    expect(enter).toHaveBeenCalled();
+    expect(webkitEnterFullscreen).not.toHaveBeenCalled();
+  });
 });

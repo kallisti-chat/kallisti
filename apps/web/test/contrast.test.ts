@@ -7,8 +7,11 @@ import { contrast } from "../src/lib/contrast";
 // :root, light in its own block.
 const css = readFileSync(new URL("../src/app.css", import.meta.url), "utf8");
 const light = css.slice(css.indexOf('[data-theme="light"]'));
+// A light value missing from its block is the one from :root (the same in
+// both themes).
 const palette = (block: string) => (name: string) => {
-  const m = new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i").exec(block);
+  const find = (b: string) => new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, "i").exec(b);
+  const m = find(block) ?? find(css);
   if (!m) throw new Error(`no --${name} in app.css`);
   return m[1]!;
 };
@@ -42,7 +45,10 @@ describe.each([
     expect(contrast(color(fg), color(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("white on accent-strong (buttons, server icon, menu hover)", () => {
-    expect(contrast("#ffffff", color("accent-strong"))).toBeGreaterThanOrEqual(4.5);
+  it("text-on-accent on accent-strong (buttons, server icon, menu hover)", () => {
+    expect(contrast(color("text-on-accent"), color("accent-strong"))).toBeGreaterThanOrEqual(4.5);
+  });
+  it("text-on-accent on badge (unread count)", () => {
+    expect(contrast(color("text-on-accent"), color("badge"))).toBeGreaterThanOrEqual(4.5);
   });
 });

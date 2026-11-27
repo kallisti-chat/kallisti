@@ -533,7 +533,7 @@
     padding: 0 4px;
     border-radius: 4px;
     background: var(--danger);
-    color: white;
+    color: var(--text-on-accent);
     font-size: 10px;
     font-weight: 700;
   }
@@ -596,7 +596,7 @@
     padding: 0 5px;
     border-radius: 3px;
     background: var(--danger);
-    color: #fff;
+    color: var(--text-on-accent);
     font-size: 10px;
     font-weight: 700;
     line-height: 16px;

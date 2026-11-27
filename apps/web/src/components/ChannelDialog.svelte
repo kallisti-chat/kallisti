@@ -307,7 +307,7 @@
     padding: 10px 16px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
     font-weight: 600;
   }
   footer .secondary {

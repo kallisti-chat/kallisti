@@ -10,8 +10,9 @@ pub fn own_page(uri: &str, origins: &[String]) -> bool {
         .any(|o| uri.strip_prefix(o.as_str()).is_some_and(|rest| rest.is_empty() || rest.starts_with(['/', '?', '#'])))
 }
 
-/// Also turns on the web inspector (right click, Inspect Element) when
-/// KALLISTI_DEVTOOLS is set, for finding faults on Linux.
+/// Also turns off HTML full screen (see below), and turns on the web
+/// inspector (right click, Inspect Element) when KALLISTI_DEVTOOLS is set,
+/// for finding faults on Linux.
 #[cfg(target_os = "linux")]
 pub fn allow_own_media(window: &tauri::WebviewWindow, origins: Vec<String>) -> tauri::Result<()> {
     use webkit2gtk::glib::prelude::*;
@@ -21,6 +22,10 @@ pub fn allow_own_media(window: &tauri::WebviewWindow, origins: Vec<String>) -> t
         let view = w.inner();
         if let Some(settings) = view.settings() {
             settings.set_enable_media_stream(true);
+            // No HTML full screen: WebKitGTK 2.50 aborts the whole app on it
+            // (a release assert in WebFullScreenManagerProxy). The page uses
+            // the window's full screen instead (lib/windowFullScreen.ts).
+            settings.set_enable_fullscreen(false);
             if std::env::var_os("KALLISTI_DEVTOOLS").is_some() {
                 settings.set_enable_developer_extras(true);
             }

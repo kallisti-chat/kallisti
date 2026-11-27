@@ -303,7 +303,7 @@
   }
   .tones button[aria-pressed="true"],
   .cell.selected {
-    background: rgb(88 101 242 / 0.3);
+    background: color-mix(in srgb, var(--highlight) 30%, transparent);
   }
   .groups {
     display: flex;

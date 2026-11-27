@@ -362,7 +362,7 @@
   }
   .primary {
     background: var(--accent-strong);
-    color: #fff;
+    color: var(--text-on-accent);
   }
   .primary:disabled {
     opacity: 0.5;

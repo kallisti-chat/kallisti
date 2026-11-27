@@ -143,7 +143,7 @@
   }
   .danger {
     background: var(--danger);
-    color: white;
+    color: var(--text-on-accent);
   }
   .note {
     color: var(--text-muted);
