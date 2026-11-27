@@ -67,7 +67,7 @@ func serveBranded(w http.ResponseWriter, r *http.Request, webDir string, brand f
 	if !index {
 		name, ctype = "manifest.json", "application/manifest+json"
 	}
-	raw, err := os.ReadFile(filepath.Join(webDir, name))
+	raw, err := os.ReadFile(filepath.Join(webDir, name)) // #nosec G304 -- a fixed name
 	if err != nil {
 		return false
 	}

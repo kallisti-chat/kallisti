@@ -165,7 +165,7 @@ func (h *Handler) fetch(url string, f File) error {
 		// Ten minutes and 256 KiB/s (the larger model has 1.4 GB).
 		client = &http.Client{Timeout: 10*time.Minute + time.Duration(f.Size>>18)*time.Second}
 	}
-	res, err := client.Get(url)
+	res, err := client.Get(url) // #nosec G704 -- url: the embedded Manifest's source and a file it lists
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (h *Handler) fetch(url string, f File) error {
 	if res.StatusCode != http.StatusOK {
 		return errors.New(res.Status)
 	}
-	if err := os.MkdirAll(h.Dir, 0o755); err != nil {
+	if err := os.MkdirAll(h.Dir, 0o755); err != nil { // #nosec G301 -- public model files, each 0600 (CreateTemp)
 		return err
 	}
 	tmp, err := os.CreateTemp(h.Dir, ".fetch-*")

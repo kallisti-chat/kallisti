@@ -26,7 +26,7 @@ func (l *Library) WriteZip(w io.Writer, id string) error {
 	}
 	z := zip.NewWriter(w)
 	add := func(name, path string) error {
-		f, err := os.Open(path)
+		f, err := os.Open(path) // #nosec G304 G703 -- a validID (l.info above) and a base name
 		if err != nil {
 			return err
 		}

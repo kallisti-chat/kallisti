@@ -65,7 +65,7 @@ func (c *gzipCache) get(file string) ([]byte, bool) {
 	}
 	c.mu.Unlock()
 	f.once.Do(func() {
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) // #nosec G304 G703 -- under webDir: a rooted path.Clean (site.go)
 		if err != nil {
 			return
 		}

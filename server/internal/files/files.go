@@ -278,7 +278,7 @@ func (h *Handler) reserve(author string, least, most int64) (allowed int64, rele
 
 // save writes at most MaxBytes and returns the size and the first bytes.
 func (h *Handler) save(dst string, body io.Reader) (int64, []byte, error) {
-	f, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	f, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600) // #nosec G304 -- Dir and a randomKey
 	if err != nil {
 		return 0, nil, err
 	}
@@ -326,7 +326,7 @@ func (h *Handler) Measure(u store.Upload) store.Media {
 }
 
 func measureFile(path string, ctype func(io.ReaderAt) string) store.Media {
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- Dir and a randomKey, or a plainKey (Measure)
 	if err != nil {
 		return store.Media{}
 	}
@@ -374,7 +374,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	if preview {
 		path = previewPath(h.Dir, u.Key)
 	}
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304 -- Dir and a plainKey (checked above)
 	if err != nil {
 		http.NotFound(w, r)
 		return

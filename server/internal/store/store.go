@@ -1210,7 +1210,7 @@ func (s *Store) EditMessage(id int64, text, mentionAll string, at time.Time, rem
 	}
 	if len(remove) > 0 {
 		in, args := inList(remove)
-		if _, err := tx.Exec(`DELETE FROM uploads WHERE message_id = ? AND id IN (`+in+`)`, append([]any{id}, args...)...); err != nil {
+		if _, err := tx.Exec(`DELETE FROM uploads WHERE message_id = ? AND id IN (`+in+`)`, append([]any{id}, args...)...); err != nil { // #nosec G202 -- in: inList's placeholders
 			return Message{}, err
 		}
 	}
@@ -1309,6 +1309,7 @@ func (s *Store) RecentAmong(ids []int64, since time.Time, limit int) ([]int64, e
 }
 
 func (s *Store) recent(where string, args []any, since time.Time, limit int) ([]int64, error) {
+	// #nosec G202 -- where: RecentByUser's or RecentAmong's, placeholders only
 	rows, err := s.db.Query(`SELECT m.id FROM messages m JOIN channels c ON c.id = m.channel_id
 		WHERE `+where+` AND m.created_at >= ? AND c.dm_low IS NULL ORDER BY m.id DESC LIMIT ?`,
 		append(args, since.UnixMilli(), limit)...)

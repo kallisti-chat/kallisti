@@ -867,6 +867,7 @@ func (a *Service) newSession(acc store.Account) (string, error) {
 }
 
 func (a *Service) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
+	// #nosec G124 -- Secure whenever the request came over HTTPS (secure)
 	http.SetCookie(w, &http.Cookie{
 		Name:     a.cookieName(r, CookieName),
 		Value:    token,
@@ -899,7 +900,7 @@ func (a *Service) cookie(r *http.Request, base string) string {
 // clearCookie removes it, and one of the plain name from before.
 func (a *Service) clearCookie(w http.ResponseWriter, r *http.Request, base string) {
 	for _, name := range []string{a.cookieName(r, base), base} {
-		http.SetCookie(w, &http.Cookie{Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode})
+		http.SetCookie(w, &http.Cookie{Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode}) // #nosec G124 -- a removal; Secure as secure
 	}
 }
 

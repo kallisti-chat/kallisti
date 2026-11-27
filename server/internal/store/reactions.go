@@ -68,6 +68,7 @@ func (s *Store) withReactions(msgs []Message) error {
 	for i, m := range msgs {
 		at[m.ID], args[i] = i, m.ID
 	}
+	// #nosec G202 -- only placeholders
 	rows, err := s.rdb.Query(`SELECT message_id, emoji, user_id, user FROM reactions
 		WHERE message_id IN (?`+strings.Repeat(",?", len(msgs)-1)+`)
 		ORDER BY message_id, (SELECT min(created_at) FROM reactions r WHERE r.message_id = reactions.message_id AND r.emoji = reactions.emoji),

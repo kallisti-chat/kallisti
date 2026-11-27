@@ -68,7 +68,7 @@ func Load(certPEM, keyPEM []byte) (tls.Certificate, error) {
 // key.pem), made on the first start, so clients can pin it.
 func LoadOrCreateServer(dir string) (tls.Certificate, error) {
 	certPath, keyPath := filepath.Join(dir, "cert.pem"), filepath.Join(dir, "key.pem")
-	certPEM, err := os.ReadFile(certPath)
+	certPEM, err := os.ReadFile(certPath) // #nosec G304 -- the operator's CERT_DIR, a fixed name
 	if errors.Is(err, fs.ErrNotExist) {
 		var keyPEM []byte
 		if certPEM, keyPEM, err = GenerateServer("Kallisti"); err != nil {
@@ -80,13 +80,13 @@ func LoadOrCreateServer(dir string) (tls.Certificate, error) {
 		if err = os.WriteFile(keyPath, keyPEM, 0o600); err != nil {
 			return tls.Certificate{}, err
 		}
-		if err = os.WriteFile(certPath, certPEM, 0o644); err != nil {
+		if err = os.WriteFile(certPath, certPEM, 0o644); err != nil { // #nosec G306 -- the public certificate (the key is 0600)
 			return tls.Certificate{}, err
 		}
 	} else if err != nil {
 		return tls.Certificate{}, err
 	}
-	keyPEM, err := os.ReadFile(keyPath)
+	keyPEM, err := os.ReadFile(keyPath) // #nosec G304 -- the operator's CERT_DIR, a fixed name
 	if err != nil {
 		return tls.Certificate{}, err
 	}

@@ -2,7 +2,7 @@ package mumbled
 
 import (
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- Mumble's certificate hash (see certHash)
 	"crypto/subtle"
 	"crypto/tls"
 	"encoding/hex"
@@ -99,7 +99,7 @@ func certHash(chain [][]byte) string {
 	if len(chain) == 0 {
 		return ""
 	}
-	sum := sha1.Sum(chain[0])
+	sum := sha1.Sum(chain[0]) // #nosec G401 -- Mumble's certificate hash, as Murmur's
 	return hex.EncodeToString(sum[:])
 }
 

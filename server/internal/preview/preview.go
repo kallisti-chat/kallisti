@@ -142,7 +142,7 @@ func (f *Fetcher) Get(ctx context.Context, raw string) *Preview {
 		f.inflight++
 		e = &entry{done: make(chan struct{}), at: f.now()}
 		f.pages[raw] = e
-		go f.fill(raw, e)
+		go f.fill(raw, e) // #nosec G118 -- shared by all who wait for the page, not one request's; fetchTime bounds it
 	}
 	f.mu.Unlock()
 	select {

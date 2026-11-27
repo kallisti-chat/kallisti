@@ -53,7 +53,7 @@ func New(bridge http.Handler, webDir string, brand func() Brand) http.Handler {
 		// Real files (favicon, ...) as they are; any other path is an app
 		// route and gets index.html.
 		if clean != "/" && clean != "/index.html" {
-			if info, err := os.Stat(filepath.Join(webDir, filepath.FromSlash(clean))); err == nil && !info.IsDir() {
+			if info, err := os.Stat(filepath.Join(webDir, filepath.FromSlash(clean))); err == nil && !info.IsDir() { // #nosec G703 -- clean is a rooted path.Clean: no ".."
 				files.ServeHTTP(w, r)
 				return
 			}

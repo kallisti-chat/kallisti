@@ -133,7 +133,7 @@ func Find(path string) (Tool, error) {
 	return find(path, exec.LookPath, func(cmd []string) ([]byte, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		return exec.CommandContext(ctx, cmd[0], cmd[1:]...).Output()
+		return exec.CommandContext(ctx, cmd[0], cmd[1:]...).Output() // #nosec G204 -- FFMPEG_PATH (the operator's) and fixed flags
 	})
 }
 
@@ -290,6 +290,8 @@ func (m *Maker) exec(ctx context.Context, args []string) error { return m.execIO
 
 // execIO is exec with stdin (nil: none) and stdout (nil: discarded).
 func (m *Maker) execIO(ctx context.Context, args []string, stdin []byte, stdout io.Writer) error {
+	// #nosec G204 -- the command is Find's; args are Args or StillArgs: fixed
+	// flags, numbers and file: paths of random keys, no shell.
 	cmd := exec.CommandContext(ctx, m.tool.Command[0], slices.Concat(m.tool.Command[1:], args)...)
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
 	if stdin != nil {
@@ -315,7 +317,7 @@ func (m *Maker) execIO(ctx context.Context, args []string, stdin []byte, stdout 
 // place copies the picture next to dst and renames it into place (the
 // temporary directory can be another file system).
 func place(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) // #nosec G304 -- Make's os.CreateTemp file
 	if err != nil {
 		return err
 	}

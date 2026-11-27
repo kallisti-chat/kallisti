@@ -1,7 +1,7 @@
 package mumbled
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- the Mumble protocol's blob hash
 	"log/slog"
 
 	"google.golang.org/protobuf/proto"
@@ -22,7 +22,7 @@ func blobHash(b []byte) []byte {
 	if len(b) < blobHashMin {
 		return nil
 	}
-	h := sha1.Sum(b)
+	h := sha1.Sum(b) // #nosec G401 -- the Mumble protocol's blob hash
 	return h[:]
 }
 
