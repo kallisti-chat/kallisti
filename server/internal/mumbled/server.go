@@ -485,30 +485,37 @@ func (c *client) sendMsg(typ uint16, m proto.Message) {
 // a writer that fell behind catches up with fewer TLS records and
 // syscalls. It never waits for more, so a lone frame goes out as before.
 func (c *client) writer() {
-	var held queued // taken but too big for the last write
+	// Taken but too big for the last write. One of each queue: a frame
+	// goes back to the place of its own queue, which is free then, so
+	// neither can push the other out.
+	var heldVoice, heldOut []byte
 	for {
-		f, _ := c.next(&held, true)
-		w, batch := f.b, (*[]byte)(nil) // the next write; batch holds it when joined
-		closing := f.b == nil           // closeAfterFlush
+		w, _, _ := c.next(&heldVoice, &heldOut, true)
+		var batch *[]byte   // holds w when frames are joined
+		closing := w == nil // closeAfterFlush
 		for !closing {
-			var ok bool
-			if f, ok = c.next(&held, false); !ok {
+			b, voice, ok := c.next(&heldVoice, &heldOut, false)
+			if !ok {
 				break
 			}
-			if closing = f.b == nil; closing {
+			if closing = b == nil; closing {
 				break
 			}
-			if len(w)+len(f.b) > maxBatch {
+			if len(w)+len(b) > maxBatch {
 				// A full batch, or a big frame: that one is sent on its
 				// own, not copied.
-				held = f
+				if voice {
+					heldVoice = b
+				} else {
+					heldOut = b
+				}
 				break
 			}
 			if batch == nil {
 				batch = batches.Get().(*[]byte)
 				*batch = append((*batch)[:0], w...)
 			}
-			*batch = append(*batch, f.b...)
+			*batch = append(*batch, b...)
 			w = *batch
 		}
 		if w != nil && !c.write(w, batch) {
@@ -521,9 +528,10 @@ func (c *client) writer() {
 	}
 }
 
-// maxBatch caps the frames joined into one write: a full TLS record.
-// Voice that comes during a write waits for it, so the cap stays small.
-const maxBatch = 16 << 10
+// maxBatch caps the frames joined into one write. Voice that comes during
+// a write waits for it, so the cap is small: it still holds about 50
+// voice frames.
+const maxBatch = 4 << 10
 
 // batches are shared by the writers: an idle client holds none.
 var batches = sync.Pool{New: func() any {
@@ -531,46 +539,37 @@ var batches = sync.Pool{New: func() any {
 	return &b
 }}
 
-// queued is a frame and the queue it came from.
-type queued struct {
-	b     []byte
-	voice bool
-}
-
-// next takes the next frame to send, voice first. A held frame keeps its
-// place: before the rest of its queue, so voice that came meanwhile
-// overtakes a held avatar as it would have before. Without wait it
-// reports false when nothing is queued.
-func (c *client) next(held *queued, wait bool) (queued, bool) {
-	take := func() (queued, bool) {
-		f := *held
-		*held = queued{}
-		return f, true
-	}
-	if held.b != nil && held.voice {
-		return take()
+// next takes the next frame to send, voice first, and says which queue it
+// is from. A held frame keeps its place: before the rest of its queue, so
+// voice that came meanwhile overtakes a held avatar as it would have
+// before. Without wait it reports false when nothing is queued.
+func (c *client) next(heldVoice, heldOut *[]byte, wait bool) (b []byte, voice, ok bool) {
+	if b = *heldVoice; b != nil {
+		*heldVoice = nil
+		return b, true, true
 	}
 	select {
-	case b := <-c.voice:
-		return queued{b, true}, true
+	case b = <-c.voice:
+		return b, true, true
 	default:
 	}
-	if held.b != nil {
-		return take()
+	if b = *heldOut; b != nil {
+		*heldOut = nil
+		return b, false, true
 	}
 	if !wait {
 		select {
-		case b := <-c.out:
-			return queued{b, false}, true
+		case b = <-c.out:
+			return b, false, true
 		default:
-			return queued{}, false
+			return nil, false, false
 		}
 	}
 	select {
-	case b := <-c.voice:
-		return queued{b, true}, true
-	case b := <-c.out:
-		return queued{b, false}, true
+	case b = <-c.voice:
+		return b, true, true
+	case b = <-c.out:
+		return b, false, true
 	}
 }
 

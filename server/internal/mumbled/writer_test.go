@@ -251,7 +251,7 @@ func TestBatchesAreCapped(t *testing.T) {
 	}
 	var want []byte
 	for i := range 40 {
-		frame := bytes.Repeat([]byte{byte('0' + i%10)}, 1000)
+		frame := bytes.Repeat([]byte{byte('0' + i%10)}, maxBatch/16)
 		want = append(want, frame...)
 		c.send(frame, false)
 	}
@@ -286,7 +286,7 @@ func TestVoiceKeepsItsOrderAcrossBatches(t *testing.T) {
 	}
 	var want []byte
 	for i := range 20 {
-		frame := bytes.Repeat([]byte{byte('0' + i%10)}, 1000)
+		frame := bytes.Repeat([]byte{byte('0' + i%10)}, maxBatch/16)
 		want = append(want, frame...)
 		c.send(frame, true)
 	}
@@ -296,6 +296,41 @@ func TestVoiceKeepsItsOrderAcrossBatches(t *testing.T) {
 	want = append(want, "va"...)
 	if got := bytes.Join(r.writes, nil); len(r.writes) != 2 || !bytes.Equal(got, want) {
 		t.Fatalf("%d writes, in order: %v", len(r.writes), bytes.Equal(got, want))
+	}
+}
+
+// A control frame held back by the cap, then more voice than one write
+// holds: the voice goes first, in order, and the held frame still goes
+// out, once.
+func TestAHeldFrameSurvivesAVoiceBacklog(t *testing.T) {
+	r := newRecorder()
+	c := recordedClient(r)
+	var voice []byte
+	r.onWrite = func([]byte) {
+		if len(r.writes) == 1 {
+			for i := range 40 {
+				frame := bytes.Repeat([]byte{byte('0' + i%10)}, maxBatch/16)
+				voice = append(voice, frame...)
+				c.send(frame, true)
+			}
+		}
+	}
+	first := bytes.Repeat([]byte("a"), maxBatch*5/8)
+	held := bytes.Repeat([]byte("C"), maxBatch*5/8) // does not fit after first
+	c.send(first, false)
+	c.send(held, false)
+	c.send([]byte("z"), false)
+	c.closeAfterFlush()
+	c.writer()
+	want := slices.Concat(first, voice, held, []byte("z"))
+	if got := bytes.Join(r.writes, nil); !bytes.Equal(got, want) {
+		t.Fatalf("%d bytes in %d writes, want %d: %d of the held frame's %d",
+			len(got), len(r.writes), len(want), bytes.Count(got, []byte("C")), len(held))
+	}
+	for _, w := range r.writes {
+		if len(w) > maxBatch {
+			t.Fatalf("a write of %d bytes", len(w))
+		}
 	}
 }
 
