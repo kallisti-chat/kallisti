@@ -246,6 +246,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 	account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
 	expires_at INTEGER NOT NULL
 );
+-- Finding an account's sessions: push delivery, ending the other sessions.
+CREATE INDEX IF NOT EXISTS sessions_by_account ON sessions(account_id);
 `
 
 // Open opens (and creates) the database. ":memory:" is for tests.
