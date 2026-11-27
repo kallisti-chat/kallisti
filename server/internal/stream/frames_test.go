@@ -198,3 +198,25 @@ func waitText(tb testing.TB, ws *websocket.Conn, want string) {
 		}
 	}
 }
+
+func TestKeptBufferDropsOnlyBigOnes(t *testing.T) {
+	small := make([]byte, 0, maxKeptBuffer)
+	if got := keptBuffer(small); cap(got) != cap(small) || &got[:1][0] != &small[:1][0] {
+		t.Fatal("a buffer at the cap should be kept")
+	}
+	// A frame over the cap grows the buffer; it is not kept after it.
+	big, err := readMessage(bytes.NewReader(make([]byte, 300<<10)), small)
+	if err != nil || len(big) != 300<<10 {
+		t.Fatalf("read: %d bytes, %v", len(big), err)
+	}
+	if got := keptBuffer(big); cap(got) != 0 {
+		t.Fatalf("buffer of cap %d kept after a big frame", cap(got))
+	}
+	// The next, small frame reads into the same backing array again.
+	buf := keptBuffer(small)
+	first, _ := readMessage(bytes.NewReader(make([]byte, 30<<10)), buf)
+	second, _ := readMessage(bytes.NewReader(make([]byte, 20<<10)), keptBuffer(first))
+	if &first[0] != &second[0] {
+		t.Fatal("a small frame's buffer was not reused")
+	}
+}
