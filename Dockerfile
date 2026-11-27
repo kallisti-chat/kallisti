@@ -15,7 +15,7 @@ COPY packages/protocol packages/protocol
 COPY apps/web apps/web
 RUN pnpm --filter @kallisti/web build
 
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26-alpine AS server
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.27-alpine AS server
 ARG TARGETOS TARGETARCH
 WORKDIR /src
 COPY server/go.mod server/go.sum ./

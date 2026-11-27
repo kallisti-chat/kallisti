@@ -6,7 +6,7 @@ proxy for HTTPS in front of it (Caddy below; nginx works too).
 
 ## Build
 
-You need Node 24 with pnpm 11 and Go 1.26.2 or newer (the `Dockerfile`
+You need Node 24 with pnpm 11 and Go 1.27.4 or newer (the `Dockerfile`
 shows the exact versions it builds with). On the build machine:
 
 ```sh

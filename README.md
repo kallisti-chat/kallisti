@@ -204,7 +204,7 @@ visibility), or others cannot pull them.
 
 ## Development
 
-Needs Node 24 with pnpm 11 and Go 1.26.2 or newer.
+Needs Node 24 with pnpm 11 and Go 1.27.4 or newer.
 
 ```sh
 pnpm install
