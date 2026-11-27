@@ -3,6 +3,7 @@ package sidecar
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,9 @@ var clock = time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
 
 func newHub(t testing.TB, channels ...string) *Hub {
 	t.Helper()
-	s, err := store.Open(":memory:")
+	// In a file, not in memory: only then the store reads on its other
+	// connections, as on a server.
+	s, err := store.Open(filepath.Join(t.TempDir(), "k.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

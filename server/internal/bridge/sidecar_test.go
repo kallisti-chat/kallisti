@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -59,7 +60,9 @@ func fakeMumble(t *testing.T) string {
 
 func newSidecar(t *testing.T) *sidecar.Hub {
 	t.Helper()
-	s, err := store.Open(":memory:")
+	// In a file, not in memory: only then the store reads on its other
+	// connections, as on a server.
+	s, err := store.Open(filepath.Join(t.TempDir(), "k.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
