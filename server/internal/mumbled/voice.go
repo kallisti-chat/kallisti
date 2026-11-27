@@ -78,6 +78,11 @@ func deliver(p audioPacket, from uint32, receivers []receiver, udp *net.UDPConn)
 		out, ok := packets[k]
 		if !ok {
 			out.udp = encodeServerAudio(p, from, r.ctx, r.c.legacy, r.position)
+			packets[k] = out
+		}
+		if !r.addr.IsValid() && out.tcp == nil {
+			// Only when someone gets it over TCP. The frame is shared and
+			// queued, so it is never changed after this.
 			out.tcp = mumble.EncodeFrame(mumble.TypeUDPTunnel, out.udp)
 			packets[k] = out
 		}
