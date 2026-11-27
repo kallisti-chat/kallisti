@@ -224,6 +224,11 @@ The official Mumble client in podman, for the server tests:
 `KALLISTI_OFFICIAL_CLIENT=1 go test ./internal/mumbled` (see
 `packages/devtools/mumble-client`).
 
+Security checks, as CI runs them (in `server`): `./gosec.sh` and
+`go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...`. A gosec false
+positive at one call site gets `// #nosec G304 -- why` on its line; a rule
+that is noise for a whole directory goes in `gosec.sh`, with its reason.
+
 Dev scripts (with a running bridge):
 
 ```sh
