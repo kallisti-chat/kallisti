@@ -73,7 +73,7 @@ func scanThread(row interface{ Scan(...any) error }) (Thread, error) {
 }
 
 func (s *Store) threads(where string, args ...any) ([]Thread, error) {
-	rows, err := s.db.Query(threadSelect+where, args...)
+	rows, err := s.rdb.Query(threadSelect+where, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -242,10 +242,10 @@ func (s *Store) DeleteThread(id int64) ([]string, error) {
 
 // withExtras fills in messages' uploads, reactions and threads.
 func (s *Store) withExtras(msgs []Message) error {
-	if err := withUploads(s.db, msgs); err != nil {
+	if err := withUploads(s.rdb, msgs); err != nil {
 		return err
 	}
-	if err := withPolls(s.db, msgs); err != nil {
+	if err := withPolls(s.rdb, msgs); err != nil {
 		return err
 	}
 	if err := s.withReactions(msgs); err != nil {

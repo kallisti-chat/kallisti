@@ -170,7 +170,18 @@ type Media struct {
 	Duration      int64
 }
 
-type Store struct{ db *sql.DB }
+// Store has two handles on the database. db is the one connection that
+// writes, and still reads most things. rdb only reads, on a few
+// connections of its own: the reads that are long or frequent go there
+// (see readers), so they wait neither for each other nor for a write, and
+// a write does not wait for them. A read on rdb sees every write that
+// returned before it started (WAL). In memory there is one connection, and
+// rdb is db.
+type Store struct{ db, rdb *sql.DB }
+
+// readers is how many connections read at once, next to the one that
+// writes.
+const readers = 2
 
 // DB is the database, for other parts that keep their tables in the same
 // file (the built-in Mumble server).
@@ -272,7 +283,21 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
-	return &Store{db: db}, nil
+	rdb := db
+	if path != ":memory:" {
+		// After the schema: a read-only connection cannot make the file.
+		rdb, err = sql.Open("sqlite", "file:"+path+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(5000)")
+		if err == nil {
+			err = rdb.Ping()
+		}
+		if err != nil {
+			db.Close()
+			return nil, fmt.Errorf("open for reading: %w", err)
+		}
+		rdb.SetMaxOpenConns(readers)
+		rdb.SetMaxIdleConns(readers) // or they are closed and opened again and again
+	}
+	return &Store{db: db, rdb: rdb}, nil
 }
 
 // addColumns adds the columns (name, definition) a table does not have yet.
@@ -578,7 +603,12 @@ func migrate(db *sql.DB) error {
 	return err
 }
 
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Close() error {
+	if s.rdb != s.db {
+		s.rdb.Close()
+	}
+	return s.db.Close()
+}
 
 // VoiceChat is the hidden channel that holds a voice channel's chat (the
 // Mumble channel id; the built-in server never reuses them), made on first
@@ -1111,7 +1141,7 @@ func (s *Store) History(channelID, beforeID int64, limit int) ([]Message, error)
 	if beforeID != 0 {
 		where, args = where+` AND m.id < ?`, append(args, beforeID)
 	}
-	rows, err := s.db.Query(messageSelect+`WHERE `+where+` ORDER BY m.id DESC LIMIT ?`, append(args, limit)...)
+	rows, err := s.rdb.Query(messageSelect+`WHERE `+where+` ORDER BY m.id DESC LIMIT ?`, append(args, limit)...)
 	if err != nil {
 		return nil, err
 	}
@@ -1132,7 +1162,7 @@ func (s *Store) History(channelID, beforeID int64, limit int) ([]Message, error)
 }
 
 func (s *Store) MessageByID(id int64) (Message, error) {
-	m, err := scanMessage(s.db.QueryRow(messageSelect+`WHERE m.id = ?`, id))
+	m, err := scanMessage(s.rdb.QueryRow(messageSelect+`WHERE m.id = ?`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return Message{}, ErrNotFound
 	}
@@ -1339,7 +1369,7 @@ func (s *Store) Search(text string, channels []int64, author string, limit int) 
 	}
 	in, chans := inList(channels)
 	args = append(append(args, chans...), author, author, limit)
-	rows, err := s.db.Query(messageSelect+`WHERE `+where+`
+	rows, err := s.rdb.Query(messageSelect+`WHERE `+where+`
 		AND m.channel_id IN (`+in+`)
 		AND (? = '' OR lower(m.author) = lower(?)) ORDER BY m.id DESC LIMIT ?`, args...)
 	if err != nil {
@@ -1357,10 +1387,10 @@ func (s *Store) Search(text string, channels []int64, author string, limit int) 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	if err := withUploads(s.db, out); err != nil {
+	if err := withUploads(s.rdb, out); err != nil {
 		return nil, err
 	}
-	return out, withPolls(s.db, out)
+	return out, withPolls(s.rdb, out)
 }
 
 // SetReadMark notes that a user read a channel up to a message; marks never
