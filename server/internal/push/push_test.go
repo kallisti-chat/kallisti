@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -511,5 +512,40 @@ func TestAllMessagesPushesHaveTheirOwnTag(t *testing.T) {
 	got := f.take()
 	if len(got) != 2 || got[0].note.Tag != "chat-3" || got[1].note.Tag != "chat-3-all" || got[1].topic != "chat-3-all" {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+// One message that pings n users: each is notified once. Messages come
+// every few seconds in a dozen chats, so the sent marks of a minute are
+// all in the map, as on a busy server.
+func BenchmarkNotifyUsers(b *testing.B) {
+	for _, n := range []int{50, 500} {
+		b.Run(strconv.Itoa(n), func(b *testing.B) {
+			now := clock
+			s := &Service{Now: func() time.Time { return now }}
+			s.Start(0, n)
+			defer s.Stop()
+			users := make([]string, n)
+			for i := range users {
+				users[i] = "user" + strconv.Itoa(i)
+			}
+			message := func(i int) {
+				now = now.Add(5 * time.Second)
+				for _, u := range users {
+					s.Notify(u, Note{Channel: int64(i % 12)})
+				}
+				for len(s.queue) > 0 { // as the workers would
+					<-s.queue
+				}
+			}
+			for i := range 24 { // a full minute and more of messages
+				message(i)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := range b.N {
+				message(i)
+			}
+		})
 	}
 }
