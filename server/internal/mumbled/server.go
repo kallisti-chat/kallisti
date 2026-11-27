@@ -5,6 +5,7 @@
 package mumbled
 
 import (
+	"bufio"
 	"cmp"
 	"encoding/binary"
 	"errors"
@@ -426,18 +427,51 @@ func (s *Server) Close() {
 	}
 }
 
-func readFrame(conn net.Conn, limit int) (uint16, []byte, error) {
-	var header [6]byte
-	if _, err := io.ReadFull(conn, header[:]); err != nil {
+// maxKeptVoice is the size of a client's buffer for voice frames. Voice
+// packets are about 100 bytes; a larger frame gets a buffer of its own.
+const maxKeptVoice = 2 << 10
+
+// frameReader reads a client's frames. Voice comes about 50 times a
+// second while a client talks, so voice frames share one buffer: a frame
+// is handled before the next is read, and the voice path keeps none of
+// its bytes. Other frames get their own buffer, as handlers may keep
+// parts of them.
+type frameReader struct {
+	r      io.Reader
+	header [6]byte
+	voice  []byte
+}
+
+// newFrameReader buffers the connection, so a frame's header and body
+// most often come from one read (on a net.Pipe one round trip less). The
+// buffer may hold bytes past the current frame: every read of the
+// client's frames must go through this reader.
+func newFrameReader(conn net.Conn) *frameReader {
+	return &frameReader{r: bufio.NewReader(conn)}
+}
+
+// read returns the next frame. A voice frame's body is only valid until
+// the next read.
+func (f *frameReader) read(limit int) (uint16, []byte, error) {
+	if _, err := io.ReadFull(f.r, f.header[:]); err != nil {
 		return 0, nil, err
 	}
-	n := binary.BigEndian.Uint32(header[2:])
+	typ := binary.BigEndian.Uint16(f.header[:])
+	n := binary.BigEndian.Uint32(f.header[2:])
 	if n > uint32(limit) {
 		return 0, nil, errors.New("frame too large")
 	}
-	body := make([]byte, n)
-	_, err := io.ReadFull(conn, body)
-	return binary.BigEndian.Uint16(header[:]), body, err
+	var body []byte
+	if typ == mumble.TypeUDPTunnel && n <= maxKeptVoice {
+		if f.voice == nil {
+			f.voice = make([]byte, maxKeptVoice)
+		}
+		body = f.voice[:n]
+	} else {
+		body = make([]byte, n)
+	}
+	_, err := io.ReadFull(f.r, body)
+	return typ, body, err
 }
 
 // close never blocks: closing a TLS connection waits for a writer that

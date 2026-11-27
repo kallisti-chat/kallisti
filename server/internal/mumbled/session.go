@@ -51,10 +51,10 @@ type hello struct {
 	osVersion      string
 }
 
-func handshake(conn net.Conn) (h hello, reject []byte, err error) {
+func handshake(r *frameReader) (h hello, reject []byte, err error) {
 	var version pb.Version
 	for {
-		typ, body, err := readFrame(conn, maxHandshakeFrame)
+		typ, body, err := r.read(maxHandshakeFrame)
 		if err != nil {
 			return h, nil, err
 		}
@@ -308,7 +308,9 @@ func (s *Server) handle(conn net.Conn, o Origin, counted bool) {
 		defer func() { s.conns.remove(o.Host, pending) }()
 	}
 	conn.SetDeadline(time.Now().Add(handshakeTimeout))
-	h, reject, err := handshake(conn)
+	// One reader for the handshake and after it.
+	frames := newFrameReader(conn)
+	h, reject, err := handshake(frames)
 	if err != nil {
 		return
 	}
@@ -382,7 +384,7 @@ func (s *Server) handle(conn net.Conn, o Origin, counted bool) {
 	conn.SetDeadline(time.Time{})
 	for {
 		conn.SetReadDeadline(time.Now().Add(idleTimeout))
-		typ, body, err := readFrame(conn, maxFrame)
+		typ, body, err := frames.read(maxFrame)
 		if err != nil {
 			return
 		}
