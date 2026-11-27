@@ -106,10 +106,14 @@ func (h *Hub) eachReady(f func(*Conn, mumble.Identity)) {
 	}
 }
 
-// sendTo sends to the chat's readers.
+// sendTo sends to the chat's readers: an event that is the same for each
+// (never an error, see broadcast).
 func (h *Hub) sendTo(c chat, v any) {
-	for _, conn := range h.readers(c) {
-		conn.send(v)
+	readers := h.readers(c)
+	if b, ok := encode(v); ok {
+		for _, conn := range readers {
+			conn.sendRaw(b)
+		}
 	}
 }
 

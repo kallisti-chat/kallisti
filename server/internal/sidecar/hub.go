@@ -1323,11 +1323,13 @@ func (h *Hub) deliver(from mumble.Identity, ch chat, m store.Message, by *Conn, 
 	if nonce != "" {
 		mine = map[string]any{"type": "message", "message": ev["message"], "nonce": nonce}
 	}
-	for _, conn := range h.readers(ch) {
+	readers := h.readers(ch)
+	evb, ok := encode(ev)
+	for _, conn := range readers {
 		if conn == by {
 			conn.send(mine)
-		} else {
-			conn.send(ev)
+		} else if ok {
+			conn.sendRaw(evb)
 		}
 	}
 	if ch.direct {
@@ -1489,9 +1491,14 @@ func (h *Hub) ListenOnlyChanged() {
 	})
 }
 
+// broadcast sends an event that is the same for every connection (never an
+// error: send adds the nonce to those).
 func (h *Hub) broadcast(v any) {
-	for _, c := range h.all() {
-		c.send(v)
+	conns := h.all()
+	if b, ok := encode(v); ok {
+		for _, c := range conns {
+			c.sendRaw(b)
+		}
 	}
 }
 
@@ -1533,11 +1540,23 @@ func (c *Conn) send(v any) {
 			v = m
 		}
 	}
+	if b, ok := encode(v); ok {
+		c.sendRaw(b)
+	}
+}
+
+// encode marshals an event once, for sendRaw to queue on many connections.
+func encode(v any) ([]byte, bool) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		slog.Error("encode sidecar message", "err", err)
-		return
 	}
+	return b, err == nil
+}
+
+// sendRaw queues a marshalled event. Connections share b, so nobody may
+// change it. It skips the error personalisation of send.
+func (c *Conn) sendRaw(b []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed {
