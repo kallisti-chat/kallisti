@@ -3,7 +3,6 @@ package sidecar
 import (
 	"fmt"
 	"log/slog"
-	"slices"
 	"strings"
 
 	"kallisti.chat/server/internal/mumble"
@@ -128,13 +127,17 @@ func (h *Hub) pushFor(c chat, m store.Message) {
 	if len(subscribed) == 0 {
 		return
 	}
+	wantsAll := make(map[string]bool, len(all))
+	for _, name := range all {
+		wantsAll[name] = true
+	}
 	online, where := h.voice.Online(), h.where(c)
 	note := push.Note{Channel: c.id, Parent: c.parent, Author: m.Author, URL: fmt.Sprintf("/channels/%d/%d", c.id, m.ID)}
 	for _, name := range subscribed {
 		// What needs no lookup first: most names are neither pinged nor
 		// want all of the chat's messages.
 		ping := mayPing && pinged(m, c.direct, name)
-		if !ping && !slices.Contains(all, name) {
+		if !ping && !wantsAll[name] {
 			continue
 		}
 		user, ok := h.PushUser(name)
