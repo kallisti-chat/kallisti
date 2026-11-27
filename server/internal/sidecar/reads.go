@@ -158,7 +158,7 @@ func (h *Hub) readState(id mumble.Identity) (map[int64]int64, []summaryEntry) {
 		if e.Direct != nil {
 			contains = ""
 		}
-		latest, msgs, err := h.store.MessagesAfter(e.Channel, marks[e.Channel], contains)
+		latest, msgs, err := h.store.MessagesAfterWithoutFiles(e.Channel, marks[e.Channel], contains)
 		if err != nil {
 			slog.Error("channel summary", "err", err)
 			continue
