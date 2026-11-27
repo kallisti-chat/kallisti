@@ -29,6 +29,9 @@ func archive(t *testing.T, e Evidence) []byte {
 	return b.Bytes()
 }
 func githubFixture(t *testing.T, mutate func(*Evidence), extraCheck string, omitAssociations ...bool) (*GitHub, map[int]PR) {
+	return githubFixtureResponse(t, mutate, extraCheck, nil, omitAssociations...)
+}
+func githubFixtureResponse(t *testing.T, mutate func(*Evidence), extraCheck string, response func(string, any), omitAssociations ...bool) (*GitHub, map[int]PR) {
 	t.Helper()
 	ev := evidenceFor(31, "a")
 	if mutate != nil {
@@ -42,7 +45,13 @@ func githubFixture(t *testing.T, mutate func(*Evidence), extraCheck string, omit
 		case p == "/actions/workflows/99":
 			out = map[string]any{"id": 99, "path": Workflow, "state": "active"}
 		case p == "/actions/workflows/99/runs":
-			out = map[string]any{"workflow_runs": []any{map[string]any{"id": 100, "workflow_id": 99, "run_attempt": 1, "event": "pull_request_target", "conclusion": "success", "path": Workflow, "head_sha": strings.Repeat("b", 40), "repository": map[string]string{"full_name": Repository}}}}
+			out = map[string]any{"workflow_runs": []any{map[string]any{"id": 100, "workflow_id": 99, "run_attempt": 1, "event": "workflow_run", "conclusion": "success", "path": Workflow, "head_sha": strings.Repeat("b", 40), "repository": map[string]string{"full_name": Repository}}}}
+		case p == "/actions/runs/200":
+			out = map[string]any{"id": 200, "workflow_id": 98, "run_attempt": 1, "event": "pull_request", "conclusion": "success", "path": BuildWorkflow, "head_sha": strings.Repeat("a", 40), "head_branch": "feature", "head_repository": map[string]string{"full_name": Repository}, "repository": map[string]string{"full_name": Repository}, "pull_requests": []any{map[string]any{"number": 31, "head": map[string]string{"sha": strings.Repeat("a", 40)}, "base": map[string]string{"ref": "main"}}}}
+		case p == "/actions/workflows/98":
+			out = map[string]any{"id": 98, "path": BuildWorkflow, "state": "active"}
+		case p == "/actions/artifacts/2":
+			out = map[string]any{"id": 2, "name": "preview-image-1", "expired": false, "workflow_run": map[string]any{"id": 200, "head_sha": strings.Repeat("a", 40)}}
 		case p == "/actions/runs/100/artifacts":
 			out = map[string]any{"artifacts": []any{map[string]any{"id": 1, "name": "preview-metadata-1", "size_in_bytes": len(data)}}}
 		case p == "/actions/artifacts/1/zip":
@@ -68,6 +77,9 @@ func githubFixture(t *testing.T, mutate func(*Evidence), extraCheck string, omit
 			http.NotFound(w, r)
 			return
 		}
+		if response != nil {
+			response(p, out)
+		}
 		if err := json.NewEncoder(w).Encode(out); err != nil {
 			t.Error(err)
 		}
@@ -77,7 +89,7 @@ func githubFixture(t *testing.T, mutate func(*Evidence), extraCheck string, omit
 	g := NewGitHub("test", 99, "preview-bot")
 	g.Base = server.URL
 	g.Client = server.Client()
-	return g, map[int]PR{31: {Number: 31, SHA: strings.Repeat("a", 40), SameRepo: true}}
+	return g, map[int]PR{31: {Number: 31, SHA: strings.Repeat("a", 40), SameRepo: true, HeadRepository: Repository, HeadRef: "feature"}}
 }
 func TestTrustedArtifactHandoff(t *testing.T) {
 	g, p := githubFixture(t, nil, "success")
@@ -210,5 +222,145 @@ func TestGreenAllowsGitHubOmittedForkAssociations(t *testing.T) {
 	}
 	if !green {
 		t.Fatal("GitHub omitted fork associations rejected despite exact SHA and workflow identity")
+	}
+}
+
+func TestRejectForgedBuildProvenance(t *testing.T) {
+	cases := map[string]func(string, any){
+		"legacy-publisher": func(path string, v any) {
+			if path == "/actions/workflows/99/runs" {
+				v.(map[string]any)["workflow_runs"].([]any)[0].(map[string]any)["event"] = "pull_request_target"
+			}
+		},
+	}
+	for _, field := range []string{"id", "workflow_id", "run_attempt", "event", "conclusion", "path", "head_sha", "head_branch", "head_repository", "repository", "pull_requests"} {
+		cases["run-"+field] = func(path string, v any) {
+			if path != "/actions/runs/200" {
+				return
+			}
+			m := v.(map[string]any)
+			switch field {
+			case "id", "workflow_id", "run_attempt":
+				m[field] = 999
+			case "head_repository", "repository":
+				m[field] = map[string]string{"full_name": "attacker/repo"}
+			case "pull_requests":
+				m[field] = []any{map[string]any{"number": 99, "head": map[string]string{"sha": strings.Repeat("a", 40)}, "base": map[string]string{"ref": "main"}}}
+			default:
+				m[field] = "invalid"
+			}
+		}
+	}
+	for _, field := range []string{"id", "path", "state"} {
+		cases["workflow-"+field] = func(path string, v any) {
+			if path != "/actions/workflows/98" {
+				return
+			}
+			if field == "id" {
+				v.(map[string]any)[field] = 999
+			} else {
+				v.(map[string]any)[field] = "invalid"
+			}
+		}
+	}
+	for _, field := range []string{"id", "name", "expired", "workflow_run"} {
+		cases["artifact-"+field] = func(path string, v any) {
+			if path != "/actions/artifacts/2" {
+				return
+			}
+			m := v.(map[string]any)
+			switch field {
+			case "id":
+				m[field] = 999
+			case "name":
+				m[field] = "preview-image-2"
+			case "expired":
+				m[field] = true
+			case "workflow_run":
+				m[field] = map[string]any{"id": 999, "head_sha": strings.Repeat("a", 40)}
+			}
+		}
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			g, prs := githubFixtureResponse(t, nil, "success", mutate)
+			ev, err := g.Evidence(context.Background(), prs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(ev) != 0 {
+				t.Fatal("forged provenance accepted")
+			}
+		})
+	}
+}
+
+func TestBuildEvidenceRequiresAllProvenanceIDs(t *testing.T) {
+	for _, field := range []string{"run", "attempt", "workflow", "artifact"} {
+		t.Run(field, func(t *testing.T) {
+			e := evidenceFor(31, "a")
+			switch field {
+			case "run":
+				e.BuildRunID = 0
+			case "attempt":
+				e.BuildAttempt = 0
+			case "workflow":
+				e.BuildWorkflowID = 0
+			case "artifact":
+				e.BuildArtifactID = 0
+			}
+			if e.Validate(PR{Number: 31, SHA: e.SHA, SameRepo: true}) == nil {
+				t.Fatal("missing build provenance accepted")
+			}
+		})
+	}
+}
+
+func TestSourceBuildAllowsEmptyAssociations(t *testing.T) {
+	g, prs := githubFixtureResponse(t, nil, "success", func(path string, v any) {
+		if path == "/actions/runs/200" {
+			v.(map[string]any)["pull_requests"] = []any{}
+		}
+	})
+	ev, err := g.Evidence(context.Background(), prs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ev) != 1 {
+		t.Fatal("exact source identity rejected when associations omitted")
+	}
+}
+
+func TestApprovalRequiresExplicitSHA(t *testing.T) {
+	for _, body := range []string{"/preview", "/preview " + strings.Repeat("b", 40), "/preview " + strings.Repeat("a", 40)} {
+		t.Run(body, func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(map[string]any{"id": 7, "body": body, "created_at": "2026-01-01", "updated_at": "2026-01-01", "issue_url": "https://api.github.com" + repoPath("/issues/31"), "user": map[string]string{"login": "cortexobscura"}})
+			}))
+			defer s.Close()
+			g := NewGitHub("", 99, "")
+			g.Base, g.Client = s.URL, s.Client()
+			e := evidenceFor(31, "a")
+			e.ApprovalID, e.Approver = 7, "cortexobscura"
+			err := g.approval(context.Background(), e)
+			if (err == nil) != (body == "/preview "+e.SHA) {
+				t.Fatalf("unexpected approval result: %v", err)
+			}
+		})
+	}
+}
+
+func TestConditionalSkippedCheckDoesNotBlockSuccessfulRequiredWorkflows(t *testing.T) {
+	for _, conclusion := range []string{"skipped", "neutral", "cancelled", "timed_out", "action_required"} {
+		t.Run(conclusion, func(t *testing.T) {
+			g, prs := githubFixture(t, nil, conclusion)
+			got, err := g.Green(context.Background(), prs[31])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != (conclusion == "skipped") {
+				t.Fatalf("green=%v for %s", got, conclusion)
+			}
+		})
 	}
 }

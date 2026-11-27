@@ -7,31 +7,31 @@ Keeping it here makes the tested image handoff and bootstrap schema reviewable
 together. It does not use the Helm release chart, render PR-supplied YAML, run PR
 scripts in the cluster, or deploy itself.
 
-The code and local tests are ready for review. No production deployment, GitHub
-comment, image publication or hosted workflow run has been performed for this
-change. The upstream issue's working-address-in-15-minutes criterion is **not
-yet demonstrated**; full CI, runner queues and image builds can exceed it.
+The code and local tests are ready for review. A separate fork pilot is used to
+qualify hosted workflows and live infrastructure before upstream activation.
+The upstream issue's working-address-in-15-minutes criterion is **not yet
+demonstrated**; full CI, runner queues and image builds can exceed it.
 
 ## Admission and lifecycle
 
-* Same-repository PRs targeting `main`, including drafts, are automatic. A fork
-  requires `/preview` or `/preview <full current SHA>` from `cortexobscura` or
-  `lambadalambda`. The command must be the entire comment, apart from surrounding
-  whitespace. No collaborator-role inference or PR-authored approval is trusted.
-* An approval is bound to the head captured by the trusted resolver. Bare
-  `/preview` is accepted only when GitHub's PR `updated_at` strictly precedes the
-  comment's `created_at`. Equal second-resolution timestamps are ambiguous and
-  fail closed. In practice, comments may update the PR timestamp: use the explicit
-  SHA form when the run asks for it. Edited approvals require a fresh comment.
-  The controller revalidates the original comment and durably binds its ID to
-  PR+SHA. Deleted or edited approvals cannot start or promote a candidate.
+* Same-repository PRs targeting `main`, including drafts, are automatic. Fork
+  publication requires `/preview <full current SHA>` from `cortexobscura` or
+  `lambadalambda`. The command must be the entire unedited comment, apart from
+  surrounding whitespace. A bare `/preview` is rejected with instructions to
+  include the SHA; comment timestamps do not reliably establish the approved head.
+  Build execution follows GitHub's normal pull-request approval policy, while
+  publication and deployment require this separate explicit approval.
+* The controller revalidates the original approval comment and durably binds its
+  ID to PR+SHA. Deleted or edited approvals cannot start or promote a candidate.
 * The original `test.yml`, `voice.yml` and `helm.yml` workflows must have latest
   successful `pull_request` runs for that head. Every reported commit check must
-  be completed/successful, and combined commit statuses must be successful or
-  absent. Missing, skipped, neutral, cancelled and pending checks fail closed.
+  be completed with success or skipped (for conditional jobs such as controller
+  image publication on a PR), and combined commit statuses must be successful or
+  absent. The required workflow runs must succeed; missing, neutral, cancelled
+  and pending results fail closed.
   Concrete workflow IDs obtained from the known paths protect against a check
   with an attacker-chosen matching name. Newly added failing checks also block.
-* Original PR workflows normally test GitHub's merge revision. `preview.yml`
+* Original PR workflows normally test GitHub's merge revision. `preview-build.yml`
   separately tests the **exact head SHA**: web type/tests, Go vet/race tests,
   desktop tests, chart checks and Chrome/Firefox/Safari voice tests. Only then
   does it build that head. Existing CI is left unchanged, so this deliberately
@@ -58,29 +58,33 @@ yet demonstrated**; full CI, runner queues and image builds can exceed it.
 
 ## Image trust boundary
 
-`.github/workflows/preview.yml` runs trusted default-branch instructions using
-`pull_request_target` and `issue_comment`. Resolution captures numeric PR and
-full SHA without shell interpolation of PR text. Exact-head checks and image
-builds use fresh GitHub-hosted runners with only `contents: read`, credentialless
-checkout, no registry login and no shared build cache. Candidate code is expected
-to be arbitrary, even for an approved PR. No cluster credentials enter Actions.
+`.github/workflows/preview-build.yml` runs only on `pull_request`. It tests and
+builds the exact PR head on fresh GitHub-hosted runners, with read-only permissions,
+credentialless checkout, no registry login and no deployment credentials. This
+keeps candidate execution in the PR context rather than the default branch's
+privileged workflow context. Candidate code is untrusted, including approved PRs.
 
-The build uploads a Docker image archive. A **different fresh runner** imports
-that archive using `skopeo copy`, without running its entrypoint, build scripts or
-Dockerfile. Only that publisher has `packages: write`. It computes the pushed
-manifest digest and uploads a small immutable `preview-metadata-ATTEMPT` artifact.
-The metadata includes repository, PR, head SHA, run ID/attempt, fixed GHCR image
-repository, digest and approval identity. Candidate job outputs are not used as
-trusted digests or approval metadata. Images currently target `linux/amd64`.
+The build uploads a Docker archive. The separate trusted `preview.yml` runs from
+`main` on `workflow_run` completion or an authorized `/preview <SHA>` comment. Its
+resolver re-fetches GitHub run, workflow, PR and artifact data, checks the current
+head and source run attempt, and enforces fork approval. Ordinary issue comments
+do not start the resolver. It never checks out or executes candidate code.
 
-The controller downloads only that artifact from the configured preview workflow
-ID and verifies its path, successful run, trusted event, repository, run/attempt,
-PR/head, digest syntax and approval. The run's workflow SHA must remain an ancestor
-of trusted `main`. An old attempt or another repository's artifact is rejected.
-Artifacts are bounded ZIPs with exactly one `metadata.json`, never extracted or
-executed. GitHub API/Actions artifact authorization is the provenance authority;
-this is not an independent Sigstore signature or an attestation verifier.
-Protect `main`, Actions workflow changes, the publisher token and registry access.
+A fresh publisher imports the validated artifact with `skopeo copy`, without
+running its entrypoint or Dockerfile. Only publication has `packages: write`.
+It computes the pushed manifest digest and writes `preview-metadata-ATTEMPT`.
+Metadata binds the trusted publisher run/attempt to the source build workflow,
+run/attempt and artifact ID, repository, PR/head, fixed image repository, digest
+and approval. Images currently target `linux/amd64`.
+
+The controller independently verifies both publisher and source-build provenance.
+The publisher must use the configured workflow ID/path and trusted main history;
+the source build must use `preview-build.yml`, a successful `pull_request` run,
+current head and correct attempt/artifact. Legacy `pull_request_target` publication
+is rejected. Metadata ZIPs are bounded, contain exactly one `metadata.json`, and
+are never extracted or executed. GitHub API/Actions artifact authorization is the
+provenance authority, not an independent signature or attestation verifier.
+Protect `main`, workflow changes, publisher credentials and registry access.
 
 The controller scans at most 1,000 successful preview runs from the preceding
 96 hours; metadata retention is four days. Missing evidence fails closed. Registry
@@ -161,7 +165,7 @@ it does not prove live CNI/Traefik routing or application behavior on Kali.
 Build the trusted image with `docker build -f deploy/preview/Dockerfile .` from the
 repository root. `preview-controller.yml` tests and publishes it only from upstream
 `main`; pin its resulting digest in Flux and restart the controller after changing
-the bootstrap pin. Install both workflows on protected `main` before activation.
+the bootstrap pin. Install all preview workflows on protected `main` before activation.
 
 The controller uses in-cluster authentication and Lease leadership. Its Deployment
 must use SA `preview-controller` in `preview-system`. Because that SA defaults to

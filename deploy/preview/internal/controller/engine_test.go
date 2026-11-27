@@ -34,7 +34,7 @@ func (f *fakeRuntime) Withdraw(context.Context, int, int) error {
 	return f.err
 }
 func evidenceFor(n int, sha string) Evidence {
-	return Evidence{Repository: Repository, PR: n, SHA: strings.Repeat(sha, 40), RunID: 100, Attempt: 1, Image: ImageRepository, Digest: "sha256:" + strings.Repeat("a", 64)}
+	return Evidence{Repository: Repository, PR: n, SHA: strings.Repeat(sha, 40), RunID: 100, Attempt: 1, BuildRunID: 200, BuildAttempt: 1, BuildWorkflowID: 98, BuildArtifactID: 2, Image: ImageRepository, Digest: "sha256:" + strings.Repeat("a", 64)}
 }
 func fixture(t *testing.T) (*Engine, *fakeRuntime, map[int]PR, map[int]Evidence, *time.Time) {
 	t.Helper()

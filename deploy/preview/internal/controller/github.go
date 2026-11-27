@@ -67,6 +67,7 @@ func (g *GitHub) Pulls(ctx context.Context) (map[int]PR, error) {
 			Base   struct{ Ref string }
 			Head   struct {
 				SHA  string
+				Ref  string
 				Repo struct {
 					FullName string `json:"full_name"`
 				}
@@ -77,7 +78,7 @@ func (g *GitHub) Pulls(ctx context.Context) (map[int]PR, error) {
 		}
 		for _, p := range batch {
 			if p.Base.Ref == "main" && shaPattern.MatchString(p.Head.SHA) {
-				out[p.Number] = PR{Number: p.Number, SHA: p.Head.SHA, SameRepo: p.Head.Repo.FullName == Repository}
+				out[p.Number] = PR{Number: p.Number, SHA: p.Head.SHA, SameRepo: p.Head.Repo.FullName == Repository, HeadRepository: p.Head.Repo.FullName, HeadRef: p.Head.Ref}
 			}
 		}
 		if len(batch) < 100 {
@@ -88,13 +89,17 @@ func (g *GitHub) Pulls(ctx context.Context) (map[int]PR, error) {
 }
 
 type workflowRun struct {
-	ID           int64  `json:"id"`
-	WorkflowID   int64  `json:"workflow_id"`
-	RunAttempt   int    `json:"run_attempt"`
-	Event        string `json:"event"`
-	Conclusion   string `json:"conclusion"`
-	Path         string `json:"path"`
-	HeadSHA      string `json:"head_sha"`
+	ID             int64  `json:"id"`
+	WorkflowID     int64  `json:"workflow_id"`
+	RunAttempt     int    `json:"run_attempt"`
+	Event          string `json:"event"`
+	Conclusion     string `json:"conclusion"`
+	Path           string `json:"path"`
+	HeadSHA        string `json:"head_sha"`
+	HeadBranch     string `json:"head_branch"`
+	HeadRepository struct {
+		FullName string `json:"full_name"`
+	} `json:"head_repository"`
 	PullRequests []struct {
 		Number int `json:"number"`
 		Head   struct {
@@ -131,7 +136,7 @@ func (g *GitHub) Evidence(ctx context.Context, prs map[int]PR) (map[int]Evidence
 			return nil, err
 		}
 		for _, run := range batch.Runs {
-			if run.WorkflowID != g.WorkflowID || run.Path != Workflow || run.Repository.FullName != Repository || run.Conclusion != "success" || (run.Event != "pull_request_target" && run.Event != "issue_comment") || !shaPattern.MatchString(run.HeadSHA) {
+			if run.WorkflowID != g.WorkflowID || run.Path != Workflow || run.Repository.FullName != Repository || run.Conclusion != "success" || (run.Event != "workflow_run" && run.Event != "issue_comment") || !shaPattern.MatchString(run.HeadSHA) {
 				continue
 			}
 			var artifacts struct {
@@ -160,12 +165,18 @@ func (g *GitHub) Evidence(ctx context.Context, prs map[int]PR) (map[int]Evidence
 				if current, ok := out[ev.PR]; ok && current.ApprovalID >= ev.ApprovalID {
 					continue
 				}
-				// pull_request_target and issue_comment must originate from trusted main history.
+				// publishers must originate from trusted main history.
 				var comparison struct{ Status string }
 				if err = g.request(ctx, "GET", repoPath("/compare/"+run.HeadSHA+"...main"), nil, &comparison); err != nil {
 					return nil, err
 				}
 				if comparison.Status != "ahead" && comparison.Status != "identical" {
+					continue
+				}
+				if err = g.sourceBuild(ctx, p, ev); err != nil {
+					continue
+				}
+				if run.Event == "issue_comment" && ev.ApprovalID == 0 {
 					continue
 				}
 				if ev.ApprovalID > 0 {
@@ -188,6 +199,49 @@ func (g *GitHub) Evidence(ctx context.Context, prs map[int]PR) (map[int]Evidence
 	}
 	return out, nil
 }
+
+// sourceBuild verifies the untrusted artifact's GitHub provenance independently of the publisher metadata.
+func (g *GitHub) sourceBuild(ctx context.Context, p PR, e Evidence) error {
+	var run workflowRun
+	if err := g.request(ctx, "GET", repoPath(fmt.Sprintf("/actions/runs/%d", e.BuildRunID)), nil, &run); err != nil {
+		return err
+	}
+	if run.ID != e.BuildRunID || run.RunAttempt != e.BuildAttempt || run.WorkflowID != e.BuildWorkflowID || run.Event != "pull_request" || run.Conclusion != "success" || run.Path != BuildWorkflow || run.Repository.FullName != Repository || run.HeadSHA != p.SHA || p.HeadRepository == "" || p.HeadRef == "" || run.HeadRepository.FullName != p.HeadRepository || run.HeadBranch != p.HeadRef {
+		return fmt.Errorf("source build identity mismatch")
+	}
+	for _, association := range run.PullRequests {
+		if association.Number != p.Number || association.Head.SHA != p.SHA || association.Base.Ref != "main" {
+			return fmt.Errorf("source build PR association mismatch")
+		}
+	}
+	var workflow struct {
+		ID          int64
+		Path, State string
+	}
+	if err := g.request(ctx, "GET", repoPath(fmt.Sprintf("/actions/workflows/%d", e.BuildWorkflowID)), nil, &workflow); err != nil {
+		return err
+	}
+	if workflow.ID != e.BuildWorkflowID || workflow.Path != BuildWorkflow || workflow.State != "active" {
+		return fmt.Errorf("unexpected source build workflow")
+	}
+	var artifact struct {
+		ID          int64
+		Name        string
+		Expired     bool
+		WorkflowRun struct {
+			ID      int64
+			HeadSHA string `json:"head_sha"`
+		} `json:"workflow_run"`
+	}
+	if err := g.request(ctx, "GET", repoPath(fmt.Sprintf("/actions/artifacts/%d", e.BuildArtifactID)), nil, &artifact); err != nil {
+		return err
+	}
+	if artifact.ID != e.BuildArtifactID || artifact.Name != fmt.Sprintf("preview-image-%d", e.BuildAttempt) || artifact.Expired || artifact.WorkflowRun.ID != e.BuildRunID || artifact.WorkflowRun.HeadSHA != p.SHA {
+		return fmt.Errorf("source build artifact mismatch")
+	}
+	return nil
+}
+
 func (g *GitHub) artifact(ctx context.Context, id int64) (Evidence, error) {
 	var ev Evidence
 	base := g.Base
@@ -258,7 +312,7 @@ func (g *GitHub) approval(ctx context.Context, e Evidence) error {
 		return fmt.Errorf("approval identity mismatch")
 	}
 	body := strings.TrimSpace(c.Body)
-	if body != "/preview" && body != "/preview "+e.SHA {
+	if body != "/preview "+e.SHA {
 		return fmt.Errorf("approval withdrawn")
 	}
 	return nil
@@ -375,7 +429,7 @@ func (g *GitHub) Green(ctx context.Context, p PR) (bool, error) {
 		}
 		for _, c := range batch.Checks {
 			found = true
-			if c.Status != "completed" || c.Conclusion != "success" {
+			if c.Status != "completed" || (c.Conclusion != "success" && c.Conclusion != "skipped") {
 				return false, nil
 			}
 		}

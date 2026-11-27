@@ -10,29 +10,36 @@ import (
 const Repository = "kallisti-chat/kallisti"
 const ImageRepository = "ghcr.io/kallisti-chat/kallisti-preview"
 const Workflow = ".github/workflows/preview.yml"
+const BuildWorkflow = ".github/workflows/preview-build.yml"
 
 var shaPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
 type PR struct {
-	Number   int    `json:"number"`
-	SHA      string `json:"sha"`
-	SameRepo bool   `json:"same_repo"`
+	Number         int    `json:"number"`
+	SHA            string `json:"sha"`
+	SameRepo       bool   `json:"same_repo"`
+	HeadRepository string `json:"head_repository"`
+	HeadRef        string `json:"head_ref"`
 }
 type Evidence struct {
-	Repository string `json:"repository"`
-	PR         int    `json:"pr"`
-	SHA        string `json:"sha"`
-	RunID      int64  `json:"run_id"`
-	Attempt    int    `json:"attempt"`
-	Image      string `json:"image"`
-	Digest     string `json:"digest"`
-	ApprovalID int64  `json:"approval_id"`
-	Approver   string `json:"approver"`
+	Repository      string `json:"repository"`
+	PR              int    `json:"pr"`
+	SHA             string `json:"sha"`
+	BuildRunID      int64  `json:"build_run_id"`
+	BuildAttempt    int    `json:"build_attempt"`
+	BuildWorkflowID int64  `json:"build_workflow_id"`
+	BuildArtifactID int64  `json:"build_artifact_id"`
+	RunID           int64  `json:"run_id"`
+	Attempt         int    `json:"attempt"`
+	Image           string `json:"image"`
+	Digest          string `json:"digest"`
+	ApprovalID      int64  `json:"approval_id"`
+	Approver        string `json:"approver"`
 }
 
 func (e Evidence) Validate(p PR) error {
-	if e.Repository != Repository || e.PR <= 0 || e.PR != p.Number || e.SHA != p.SHA || !shaPattern.MatchString(e.SHA) || e.Image != ImageRepository || !digestPattern.MatchString(e.Digest) || e.RunID <= 0 || e.Attempt < 1 {
+	if e.Repository != Repository || e.PR <= 0 || e.PR != p.Number || e.SHA != p.SHA || !shaPattern.MatchString(e.SHA) || e.Image != ImageRepository || !digestPattern.MatchString(e.Digest) || e.RunID <= 0 || e.Attempt < 1 || e.BuildRunID <= 0 || e.BuildAttempt <= 0 || e.BuildWorkflowID <= 0 || e.BuildArtifactID <= 0 {
 		return fmt.Errorf("invalid image provenance for PR %d", p.Number)
 	}
 	if e.ApprovalID < 0 || (e.ApprovalID > 0 && e.Approver != "cortexobscura" && e.Approver != "lambadalambda") || (!p.SameRepo && e.ApprovalID == 0) {

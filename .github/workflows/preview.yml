@@ -1,24 +1,27 @@
-# all workflow instructions come from main. candidate code only runs in jobs
-# without publication or deployment permissions, on fresh github-hosted runners.
+# trusted default-branch instructions only; candidate artifacts are data, never executed.
 name: preview
 on:
-  pull_request_target:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: ['preview build']
+    types: [completed]
   issue_comment:
     types: [created]
 permissions:
   contents: read
 concurrency:
-  # comments, including controller status comments, must never cancel another run.
-  group: preview-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  group: preview-publish-${{ github.run_id }}
+  cancel-in-progress: false
 jobs:
   resolve:
-    if: github.repository == 'kallisti-chat/kallisti'
+    if: >-
+      github.repository == 'kallisti-chat/kallisti' &&
+      (github.event_name == 'workflow_run' ||
+       (github.event.issue.pull_request && startsWith(github.event.comment.body, '/preview') &&
+        contains(fromJSON('["cortexobscura","lambadalambda"]'), github.actor)))
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
       pull-requests: read
       issues: read
     outputs:
@@ -27,161 +30,87 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
       approval: ${{ steps.resolve.outputs.approval }}
       approver: ${{ steps.resolve.outputs.approver }}
+      build_run_id: ${{ steps.resolve.outputs.build_run_id }}
+      build_attempt: ${{ steps.resolve.outputs.build_attempt }}
+      build_workflow_id: ${{ steps.resolve.outputs.build_workflow_id }}
+      build_artifact_id: ${{ steps.resolve.outputs.build_artifact_id }}
     steps:
       - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         id: resolve
         with:
           script: |
-            const number = context.payload.pull_request?.number || context.payload.issue?.number;
-            if (!number || (context.eventName === 'issue_comment' && !context.payload.issue.pull_request)) return;
-            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: number});
-            if (pr.state !== 'open' || pr.base.ref !== 'main' || !/^[0-9a-f]{40}$/.test(pr.head.sha)) return;
-            let approval = 0, approver = '';
+            const repo = `${context.repo.owner}/${context.repo.repo}`;
+            const positive = n => Number.isSafeInteger(n) && n > 0;
+            const allowed = ['cortexobscura', 'lambadalambda'];
+            const {data: workflow} = await github.rest.actions.getWorkflow({...context.repo, workflow_id: 'preview-build.yml'});
+            if (!positive(workflow.id) || workflow.path !== '.github/workflows/preview-build.yml' || workflow.state !== 'active') return;
+            const validPR = pr => pr.state === 'open' && pr.base.ref === 'main' && pr.base.repo?.full_name === repo && /^[0-9a-f]{40}$/.test(pr.head.sha);
+            const validRun = (run, pr) => positive(run.id) && positive(run.run_attempt) && run.workflow_id === workflow.id &&
+              run.path === workflow.path && run.event === 'pull_request' && run.status === 'completed' && run.conclusion === 'success' &&
+              run.repository?.full_name === repo && run.head_sha === pr.head.sha &&
+              run.head_repository?.full_name === pr.head.repo?.full_name && run.head_branch === pr.head.ref &&
+              (!run.pull_requests?.length || run.pull_requests.some(p => p.number === pr.number && p.head?.sha === pr.head.sha));
+            let pr, run, approval = 0, approver = '';
             if (context.eventName === 'issue_comment') {
+              if (!context.payload.issue?.pull_request || !allowed.includes(context.actor)) return;
+              ({data: pr} = await github.rest.pulls.get({...context.repo, pull_number: context.payload.issue.number}));
+              if (!validPR(pr)) return;
               const {data: comment} = await github.rest.issues.getComment({...context.repo, comment_id: context.payload.comment.id});
-              if (!['cortexobscura', 'lambadalambda'].includes(comment.user.login)) return;
-              const command = comment.body.trim();
-              if (command !== '/preview' && command !== `/preview ${pr.head.sha}`) return;
-              if (comment.updated_at !== comment.created_at) {
-                core.setFailed('Edited approval: post a new /preview <current 40-character SHA> comment.'); return;
-              }
-              // github timestamps, not forgeable commit dates. equality is ambiguous
-              // at second precision, so bare commands fail closed in that case too.
-              if (command === '/preview' && Date.parse(pr.updated_at) >= Date.parse(comment.created_at)) {
-                core.setFailed(`Head may have changed since approval. Post /preview ${pr.head.sha}`); return;
+              if (!allowed.includes(comment.user?.login) || comment.user.login !== context.actor ||
+                  comment.issue_url !== `https://api.github.com/repos/${repo}/issues/${pr.number}` || comment.updated_at !== comment.created_at) return;
+              if (comment.body.trim() !== `/preview ${pr.head.sha}`) {
+                core.setFailed(`Approval must name the current head. Post /preview ${pr.head.sha}`); return;
               }
               approval = comment.id; approver = comment.user.login;
-            } else if (pr.head.repo?.full_name !== context.payload.repository.full_name) return;
-            core.setOutput('allowed', 'true'); core.setOutput('pr', String(number));
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {...context.repo, workflow_id: workflow.id, event: 'pull_request', head_sha: pr.head.sha, status: 'success', per_page: 100});
+              run = runs.filter(r => validRun(r, pr)).sort((a,b) => b.id-a.id)[0];
+              if (!run) { core.setFailed('No successful preview build for the current head; retry after it completes.'); return; }
+            } else if (context.eventName === 'workflow_run') {
+              ({data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: context.payload.workflow_run.id}));
+              const pulls = await github.paginate(github.rest.pulls.list, {...context.repo, state: 'open', base: 'main', per_page: 100});
+              const matches = pulls.filter(p => validPR(p) && validRun(run, p));
+              if (matches.length !== 1) return;
+              // fetch current details again, rather than relying on event-time associations.
+              ({data: pr} = await github.rest.pulls.get({...context.repo, pull_number: matches[0].number}));
+              if (!validPR(pr) || !validRun(run, pr)) return;
+              if (pr.head.repo.full_name !== repo) {
+                const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number: pr.number, per_page: 100});
+                const comment = comments.filter(c => positive(c.id) && allowed.includes(c.user?.login) && c.updated_at === c.created_at && c.body.trim() === `/preview ${pr.head.sha}`).sort((a,b) => b.id-a.id)[0];
+                if (!comment) return;
+                approval = comment.id; approver = comment.user.login;
+              }
+            } else return;
+            if (approval && !positive(approval)) return;
+            // revalidate the selected run, including its current attempt, before reading artifacts.
+            const selectedAttempt = run.run_attempt;
+            ({data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: run.id}));
+            if (run.run_attempt !== selectedAttempt || !validRun(run, pr)) return;
+            const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {...context.repo, run_id: run.id, per_page: 100});
+            const matches = artifacts.filter(a => a.name === `preview-image-${run.run_attempt}` && !a.expired && positive(a.id) && positive(a.size_in_bytes));
+            if (matches.length !== 1) return;
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: matches[0].id});
+            if (artifact.id !== matches[0].id || artifact.name !== `preview-image-${run.run_attempt}` || artifact.expired ||
+                !positive(artifact.size_in_bytes) || artifact.workflow_run?.id !== run.id || artifact.workflow_run?.head_sha !== pr.head.sha) return;
+            core.setOutput('allowed', 'true'); core.setOutput('pr', String(pr.number));
             core.setOutput('sha', pr.head.sha); core.setOutput('approval', String(approval)); core.setOutput('approver', approver);
-  check:
+            for (const [key,value] of Object.entries({build_run_id: run.id, build_attempt: run.run_attempt, build_workflow_id: workflow.id, build_artifact_id: matches[0].id})) core.setOutput(key, String(value));
+  publish:
     needs: resolve
     if: needs.resolve.outputs.allowed == 'true'
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - task: unit
-            os: ubuntu-latest
-          - task: desktop
-            os: ubuntu-22.04
-          - task: chart
-            os: ubuntu-latest
-          - task: chrome
-            os: ubuntu-latest
-          - task: firefox
-            os: ubuntu-latest
-          - task: safari
-            os: macos-26
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.resolve.outputs.sha }}
-          persist-credentials: false
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
-        with:
-          version: 11
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
-        with:
-          node-version: 24
-      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5
-        with:
-          go-version-file: server/go.mod
-          cache: false
-      - if: matrix.task == 'unit'
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm -r typecheck
-          pnpm -r test
-          cd server
-          test -z "$(gofmt -l .)"
-          go vet ./...
-          go test -race ./...
-      - if: matrix.task == 'desktop'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
-      - if: matrix.task == 'desktop'
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
-      - if: matrix.task == 'desktop'
-        run: |
-          mkdir -p apps/web/dist
-          cd apps/desktop/src-tauri
-          cargo test --locked
-      - if: matrix.task == 'chart'
-        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
-        with:
-          version: v4.2.2
-      - if: matrix.task == 'chart'
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.12'
-      - if: matrix.task == 'chart'
-        run: |
-          python -m pip install PyYAML==6.0.3
-          helm lint deploy/kubernetes/chart -f deploy/kubernetes/chart/ci/values.yaml --strict
-          python tests/deploy/helm_chart.py
-      - if: contains(fromJSON('["chrome","firefox","safari"]'), matrix.task)
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm --filter web build
-      - if: matrix.task == 'chrome' || matrix.task == 'firefox'
-        run: |
-          sudo apt-get update && sudo apt-get install -y pulseaudio
-          pulseaudio -D --exit-idle-time=-1
-      - if: contains(fromJSON('["chrome","firefox","safari"]'), matrix.task)
-        env:
-          BROWSER: ${{ matrix.task }}
-        run: |
-          case "$BROWSER" in
-            chrome) "$CHROMEWEBDRIVER/chromedriver" --port=4444 & ;;
-            firefox) "$GECKOWEBDRIVER/geckodriver" --port 4444 & ;;
-            safari) sudo safaridriver --enable && sudo safaridriver -p 4444 & ;;
-          esac
-          sleep 2
-          tests/voice/run.sh "$BROWSER" http://localhost:4444
-  build:
-    needs: [resolve, check]
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.resolve.outputs.sha }}
-          persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
-        with:
-          context: .
-          file: Dockerfile
-          platforms: linux/amd64
-          tags: preview:archive
-          outputs: type=docker,dest=/tmp/preview.tar
-          # no registry login, push, shared caches or deployment credentials.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: preview-image-${{ github.run_attempt }}
-          path: /tmp/preview.tar
-          retention-days: 1
-          compression-level: 0
-  publish:
-    needs: [resolve, check, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
+      actions: read
       packages: write
     steps:
       # no checkout or execution of candidate files in this job.
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: preview-image-${{ github.run_attempt }}
+          artifact-ids: ${{ needs.resolve.outputs.build_artifact_id }}
+          run-id: ${{ needs.resolve.outputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-multiple: true
           path: /tmp/image
       - run: sudo apt-get update && sudo apt-get install -y skopeo
       - name: Publish archive without running it
@@ -197,6 +126,10 @@ jobs:
           rm /tmp/auth.json
       - name: Write trusted metadata
         env:
+          BUILD_RUN_ID: ${{ needs.resolve.outputs.build_run_id }}
+          BUILD_ATTEMPT: ${{ needs.resolve.outputs.build_attempt }}
+          BUILD_WORKFLOW_ID: ${{ needs.resolve.outputs.build_workflow_id }}
+          BUILD_ARTIFACT_ID: ${{ needs.resolve.outputs.build_artifact_id }}
           PR: ${{ needs.resolve.outputs.pr }}
           SHA: ${{ needs.resolve.outputs.sha }}
           APPROVAL: ${{ needs.resolve.outputs.approval }}
@@ -211,6 +144,9 @@ jobs:
           assert re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
           assert re.fullmatch(r'[0-9a-f]{40}', os.environ['SHA'])
           metadata = dict(repository='kallisti-chat/kallisti', pr=int(os.environ['PR']), sha=os.environ['SHA'], run_id=int(os.environ['RUN_ID']), attempt=int(os.environ['ATTEMPT']), image='ghcr.io/kallisti-chat/kallisti-preview', digest=digest, approval_id=int(os.environ['APPROVAL']), approver=os.environ['APPROVER'])
+          for field in ('build_run_id', 'build_attempt', 'build_workflow_id', 'build_artifact_id'):
+              metadata[field] = int(os.environ[field.upper()])
+              assert metadata[field] > 0
           Path('/tmp/metadata.json').write_text(json.dumps(metadata))
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
