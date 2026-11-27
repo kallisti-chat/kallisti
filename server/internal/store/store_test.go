@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -1041,6 +1042,48 @@ func TestMessagesAfterHaveTheirFiles(t *testing.T) {
 	_, got, err := s.MessagesAfter(1, 0, "")
 	if err != nil || len(got) != 1 || got[0].ID != m.ID || len(got[0].Uploads) != 1 {
 		t.Fatalf("%+v %v", got, err)
+	}
+}
+
+// The unread summary's messages are MessagesAfter's, without the files.
+func TestMessagesAfterWithoutFilesIsTheSameButFiles(t *testing.T) {
+	s := open(t)
+	s.EnsureChannels([]string{"general"})
+	at := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	direct, err := s.DirectChat(1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ch := range []int64{1, direct} {
+		first, _ := s.AddMessage(NewMessage{ChannelID: ch, Author: "a", At: at, Text: "@b first"})
+		u, _ := s.AddUpload(Upload{Key: fmt.Sprintf("k%d", ch), Name: "f.png", Type: "image/png", Size: 1, Author: "a"}, at)
+		s.AddMessage(NewMessage{ChannelID: ch, Author: "a", At: at, Text: "@b with a file", Uploads: []Attachment{{ID: u.ID}}})
+		s.AddMessage(NewMessage{ChannelID: ch, Author: "b", At: at, Text: "plain", ReplyTo: first.ID})
+		s.AddMessage(NewMessage{ChannelID: ch, Author: "a", At: at, Text: "@b last"})
+		for _, contains := range []string{"@", ""} {
+			wantLatest, want, err := s.MessagesAfter(ch, 0, contains)
+			if err != nil || len(want) < 3 {
+				t.Fatalf("chat %d %q: %+v %v", ch, contains, want, err)
+			}
+			gotLatest, got, err := s.MessagesAfterWithoutFiles(ch, 0, contains)
+			if err != nil || gotLatest != wantLatest || len(got) != len(want) {
+				t.Fatalf("chat %d %q: %v %+v %v", ch, contains, gotLatest, got, err)
+			}
+			files := 0
+			for i := range want {
+				files += len(want[i].Uploads)
+				want[i].Uploads = nil
+				if want[i].Reply != nil {
+					want[i].Reply.Upload = nil
+				}
+				if !reflect.DeepEqual(got[i], want[i]) {
+					t.Fatalf("chat %d %q message %d: %+v, want %+v", ch, contains, i, got[i], want[i])
+				}
+			}
+			if files == 0 {
+				t.Fatalf("chat %d %q: no file was left out", ch, contains)
+			}
+		}
 	}
 }
 

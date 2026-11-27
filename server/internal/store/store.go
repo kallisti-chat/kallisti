@@ -1418,6 +1418,18 @@ const maxMessagesAfter = 500
 // another (newest first, among the newest maxMessagesAfter), with their
 // files: for unread marks, mention counts and Mumble's catch-up.
 func (s *Store) MessagesAfter(channel, after int64, contains string) (int64, []Message, error) {
+	return s.messagesAfter(channel, after, contains, true)
+}
+
+// MessagesAfterWithoutFiles is MessagesAfter without the messages' files
+// (Uploads and the quotes' Upload stay empty): the unread summary only
+// counts, and loading the files of hundreds of messages per channel is
+// wasted work.
+func (s *Store) MessagesAfterWithoutFiles(channel, after int64, contains string) (int64, []Message, error) {
+	return s.messagesAfter(channel, after, contains, false)
+}
+
+func (s *Store) messagesAfter(channel, after int64, contains string, files bool) (int64, []Message, error) {
 	var latest int64
 	if err := s.db.QueryRow(`SELECT coalesce(max(id), 0) FROM messages WHERE channel_id = ?`, channel).Scan(&latest); err != nil {
 		return 0, nil, err
@@ -1445,6 +1457,9 @@ func (s *Store) MessagesAfter(channel, after int64, contains string) (int64, []M
 		return 0, nil, err
 	}
 	rows.Close()
+	if !files {
+		return latest, out, nil
+	}
 	return latest, out, withUploads(s.db, out) // Mumble's catch-up shows them
 }
 
