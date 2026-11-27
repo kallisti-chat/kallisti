@@ -27,7 +27,7 @@ func New(bridge http.Handler, webDir string, brand func() Brand) http.Handler {
 		return bridge
 	}
 	files := http.FileServer(http.Dir(webDir))
-	gz := &gzipCache{files: map[string][]byte{}}
+	gz := &gzipCache{files: map[string]*gzipFile{}}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
 			bridge.ServeHTTP(w, r)

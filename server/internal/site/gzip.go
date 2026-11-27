@@ -19,8 +19,16 @@ import (
 var compressible = []string{".js", ".css", ".wasm", ".svg", ".json"}
 
 type gzipCache struct {
-	mu    sync.Mutex
-	files map[string][]byte
+	mu    sync.Mutex // only for the map: never held while compressing
+	files map[string]*gzipFile
+}
+
+// One file's compression: the first request does it, the others for the
+// same file wait for it, and no other file waits.
+type gzipFile struct {
+	once sync.Once
+	body []byte
+	ok   bool
 }
 
 // serve answers with the gzipped asset if the client takes gzip and the
@@ -50,18 +58,30 @@ func (c *gzipCache) serve(w http.ResponseWriter, r *http.Request, dir, clean str
 
 func (c *gzipCache) get(file string) ([]byte, bool) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if body, ok := c.files[file]; ok {
-		return body, true
+	f := c.files[file]
+	if f == nil {
+		f = &gzipFile{}
+		c.files[file] = f
 	}
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil, false
+	c.mu.Unlock()
+	f.once.Do(func() {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return
+		}
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf) // the best level gains 0.2% and takes longer
+		zw.Write(data)
+		zw.Close()
+		f.body, f.ok = buf.Bytes(), true
+	})
+	if !f.ok {
+		// Not cached: the next request tries again.
+		c.mu.Lock()
+		if c.files[file] == f {
+			delete(c.files, file)
+		}
+		c.mu.Unlock()
 	}
-	var buf bytes.Buffer
-	zw := gzip.NewWriter(&buf) // the best level gains 0.2% and takes longer
-	zw.Write(data)
-	zw.Close()
-	c.files[file] = buf.Bytes()
-	return c.files[file], true
+	return f.body, f.ok
 }
