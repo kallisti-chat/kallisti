@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	mrand "math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -512,6 +513,96 @@ func TestAllMessagesPushesHaveTheirOwnTag(t *testing.T) {
 	got := f.take()
 	if len(got) != 2 || got[0].note.Tag != "chat-3" || got[1].note.Tag != "chat-3-all" || got[1].topic != "chat-3-all" {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+// A push is held back until a whole window has passed (just inside it, at
+// its end, just after), per user, chat and kind.
+func TestDueWindow(t *testing.T) {
+	s := &Service{}
+	at := func(d time.Duration) time.Time { return clock.Add(d) }
+	if !s.due("alice", 1, false, at(0)) {
+		t.Fatal("first push held back")
+	}
+	for _, c := range []struct {
+		user    string
+		channel int64
+		all     bool
+	}{{"alice", 1, false}, {"alice", 1, false}} {
+		if s.due(c.user, c.channel, c.all, at(collapseWindow-time.Nanosecond)) {
+			t.Fatalf("%+v: sent just inside the window", c)
+		}
+	}
+	// Others are not held back by it.
+	for i, c := range []struct {
+		user    string
+		channel int64
+		all     bool
+	}{{"alice", 2, false}, {"alice", 1, true}, {"bob", 1, false}} {
+		if !s.due(c.user, c.channel, c.all, at(collapseWindow-time.Nanosecond)) {
+			t.Fatalf("case %d held back by another's push", i)
+		}
+	}
+	if !s.due("alice", 1, false, at(collapseWindow)) {
+		t.Fatal("held back at the end of the window")
+	}
+	// The window starts again from that push.
+	if s.due("alice", 1, false, at(2*collapseWindow-time.Nanosecond)) || !s.due("alice", 1, false, at(2*collapseWindow)) {
+		t.Fatal("the next window does not start at the last push")
+	}
+}
+
+// Removing the expired marks only now and then changes nothing a push does:
+// the same ones go out as when every push looks through all.
+func TestDueSweepKeepsTheRule(t *testing.T) {
+	s := &Service{}
+	last := map[sentKey]time.Time{}
+	reference := func(k sentKey, now time.Time) bool {
+		if t, ok := last[k]; ok && now.Sub(t) < collapseWindow {
+			return false
+		}
+		last[k] = now
+		return true
+	}
+	rnd := mrand.New(mrand.NewPCG(1, 2))
+	now := clock
+	for i := range 20000 {
+		now = now.Add(time.Duration(rnd.IntN(int(collapseWindow/5))) * time.Millisecond)
+		k := sentKey{"user" + strconv.Itoa(rnd.IntN(40)), int64(rnd.IntN(5)), rnd.IntN(2) == 0}
+		if got, want := s.due(k.user, k.channel, k.all, now), reference(k, now); got != want {
+			t.Fatalf("push %d (%+v at %v): due %v, want %v", i, k, now.Sub(clock), got, want)
+		}
+	}
+}
+
+// The marks of users who stopped getting pushes go within two windows of
+// the next push.
+func TestDueForgetsOldMarks(t *testing.T) {
+	s := &Service{}
+	for i := range 1000 {
+		s.due("user"+strconv.Itoa(i), 1, false, clock)
+	}
+	if len(s.last) != 1000 {
+		t.Fatalf("%d marks", len(s.last))
+	}
+	s.due("late", 1, false, clock.Add(collapseWindow))
+	if len(s.last) != 1 {
+		t.Fatalf("%d marks after the window, want 1", len(s.last))
+	}
+	// Not looked through again in the same window ("a" is not due again
+	// yet, but still there), and gone by the next one.
+	s.due("a", 1, false, clock.Add(collapseWindow+time.Second))
+	if len(s.last) != 2 {
+		t.Fatalf("%d marks, want 2", len(s.last))
+	}
+	s.due("b", 1, false, clock.Add(2*collapseWindow))
+	if _, ok := s.last[sentKey{"late", 1, false}]; ok || len(s.last) != 2 { // "a" and "b"
+		t.Fatalf("%d marks after two windows, want a and b", len(s.last))
+	}
+	// A clock set back looks through them at once.
+	s.due("c", 1, false, clock)
+	if !s.swept.Equal(clock) {
+		t.Fatal("not swept after the clock was set back")
 	}
 }
 
