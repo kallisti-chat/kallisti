@@ -49,6 +49,14 @@ func BeforeStart(dbPath, dir string, keep int, now time.Time) (string, error) {
 		}
 		return "", err
 	}
+	return FromFile(dbPath, dir, keep, now)
+}
+
+// FromFile is Run on a connection of its own. The server has one
+// connection for everything (see store.Open), and a copy on it would hold
+// up every message and login until it is done. A second connection only
+// reads (the database is in WAL mode), so the server goes on meanwhile.
+func FromFile(dbPath, dir string, keep int, now time.Time) (string, error) {
 	db, err := sql.Open("sqlite", "file:"+dbPath+"?_pragma=busy_timeout(5000)")
 	if err != nil {
 		return "", err
@@ -59,10 +67,10 @@ func BeforeStart(dbPath, dir string, keep int, now time.Time) (string, error) {
 
 // Daily runs a backup every day (the first a day after the start, which
 // had its own: see BeforeStart), until the process ends.
-func Daily(db *sql.DB, dir string, keep int) {
+func Daily(dbPath, dir string, keep int) {
 	for {
 		time.Sleep(24 * time.Hour)
-		if path, err := Run(db, dir, keep, time.Now()); err != nil {
+		if path, err := FromFile(dbPath, dir, keep, time.Now()); err != nil {
 			slog.Error("database backup", "err", err)
 		} else {
 			slog.Info("database backup", "file", path)

@@ -288,7 +288,7 @@ func run() error {
 	accounts.Revoke = b.Revoke
 
 	if cfg.BackupDir != "" {
-		go backup.Daily(db.DB(), cfg.BackupDir, cfg.BackupKeep)
+		go backup.Daily(cfg.DBPath, cfg.BackupDir, cfg.BackupKeep)
 	}
 	go func() {
 		for range time.Tick(time.Minute) {
