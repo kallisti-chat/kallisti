@@ -143,6 +143,7 @@
     onAddEmoji,
     onRemoveEmoji,
     previewOf,
+    onPreviewGone,
     httpBase = "",
     webhookPictures = {},
     cannotWrite = null,
@@ -241,6 +242,8 @@
     onRemoveEmoji?: (emoji: string) => Promise<void>;
     // Link previews of stored messages; images are on the server (httpBase).
     previewOf?: (id: number) => LinkPreview | null;
+    // A card's image failed to load (the server lets them go): ask again.
+    onPreviewGone?: (id: number) => void;
     httpBase?: string;
     // Versions of changed webhook pictures (see lib/webhooks).
     webhookPictures?: Readonly<Record<number, number>>;
@@ -1947,8 +1950,13 @@
         <span class="preview-title">{p.title}</span>
         {#if p.description}<span class="preview-description">{p.description}</span>{/if}
       </span>
-      <!-- The server may have let the image go (its cache): then none. -->
-      {#if p.image}<img src={httpBase + p.image} alt="" loading="lazy" onerror={(e) => e.currentTarget.remove()} />{/if}
+      <!-- The server may have let the image go (its cache): then none, and the card is asked again. -->
+      {#if p.image}<img
+          src={httpBase + p.image}
+          alt=""
+          loading="lazy"
+          onerror={(e) => (e.currentTarget.remove(), onPreviewGone?.(m.source!.id))}
+        />{/if}
     </a>
   {/if}
   {#if "reactions" in m && m.reactions?.length && "source" in m && m.source}

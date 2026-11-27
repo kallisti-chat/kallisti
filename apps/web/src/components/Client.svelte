@@ -1014,6 +1014,15 @@
     const ids = asks.map((m) => m.id);
     for (let i = 0; i < ids.length; i += 30) connection.previews(ids.slice(i, i + 30));
   });
+  // A card whose image the server let go (after an hour, or a restart) is
+  // asked once more: the server fetches it again. Once per message, so an
+  // image that stays broken does not loop.
+  const previewsRenewed = new Set<number>();
+  const renewPreview = (id: number) => {
+    if (previewsRenewed.has(id)) return;
+    previewsRenewed.add(id);
+    connection.previews([id]);
+  };
   // Fresh file links for the open chat's messages before theirs expire
   // (private-room media, see lib/fileLinks); checked every few minutes.
   const linksAsked = new Set<string>();
@@ -1488,6 +1497,7 @@
     onAddEmoji: mayAddEmoji ? connection.addUserEmoji : undefined,
     onRemoveEmoji: moderation.emoji ? connection.removeEmojiImage : undefined,
     previewOf: (id: number) => text.previews[id] ?? null,
+    onPreviewGone: renewPreview,
     httpBase: connection.httpBase,
   } satisfies Partial<ComponentProps<typeof ChatPane>>);
 
