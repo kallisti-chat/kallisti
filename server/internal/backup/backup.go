@@ -57,7 +57,9 @@ func BeforeStart(dbPath, dir string, keep int, now time.Time) (string, error) {
 // up every message and login until it is done. A second connection only
 // reads (the database is in WAL mode), so the server goes on meanwhile.
 func FromFile(dbPath, dir string, keep int, now time.Time) (string, error) {
-	db, err := sql.Open("sqlite", "file:"+dbPath+"?_pragma=busy_timeout(5000)")
+	// Read-only: a database file that is gone must be an error, not a new
+	// empty file with a copy of it as a good backup.
+	db, err := sql.Open("sqlite", "file:"+dbPath+"?mode=ro&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return "", err
 	}
