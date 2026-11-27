@@ -1103,8 +1103,13 @@ func scanMessage(row interface{ Scan(...any) error }) (Message, error) {
 // History returns up to limit messages before beforeID (0: the newest),
 // oldest first, with their attachments.
 func (s *Store) History(channelID, beforeID int64, limit int) ([]Message, error) {
-	rows, err := s.db.Query(messageSelect+`WHERE m.channel_id = ? AND (? = 0 OR m.id < ?) ORDER BY m.id DESC LIMIT ?`,
-		channelID, beforeID, beforeID, limit)
+	// Two forms: with an OR, SQLite would not use the id bound as an index
+	// range and would walk down from the newest message.
+	where, args := `m.channel_id = ?`, []any{channelID}
+	if beforeID != 0 {
+		where, args = where+` AND m.id < ?`, append(args, beforeID)
+	}
+	rows, err := s.db.Query(messageSelect+`WHERE `+where+` ORDER BY m.id DESC LIMIT ?`, append(args, limit)...)
 	if err != nil {
 		return nil, err
 	}
