@@ -2,9 +2,12 @@ package mumbled
 
 import (
 	"fmt"
+	"net"
 	"testing"
 
 	"golang.org/x/time/rate"
+
+	"kallisti.chat/server/internal/cryptstate"
 )
 
 // BenchmarkVoiceToChannel is one speaker sending a voice packet to a
@@ -50,6 +53,92 @@ func BenchmarkVoiceToChannel(b *testing.B) {
 					b.Fatalf("%d voice frames dropped", c.dropped.Load())
 				}
 			}
+		})
+	}
+}
+
+// udpListeners is a server with one speaker and n listeners that receive
+// over UDP on real loopback sockets. The server's socket is opened as the
+// server opens it (dual stack, any address); the listeners' are udp4. Each
+// listener socket is read by a goroutine, so the kernel never pushes back.
+func udpListeners(b *testing.B, n int) (*Server, *client) {
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{})
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() { conn.Close() })
+	state := NewState("Root", nil)
+	s := &Server{state: state, clients: map[uint32]*client{}, udp: conn}
+	for session := uint32(1); session <= uint32(n)+1; session++ {
+		u := &User{Session: session, Name: fmt.Sprint("user", session)}
+		state.AddUser(u)
+		state.Refresh(u)
+		c := &client{
+			session: session, seen: state.Visible(u),
+			out: make(chan []byte, 1), voice: make(chan []byte, 1),
+			bandwidth: rate.NewLimiter(rate.Inf, maxBandwidth),
+			crypt:     cryptstate.New([16]byte{3}, [16]byte{2}, [16]byte{1}),
+		}
+		if session > 1 {
+			l, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+			if err != nil {
+				b.Fatal(err)
+			}
+			l.SetReadBuffer(4 << 20)
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				buf := make([]byte, 2048)
+				for {
+					if _, _, err := l.ReadFromUDPAddrPort(buf); err != nil {
+						return
+					}
+				}
+			}()
+			b.Cleanup(func() { l.Close(); <-done })
+			c.udpVoice, c.udpAddr = true, l.LocalAddr().(*net.UDPAddr).AddrPort()
+		}
+		s.clients[session] = c
+	}
+	return s, s.clients[1]
+}
+
+// BenchmarkVoiceToUDPListeners is one speaker sending a voice packet to n
+// listeners on UDP: the whole cost on the sender's goroutine, with one
+// encrypt and one sendto per listener.
+func BenchmarkVoiceToUDPListeners(b *testing.B) {
+	for _, n := range []int{10, 50} {
+		b.Run(fmt.Sprintf("listeners=%d", n), func(b *testing.B) {
+			s, speaker := udpListeners(b, n)
+			packet := audio(1, make([]byte, 40))
+			b.ReportAllocs()
+			for b.Loop() {
+				s.voice(speaker, packet, false)
+			}
+			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*n), "ns/receiver")
+		})
+	}
+}
+
+// BenchmarkVoiceToUDPListenersNoSend is the same without the sendto: the
+// encode and one encrypt per listener. (For the listeners on TCP queues
+// instead, see BenchmarkVoiceToChannel.)
+func BenchmarkVoiceToUDPListenersNoSend(b *testing.B) {
+	for _, n := range []int{10, 50} {
+		b.Run(fmt.Sprintf("listeners=%d", n), func(b *testing.B) {
+			s, _ := udpListeners(b, n)
+			p, _ := decodeAudio(audio(1, make([]byte, 40)), false)
+			b.ReportAllocs()
+			for b.Loop() {
+				out := encodeServerAudio(p, 1, ContextNormal, false, false)
+				for session := uint32(2); session <= uint32(n)+1; session++ {
+					c := s.clients[session]
+					c.cryptMu.Lock()
+					c.crypt.Encrypt(out)
+					c.cryptMu.Unlock()
+				}
+			}
+			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*n), "ns/receiver")
 		})
 	}
 }
