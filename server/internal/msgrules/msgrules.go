@@ -108,8 +108,15 @@ func Check(r Rules, a Author, m Message, now, last time.Time) error {
 	return Compile(r).Check(a, m, now, last)
 }
 
+// noRules is what a nil *Compiled stands for: a Server that was not made
+// by New (tests) has none.
+var noRules = &Compiled{}
+
 // Check is Check with the compiled rules.
 func (c *Compiled) Check(a Author, m Message, now, last time.Time) error {
+	if c == nil {
+		c = noRules
+	}
 	if a.Staff {
 		return nil
 	}
@@ -267,7 +274,7 @@ func Replace(r Rules, text string, pick func(int) int) string {
 
 // Replace is Replace with the compiled rules.
 func (c *Compiled) Replace(text string, pick func(int) int) string {
-	if len(c.phrases) == 0 || text == "" {
+	if c == nil || len(c.phrases) == 0 || text == "" {
 		return text
 	}
 	keep := kept.FindAllStringIndex(text, -1)
