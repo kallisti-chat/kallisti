@@ -171,3 +171,46 @@ func TestPushNamesForAllMessages(t *testing.T) {
 		t.Errorf("ended sessions: %v", got)
 	}
 }
+
+// BenchmarkPushNamesForAll is the lookup that runs for every chat message:
+// many accounts, a third with a subscription, a few of them on "all
+// messages" for some chats.
+func BenchmarkPushNamesForAll(b *testing.B) {
+	s, err := Open(":memory:")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer s.Close()
+	now := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
+	const accounts = 4000
+	want := 0
+	for i := 0; i < accounts; i++ {
+		acc, err := s.CreateAccount(Account{Name: fmt.Sprintf("user%d", i), PasswordHash: "h", CertPEM: []byte("c"), KeyPEM: []byte("k")}, now, "")
+		if err != nil {
+			b.Fatal(err)
+		}
+		if i%3 != 0 {
+			continue
+		}
+		hash := fmt.Sprintf("s%d", i)
+		if err := s.CreateSession(hash, acc.ID, now.Add(time.Hour)); err != nil {
+			b.Fatal(err)
+		}
+		sub := PushSubscription{Endpoint: "https://push.example/" + hash, P256dh: "p", Auth: "a", Quiet: []int64{2}}
+		if i%60 == 0 { // 5% of the subscriptions
+			sub.All = []int64{int64(i%7 + 10), 5}
+			want++
+		}
+		if err := s.SetPushSubscription(hash, sub, now); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		names, err := s.PushNamesForAll(now, 5, 9)
+		if err != nil || len(names) != want {
+			b.Fatalf("%d names, want %d: %v", len(names), want, err)
+		}
+	}
+}
