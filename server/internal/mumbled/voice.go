@@ -26,14 +26,16 @@ func (s *Server) voice(c *client, packet []byte, tcp bool) {
 		return
 	}
 	s.mu.Lock()
-	var receivers []receiver
 	var rec *recording.Recording
 	var speaker string
 	sender := s.state.Users[c.session]
 	if sender != nil && s.recordings != nil {
 		rec, speaker = s.recorderForLocked(sender, p.target), sender.Name
 	}
-	for session, ctx := range s.state.Receivers(c.session, p.target) {
+	targets := s.state.Receivers(c.session, p.target)
+	// Sized up front: this runs under the lock for every packet.
+	receivers := make([]receiver, 0, len(targets))
+	for session, ctx := range targets {
 		o := s.clients[session]
 		if o == nil || sender == nil {
 			continue
