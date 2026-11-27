@@ -261,13 +261,19 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS sessions_by_account ON sessions(account_id);
 `
 
+// walLimit keeps the WAL file from staying large. While a long read is
+// open on another connection the WAL cannot start over and grows with
+// every write; without a limit the file keeps that size for good. With
+// it, it is cut back to 64 MB at the next checkpoint that gets through.
+const walLimit = "&_pragma=journal_size_limit(67108864)"
+
 // Open opens (and creates) the database. ":memory:" is for tests.
 func Open(path string) (*Store, error) {
 	// synchronous=NORMAL: with WAL still safe against corruption, and an
 	// insert does not wait for a full disk sync (the sender's voice waits
 	// behind it on the same connection).
 	dsn := "file:" + path + "?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)" +
-		"&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)"
+		"&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)" + walLimit
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
