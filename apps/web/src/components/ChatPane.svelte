@@ -72,6 +72,7 @@
   import { jumpStep } from "../lib/jump";
   import { barDone, unreadBar } from "../lib/unread";
   import { tick, untrack, type ComponentProps, type Snippet } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import { isChannelLink, sanitize as safe } from "../lib/sanitize";
   import Avatar from "./Avatar.svelte";
   import EmojiMenu from "./EmojiMenu.svelte";
@@ -473,6 +474,8 @@
   // Raw: kept files go to IndexedDB, which cannot store state proxies.
   let pending = $state.raw<Pending[]>([]);
   const pendingList = $derived(pending.map((p) => p.file));
+  // Link card images that failed to load: hidden until the card has another.
+  const goneImages = new SvelteSet<string>();
   // Pictures' previews (object URLs) by file; those of files gone are let go.
   let previews = $state(new Map<File, string>());
   const showPending = (next: readonly Pending[] | undefined) => {
@@ -1951,11 +1954,11 @@
         {#if p.description}<span class="preview-description">{p.description}</span>{/if}
       </span>
       <!-- The server may have let the image go (its cache): then none, and the card is asked again. -->
-      {#if p.image}<img
+      {#if p.image && !goneImages.has(p.image)}<img
           src={httpBase + p.image}
           alt=""
           loading="lazy"
-          onerror={(e) => (e.currentTarget.remove(), onPreviewGone?.(m.source!.id))}
+          onerror={() => (goneImages.add(p.image!), onPreviewGone?.(m.source!.id))}
         />{/if}
     </a>
   {/if}
