@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"kallisti.chat/server/internal/mumble"
@@ -25,7 +26,60 @@ func mentionPattern(name string) *regexp.Regexp {
 	return regexp.MustCompile(`(?i)(?:^|[\s\v\p{Z}\x{FEFF}(\[{,:])@` + regexp.QuoteMeta(name) + `(?:$|[^\p{L}\p{N}_@.-]|[@.](?:$|[^\p{L}\p{N}]))`)
 }
 
-func mentionsName(text, name string) bool { return mentionPattern(name).MatchString(text) }
+// mentionsName: the cheap test first, as most names are not in the text.
+func mentionsName(text, name string) bool {
+	return atName(text, name) && cachedMentionPattern(name).MatchString(text)
+}
+
+// atName: "@" and then the name in any case (as the pattern's (?i): rune
+// by rune, by simple folding), which the pattern needs.
+func atName(text, name string) bool {
+	runes := utf8.RuneCountInString(name)
+	for i := strings.IndexByte(text, '@'); i >= 0; {
+		rest := text[i+1:]
+		end := 0
+		for n := 0; n < runes && end < len(rest); n++ {
+			_, size := utf8.DecodeRuneInString(rest[end:])
+			end += size
+		}
+		if strings.EqualFold(rest[:end], name) {
+			return true
+		}
+		j := strings.IndexByte(rest, '@')
+		if j < 0 {
+			break
+		}
+		i += 1 + j
+	}
+	return false
+}
+
+// mentionPatterns keeps compiled patterns: compiling one takes far longer
+// than using it. Names are the users' (and can change), so it keeps a few
+// and starts over when full.
+var mentionPatterns struct {
+	sync.Mutex
+	m map[string]*regexp.Regexp
+}
+
+const maxMentionPatterns = 256
+
+func cachedMentionPattern(name string) *regexp.Regexp {
+	mentionPatterns.Lock()
+	p, ok := mentionPatterns.m[name]
+	mentionPatterns.Unlock()
+	if ok {
+		return p
+	}
+	p = mentionPattern(name)
+	mentionPatterns.Lock()
+	defer mentionPatterns.Unlock()
+	if mentionPatterns.m == nil || len(mentionPatterns.m) >= maxMentionPatterns {
+		mentionPatterns.m = map[string]*regexp.Regexp{}
+	}
+	mentionPatterns.m[name] = p
+	return p
+}
 
 // mentionAll: @everyone first (it wins), then @here.
 var mentionAll = []struct {
@@ -146,7 +200,6 @@ func (h *Hub) readState(id mumble.Identity) (map[int64]int64, []summaryEntry) {
 		return nil, nil
 	}
 	chats := h.readableChats(id)
-	mention := mentionPattern(id.Name)
 	followed := h.followsOf(id)
 	out := chats[:0]
 	for _, e := range chats {
@@ -168,7 +221,7 @@ func (h *Hub) readState(id mumble.Identity) (map[int64]int64, []summaryEntry) {
 			repliesToMe := answers(m, user)
 			// @here only reached who was there (live).
 			all := m.MentionAll == "everyone"
-			if !byUser(id, m) && (e.Direct != nil || all || mention.MatchString(m.Text) || repliesToMe) {
+			if !byUser(id, m) && (e.Direct != nil || all || mentionsName(m.Text, id.Name) || repliesToMe) {
 				e.Mentions++
 			}
 		}

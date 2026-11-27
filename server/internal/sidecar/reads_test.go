@@ -9,6 +9,21 @@ import (
 	"kallisti.chat/server/internal/store"
 )
 
+// The compiled patterns kept stay few, whatever names come.
+func TestMentionPatternsStayFew(t *testing.T) {
+	for i := range 3 * maxMentionPatterns {
+		name := "user" + strconv.Itoa(i)
+		if !mentionsName("hi @"+name, name) || mentionsName("hi @"+name+"x", name) {
+			t.Fatalf("%s: wrong match", name)
+		}
+	}
+	mentionPatterns.Lock()
+	defer mentionPatterns.Unlock()
+	if n := len(mentionPatterns.m); n > maxMentionPatterns {
+		t.Errorf("%d patterns kept", n)
+	}
+}
+
 func TestMentionRule(t *testing.T) {
 	for text, want := range map[string]bool{
 		"@lain hi": true, "hi @Lain!": true, "(@lain)": true,
