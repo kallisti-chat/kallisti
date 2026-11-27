@@ -460,13 +460,51 @@ func (c *conn) sniff(chunk []byte) {
 	}
 }
 
-func (c *conn) clientToUpstream() {
+// maxKeptBuffer is the largest read buffer kept between messages: voice
+// packets are far smaller, and the limit allows megabytes.
+const maxKeptBuffer = 64 * 1024
+
+// readBinary reads one message into buf and returns it. The result is only
+// valid until the next call. A buffer that grew large is dropped, so the
+// next message allocates a small one again.
+func readBinary(r io.Reader, buf []byte) (data, keep []byte, err error) {
+	if cap(buf) == 0 {
+		buf = make([]byte, 0, 512)
+	}
+	buf = buf[:0]
 	for {
-		typ, data, err := c.ws.Read(c.ctx)
+		if len(buf) == cap(buf) {
+			buf = append(buf, 0)[:len(buf)]
+		}
+		n, err := r.Read(buf[len(buf):cap(buf)])
+		buf = buf[:len(buf)+n]
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			if cap(buf) > maxKeptBuffer {
+				return buf, nil, err
+			}
+			return buf, buf, err
+		}
+	}
+}
+
+func (c *conn) clientToUpstream() {
+	// One buffer for the binary messages: a talking user sends about 50 a
+	// second. Nobody keeps the bytes after the upstream Write returns.
+	var buf []byte
+	for {
+		typ, r, err := c.ws.Reader(c.ctx)
 		if err != nil {
 			return
 		}
 		if typ == websocket.MessageText {
+			// The sidecar may keep these bytes: a new slice each time.
+			data, err := io.ReadAll(r)
+			if err != nil {
+				return
+			}
 			if c.side == nil {
 				c.ws.Close(websocket.StatusUnsupportedData, "binary frames only")
 				return
@@ -477,6 +515,11 @@ func (c *conn) clientToUpstream() {
 			}
 			c.side.Handle(data)
 			continue
+		}
+		var data []byte
+		data, buf, err = readBinary(r, buf)
+		if err != nil {
+			return
 		}
 		if _, err := c.upstream.Write(data); err != nil {
 			if !errors.Is(err, net.ErrClosed) {
