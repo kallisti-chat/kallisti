@@ -604,10 +604,11 @@ func migrate(db *sql.DB) error {
 }
 
 func (s *Store) Close() error {
+	var rerr error
 	if s.rdb != s.db {
-		s.rdb.Close()
+		rerr = s.rdb.Close()
 	}
-	return s.db.Close()
+	return errors.Join(s.db.Close(), rerr)
 }
 
 // VoiceChat is the hidden channel that holds a voice channel's chat (the
