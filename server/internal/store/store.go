@@ -223,6 +223,8 @@ CREATE TABLE IF NOT EXISTS messages (
 	verified   INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS messages_by_channel ON messages(channel_id, id);
+-- A search by author (see Search); lower() as there, so the index matches.
+CREATE INDEX IF NOT EXISTS messages_by_author ON messages(lower(author), channel_id, id);
 -- The upload limit sums an author's recent uploads on each upload.
 CREATE INDEX IF NOT EXISTS uploads_by_author ON uploads(author, created_at);
 -- Counters; last_message_id: the highest message id ever given.
@@ -1375,14 +1377,24 @@ func (s *Store) Search(text string, channels []int64, author string, limit int) 
 	}
 	// Two forms: with an OR, SQLite would scan the table, not the index.
 	where, args := `1`, []any{}
-	if q := ftsQuery(text); q != "" {
+	q := ftsQuery(text)
+	if q != "" {
 		where, args = `m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)`, append(args, q)
 	}
 	in, chans := inList(channels)
-	args = append(append(args, chans...), author, author, limit)
-	rows, err := s.rdb.Query(messageSelect+`WHERE `+where+`
-		AND m.channel_id IN (`+in+`)
-		AND (? = '' OR lower(m.author) = lower(?)) ORDER BY m.id DESC LIMIT ?`, args...)
+	where += ` AND m.channel_id IN (` + in + `)`
+	args = append(args, chans...)
+	if q == "" && author != "" {
+		// By author alone: the plain term, so that messages_by_author is
+		// used. Not with words: there the index would be probed once per
+		// message the words match, which is slower for a common word.
+		where += ` AND lower(m.author) = lower(?)`
+		args = append(args, author)
+	} else {
+		where += ` AND (? = '' OR lower(m.author) = lower(?))`
+		args = append(args, author, author)
+	}
+	rows, err := s.rdb.Query(messageSelect+`WHERE `+where+` ORDER BY m.id DESC LIMIT ?`, append(args, limit)...)
 	if err != nil {
 		return nil, err
 	}
