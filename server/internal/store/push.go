@@ -18,6 +18,11 @@ const pushTables = `CREATE TABLE IF NOT EXISTS push_subscriptions (
 	created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS push_by_session ON push_subscriptions(session);
+-- Only the subscriptions with an "all" list, for PushNamesForAll, which runs
+-- for every message. Its query must use this same condition (json_valid
+-- keeps a bad row from failing Open).
+CREATE INDEX IF NOT EXISTS push_with_all ON push_subscriptions(session)
+	WHERE json_valid(prefs) AND json_extract(prefs, '$.all') IS NOT NULL;
 CREATE TABLE IF NOT EXISTS push_vapid (
 	id          INTEGER PRIMARY KEY CHECK (id = 1),
 	public_key  TEXT NOT NULL,
@@ -135,10 +140,12 @@ func (s *Store) PushNames(now time.Time) ([]string, error) {
 
 // PushNamesForAll are the names of the accounts with a subscription that
 // wants every message of one of these chats (a thread and its channel).
+// The first two conditions are the ones of the push_with_all index, so only
+// subscriptions with an "all" list are visited; keep them the same.
 func (s *Store) PushNamesForAll(now time.Time, chats ...int64) ([]string, error) {
 	in, args := inList(chats)
-	return column[string](s.db, `SELECT DISTINCT a.name`+pushOf+` AND EXISTS (
-		SELECT 1 FROM json_each(p.prefs, '$.all') WHERE value IN (`+in+`)) ORDER BY a.name`, append([]any{now.UnixMilli()}, args...)...)
+	return column[string](s.db, `SELECT DISTINCT a.name`+pushOf+` AND json_valid(p.prefs) AND json_extract(p.prefs, '$.all') IS NOT NULL
+		AND EXISTS (SELECT 1 FROM json_each(p.prefs, '$.all') WHERE value IN (`+in+`)) ORDER BY a.name`, append([]any{now.UnixMilli()}, args...)...)
 }
 
 // VAPIDKeys are the server's push keys (RFC 8292), made with generate on
