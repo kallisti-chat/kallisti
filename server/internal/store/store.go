@@ -877,8 +877,12 @@ func (s *Store) AddMessage(n NewMessage) (Message, error) {
 		}
 	}
 	msgs := []Message{{ID: id, ChannelID: n.ChannelID, Author: n.Author, Verified: n.Verified, AuthorID: authorID, Text: n.Text, CreatedAt: n.At, Sticker: ms, Reply: quote, MentionAll: n.MentionAll, NoPing: n.NoPing, Webhook: n.Webhook, Bot: n.Bot}}
-	if err := withUploads(tx, msgs); err != nil {
-		return Message{}, err
+	// Only a message with files, or a quote that may have one, has any to
+	// load.
+	if len(n.Uploads) > 0 || quote != nil {
+		if err := withUploads(tx, msgs); err != nil {
+			return Message{}, err
+		}
 	}
 	if n.Poll != nil {
 		if err := withPolls(tx, msgs); err != nil {
