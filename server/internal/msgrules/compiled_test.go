@@ -170,3 +170,17 @@ func TestCompiledIsACopy(t *testing.T) {
 		t.Errorf("%q", got)
 	}
 }
+
+// No compiled rules are no rules: nothing is refused or replaced.
+func TestNilCompiledHasNoRules(t *testing.T) {
+	var c *Compiled
+	now := time.Now()
+	for _, a := range []Author{{}, {Guest: true}, {Staff: true}, {Since: now}} {
+		if err := c.Check(a, Message{Text: "any text example.com", Post: true}, now, now); err != nil {
+			t.Errorf("%+v: %v", a, err)
+		}
+	}
+	if got := c.Replace("any text", func(int) int { return 0 }); got != "any text" {
+		t.Errorf("replaced: %q", got)
+	}
+}

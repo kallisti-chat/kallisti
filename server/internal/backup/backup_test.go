@@ -79,8 +79,8 @@ func TestBeforeStartCopiesTheDatabaseAsItIs(t *testing.T) {
 }
 
 // The daily copy must not wait for the server's one connection: here that
-// connection is taken and has a write in the WAL that is not in the main
-// file yet.
+// connection is taken, in a write that is not committed yet. The copy
+// still finishes, and has what was committed before.
 func TestFromFileDoesNotUseTheServersConnection(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "k.db")
@@ -93,11 +93,15 @@ func TestFromFileDoesNotUseTheServersConnection(t *testing.T) {
 	if _, err := db.Exec(`CREATE TABLE t (v TEXT); INSERT INTO t VALUES ('hello')`); err != nil {
 		t.Fatal(err)
 	}
-	conn, err := db.Conn(context.Background())
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, `BEGIN IMMEDIATE; INSERT INTO t VALUES ('not yet')`); err != nil {
+		t.Fatal(err)
+	}
 	done := make(chan error, 1)
 	var path string
 	go func() {
@@ -113,9 +117,60 @@ func TestFromFileDoesNotUseTheServersConnection(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("the copy waits for the server's connection")
 	}
-	// The server can write while it has the connection, too.
-	if _, err := conn.ExecContext(context.Background(), `INSERT INTO t VALUES ('later')`); err != nil {
+	// The copy did not end the server's write.
+	if _, err := conn.ExecContext(ctx, `COMMIT`); err != nil {
 		t.Fatal(err)
+	}
+	cp, _ := sql.Open("sqlite", path)
+	defer cp.Close()
+	rows, err := cp.Query(`SELECT v FROM t`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var v string
+		rows.Scan(&v)
+		got = append(got, v)
+	}
+	if !slices.Equal(got, []string{"hello"}) {
+		t.Fatalf("copy: %q", got)
+	}
+}
+
+// A database file that went missing while the server runs: an error, and
+// no new empty database in its place.
+func TestFromFileDoesNotCreateTheDatabase(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "gone.db")
+	if path, err := FromFile(dbPath, filepath.Join(dir, "backups"), 3, time.Now()); err == nil {
+		t.Fatalf("a copy of nothing: %q", path)
+	}
+	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
+		t.Fatalf("the database was created: %v", err)
+	}
+	if files, _ := filepath.Glob(filepath.Join(dir, "backups", pattern)); len(files) != 0 {
+		t.Fatalf("backups %v", files)
+	}
+}
+
+// A database in WAL mode that was closed cleanly has no -wal and -shm
+// files: the copy before the start must still open it read-only.
+func TestBeforeStartCopiesAClosedWALDatabase(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "k.db")
+	db, err := sql.Open("sqlite", "file:"+dbPath+"?_pragma=journal_mode(WAL)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE t (v TEXT); INSERT INTO t VALUES ('hello')`); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	path, err := BeforeStart(dbPath, filepath.Join(dir, "backups"), 3, time.Now())
+	if err != nil || path == "" {
+		t.Fatal(path, err)
 	}
 	cp, _ := sql.Open("sqlite", path)
 	defer cp.Close()
