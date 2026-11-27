@@ -94,6 +94,26 @@ func TestNoPathTraversal(t *testing.T) {
 	}
 }
 
+// On Windows a backslash separates path elements, and path.Clean does not
+// know it: "..\" must not reach the file system. Elsewhere a backslash can
+// be part of a file's name, which shows here that such paths are refused.
+func TestNoBackslashInPaths(t *testing.T) {
+	dir := webDir(t)
+	os.WriteFile(filepath.Join(filepath.Dir(dir), "private.json"), []byte("secret"), 0o644)
+	os.WriteFile(filepath.Join(dir, "assets", `a\b.js`), []byte("secret"), 0o644)
+	os.WriteFile(filepath.Join(dir, `a\b.txt`), []byte("secret"), 0o644)
+	h := New(bridge, dir, nil)
+	for _, p := range []string{"/assets/..%5c..%5cprivate.json", "/assets/a%5cb.js", "/a%5cb.txt", "/..%5cprivate.json"} {
+		r := httptest.NewRequest("GET", p, nil)
+		r.Header.Set("Accept-Encoding", "gzip")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusNotFound || strings.Contains(w.Body.String(), "secret") {
+			t.Errorf("%s: %d %q", p, w.Code, w.Body.String())
+		}
+	}
+}
+
 func TestAssetsAreGzipped(t *testing.T) {
 	dir := t.TempDir()
 	os.MkdirAll(filepath.Join(dir, "assets"), 0o755)
