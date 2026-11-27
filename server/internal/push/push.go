@@ -74,8 +74,9 @@ type Service struct {
 	Now     func() time.Time
 	Account func(r *http.Request) (store.Account, string, bool)
 
-	mu   sync.Mutex
-	last map[string]time.Time // by user and chat
+	mu    sync.Mutex
+	last  map[sentKey]time.Time // when the last push went out
+	swept time.Time             // when the expired ones were last removed
 
 	// Pushes waiting for a worker (see Start), and those dropped because
 	// the queue was full.
@@ -84,6 +85,13 @@ type Service struct {
 	ctx     context.Context
 	stop    context.CancelFunc
 	workers sync.WaitGroup
+}
+
+// sentKey is a kind of push for a user's chat, as due counts them.
+type sentKey struct {
+	user    string
+	channel int64
+	all     bool
 }
 
 type job struct {
@@ -123,16 +131,22 @@ func (s *Service) due(user string, channel int64, all bool, now time.Time) bool 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.last == nil {
-		s.last = map[string]time.Time{}
+		s.last = map[sentKey]time.Time{}
 	}
-	key := fmt.Sprintf("%s\x00%d\x00%v", user, channel, all)
+	key := sentKey{user, channel, all}
 	if t, ok := s.last[key]; ok && now.Sub(t) < collapseWindow {
 		return false
 	}
-	for k, t := range s.last { // keep the map small
-		if now.Sub(t) >= collapseWindow {
-			delete(s.last, k)
+	// Keep the map small, but not at every push: looking through all of it
+	// for each of a message's users would be slow. It holds the pushes of
+	// two windows at most (a clock set back sweeps at once).
+	if d := now.Sub(s.swept); d >= collapseWindow || d < 0 {
+		for k, t := range s.last {
+			if now.Sub(t) >= collapseWindow {
+				delete(s.last, k)
+			}
 		}
+		s.swept = now
 	}
 	s.last[key] = now
 	return true
