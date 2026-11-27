@@ -18,7 +18,7 @@
     padding: 1px 5px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;

@@ -138,7 +138,7 @@
   }
   .rec {
     background: var(--danger);
-    color: white;
+    color: var(--text-on-accent);
   }
   .channel {
     color: var(--text-muted);
@@ -176,14 +176,14 @@
   .bar .here {
     padding: 6px 10px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
   }
   .bar .here:hover {
     background: var(--accent);
-    color: white;
+    color: var(--text-on-accent);
   }
   .item {
     display: block;
@@ -196,7 +196,7 @@
   }
   .item:not(:disabled):hover {
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
   }
   .why {
     display: block;

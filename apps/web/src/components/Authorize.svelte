@@ -87,7 +87,7 @@
     padding: 10px;
     border-radius: 4px;
     background: var(--accent-strong);
-    color: white;
+    color: var(--text-on-accent);
     font-weight: 600;
   }
   .link {
