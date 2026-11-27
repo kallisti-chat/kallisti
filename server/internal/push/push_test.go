@@ -524,13 +524,11 @@ func TestDueWindow(t *testing.T) {
 	if !s.due("alice", 1, false, at(0)) {
 		t.Fatal("first push held back")
 	}
-	for _, c := range []struct {
-		user    string
-		channel int64
-		all     bool
-	}{{"alice", 1, false}, {"alice", 1, false}} {
-		if s.due(c.user, c.channel, c.all, at(collapseWindow-time.Nanosecond)) {
-			t.Fatalf("%+v: sent just inside the window", c)
+	// Just inside the window it is held back, and asking again changes
+	// nothing: a push that is held back does not start a window.
+	for i := range 2 {
+		if s.due("alice", 1, false, at(collapseWindow-time.Nanosecond)) {
+			t.Fatalf("ask %d: sent just inside the window", i)
 		}
 	}
 	// Others are not held back by it.
