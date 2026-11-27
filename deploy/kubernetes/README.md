@@ -1,12 +1,12 @@
 # Kubernetes template
 
-`chart/` is a Helm chart for one public Kallisti installation on Kubernetes 1.26 or newer. It is not installable with its default values: there is no published application image, known storage capacity or backup destination in this repository. Do not apply the test fixture in `chart/ci/values.yaml`: it uses invalid image addresses, a nonexistent Secret and a fake backup acknowledgment.
+`chart/` is a Helm chart for one public Kallisti installation on Kubernetes 1.26 or newer. It is not installable with its default values: the host, storage capacities, resource requests and limits, existing Secret and backup acknowledgment still require operator configuration. Chart version `0.1.2` targets Kallisti `v0.15.0` and defaults both Kallisti images to the published `0.15.0` tags. Do not apply the test fixture in `chart/ci/values.yaml`: it uses invalid image addresses, a nonexistent Secret and a fake backup acknowledgment.
 
 ## Cluster requirements
 
 - A LoadBalancer implementation that supports TCP 80/443 and TCP plus UDP 64738 on the **same Service and external IP**. Verify this with the chosen provider before installing. Point one public DNS name at that IP; both web and native Mumble clients use it. Public ports 80 and 443 must reach Caddy for ACME issuance and renewal; native clients use 64738 directly. No ingress controller, host networking, privileged container or host path is required.
 - A default StorageClass, or a specific class in `storage.className`, with two ReadWriteOnce claims on the same node: app data (SQLite, uploads, local backups and fallback Mumble identity) and Caddy's ACME account and certificates. The deployment has exactly one replica and a Recreate update strategy to avoid two SQLite writers. The storage driver must honor pod `fsGroup: 1000` or provision both volumes writable by UID/GID 1000. Test attach/detach and a restore before relying on the deployment.
-- Both images: the published `ghcr.io/kallisti-chat/kallisti` and `ghcr.io/kallisti-chat/kallisti-cert-sync` (amd64 and arm64, a tag per release, for example `:0.10.1`), or your own builds of the root `Dockerfile` and `deploy/docker/Dockerfile.cert-sync`. Set `images.app` and `images.certSync` to immutable references: a version, preferably a digest (not `latest` or `edge`). Caddy is pinned to `caddy:2.11.3-alpine` by default. For a private registry, reference existing namespace-local image-pull Secrets as shown below; the chart does not create them.
+- Both images: the published `ghcr.io/kallisti-chat/kallisti` and `ghcr.io/kallisti-chat/kallisti-cert-sync` (amd64 and arm64, a tag per release, the defaults are `:0.15.0`), or your own builds of the root `Dockerfile` and `deploy/docker/Dockerfile.cert-sync`. Override `images.app` and `images.certSync` when needed with immutable references: a version, preferably a digest (not `latest` or `edge`). Caddy is pinned to `caddy:2.11.3-alpine` by default. For a private registry, reference existing namespace-local image-pull Secrets as shown below; the chart does not create them.
 - An existing namespace-local Secret named by `superuserSecretName`, with key `password`. Create it through your normal secret manager, not a plaintext file committed to Git. The password is still exposed to authorized cluster administrators and to the app process as an environment variable.
 - An **off-cluster** backup of the app claim (or a consistent database snapshot plus uploads and identity files), Caddy state, and the Secret/configuration, with a tested restore. Kallisti's own daily SQLite snapshots are on the app claim and do not protect against storage loss. Set `backup.confirmed=true` only after this exists. Size both claims and each container's CPU/memory requests and limits for measured load; the chart will refuse missing values.
 
@@ -31,6 +31,8 @@ helm template kallisti deploy/kubernetes/chart -n <namespace> -f /secure/path/ka
 # Only after reviewing the rendered manifests and meeting the requirements:
 helm upgrade --install kallisti deploy/kubernetes/chart -n <namespace> --create-namespace -f /secure/path/kallisti-values.yaml
 ```
+
+When upgrading an existing release, update any explicit `images.app` and `images.certSync` values to `0.15.0` (or the matching digests). Values in your private file or retained with `--reuse-values` override the new chart defaults. Take and export a pre-upgrade backup as described in the [deployment guide](../../docs/deploy/kubernetes.md#updates-and-rollback).
 
 ## Optional separate uploads PVC
 

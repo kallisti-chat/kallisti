@@ -1,6 +1,6 @@
 # Kubernetes deployment
 
-The [Helm chart and prerequisites](../../deploy/kubernetes/README.md) describe a **reusable template**, not a live deployment. No cluster, image registry, storage class, size, expected user count or off-cluster backup destination was supplied. The chart therefore refuses to render with default values. Do not use its test-only values file for a real release.
+The [Helm chart and prerequisites](../../deploy/kubernetes/README.md) describe a **reusable template**, not a live deployment. The chart defaults to the published Kallisti v0.15.0 application and certificate-copier images; cluster-specific host, storage, resources, Secret and backup settings must still be supplied. The chart therefore refuses to render with default values. Do not use its test-only values file for a real release.
 
 ## How it runs
 
