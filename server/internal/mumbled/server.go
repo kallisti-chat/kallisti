@@ -480,27 +480,114 @@ func (c *client) sendMsg(typ uint16, m proto.Message) {
 // introduces its speaker, even before ServerSync (clients wait for that).
 // On a link too slow for the voice, the other queue fills and the client
 // is dropped, as before.
+//
+// Frames that are already queued go out in one write, in the same order:
+// a writer that fell behind catches up with fewer TLS records and
+// syscalls. It never waits for more, so a lone frame goes out as before.
 func (c *client) writer() {
+	var held queued // taken but too big for the last write
 	for {
-		var b []byte
-		select {
-		case b = <-c.voice:
-		default:
-			select {
-			case b = <-c.voice:
-			case b = <-c.out:
+		f, _ := c.next(&held, true)
+		w, batch := f.b, (*[]byte)(nil) // the next write; batch holds it when joined
+		closing := f.b == nil           // closeAfterFlush
+		for !closing {
+			var ok bool
+			if f, ok = c.next(&held, false); !ok {
+				break
 			}
+			if closing = f.b == nil; closing {
+				break
+			}
+			if len(w)+len(f.b) > maxBatch {
+				// A full batch, or a big frame: that one is sent on its
+				// own, not copied.
+				held = f
+				break
+			}
+			if batch == nil {
+				batch = batches.Get().(*[]byte)
+				*batch = append((*batch)[:0], w...)
+			}
+			*batch = append(*batch, f.b...)
+			w = *batch
 		}
-		if b == nil { // closeAfterFlush
-			c.close()
+		if w != nil && !c.write(w, batch) {
 			return
 		}
-		c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout()))
-		if _, err := c.conn.Write(b); err != nil {
+		if closing {
 			c.close()
 			return
 		}
 	}
+}
+
+// maxBatch caps the frames joined into one write: a full TLS record.
+// Voice that comes during a write waits for it, so the cap stays small.
+const maxBatch = 16 << 10
+
+// batches are shared by the writers: an idle client holds none.
+var batches = sync.Pool{New: func() any {
+	b := make([]byte, 0, maxBatch)
+	return &b
+}}
+
+// queued is a frame and the queue it came from.
+type queued struct {
+	b     []byte
+	voice bool
+}
+
+// next takes the next frame to send, voice first. A held frame keeps its
+// place: before the rest of its queue, so voice that came meanwhile
+// overtakes a held avatar as it would have before. Without wait it
+// reports false when nothing is queued.
+func (c *client) next(held *queued, wait bool) (queued, bool) {
+	take := func() (queued, bool) {
+		f := *held
+		*held = queued{}
+		return f, true
+	}
+	if held.b != nil && held.voice {
+		return take()
+	}
+	select {
+	case b := <-c.voice:
+		return queued{b, true}, true
+	default:
+	}
+	if held.b != nil {
+		return take()
+	}
+	if !wait {
+		select {
+		case b := <-c.out:
+			return queued{b, false}, true
+		default:
+			return queued{}, false
+		}
+	}
+	select {
+	case b := <-c.voice:
+		return queued{b, true}, true
+	case b := <-c.out:
+		return queued{b, false}, true
+	}
+}
+
+// write sends with the client's deadline, then gives back the batch it
+// came from (nil: a single frame). On an error it closes the client and
+// reports false.
+func (c *client) write(b []byte, batch *[]byte) bool {
+	c.conn.SetWriteDeadline(time.Now().Add(c.writeTimeout()))
+	_, err := c.conn.Write(b)
+	if batch != nil {
+		batches.Put(batch)
+	}
+	if err != nil {
+		c.close()
+		return false
+	}
+	return true
 }
 
 func (c *client) writeTimeout() time.Duration {
