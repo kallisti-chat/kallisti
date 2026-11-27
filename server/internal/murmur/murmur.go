@@ -167,7 +167,7 @@ func readChannels(db *sql.DB, s *Server) error {
 		case chanDescription:
 			c.Description = v
 		case chanPosition:
-			p, _ := strconv.Atoi(v)
+			p, _ := strconv.ParseInt(v, 10, 32)
 			c.Position = int32(p)
 		case chanMaxUsers:
 			if n, _ := strconv.Atoi(v); n > 0 {
