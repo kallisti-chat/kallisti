@@ -13,7 +13,7 @@ import (
 
 var clock = time.Date(2026, 10, 14, 12, 0, 0, 0, time.UTC)
 
-func newHub(t *testing.T, channels ...string) *Hub {
+func newHub(t testing.TB, channels ...string) *Hub {
 	t.Helper()
 	s, err := store.Open(":memory:")
 	if err != nil {
