@@ -5,6 +5,7 @@
 package mumbled
 
 import (
+	"bufio"
 	"cmp"
 	"encoding/binary"
 	"errors"
@@ -441,8 +442,12 @@ type frameReader struct {
 	voice  []byte
 }
 
+// newFrameReader buffers the connection, so a frame's header and body
+// most often come from one read (on a net.Pipe one round trip less). The
+// buffer may hold bytes past the current frame: every read of the
+// client's frames must go through this reader.
 func newFrameReader(conn net.Conn) *frameReader {
-	return &frameReader{r: conn}
+	return &frameReader{r: bufio.NewReader(conn)}
 }
 
 // read returns the next frame. A voice frame's body is only valid until
