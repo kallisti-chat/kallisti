@@ -4,6 +4,7 @@ package cryptstate
 // (the IV's low byte and the first 3 tag bytes), and each direction has a
 // 16-byte IV that counts up little-endian. Decrypt accepts packets that are
 // lost or up to 30 late, and refuses replays. Not safe for concurrent use.
+// Do not copy one: the copy would share the block buffers with it.
 type CryptState struct {
 	// One per direction, each with its own block buffer, so that Encrypt
 	// and Decrypt still share no state.

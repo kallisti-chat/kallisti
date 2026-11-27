@@ -76,8 +76,9 @@ func TestAllocationsPerPacket(t *testing.T) {
 	client, server := pair()
 	plain := bytes.Repeat([]byte{0x41}, 80)
 	packet := client.Encrypt(plain)
-	// One allocation each: the packet and the plaintext, which callers keep.
-	if n := testing.AllocsPerRun(100, func() { client.Encrypt(plain) }); n != 1 {
+	// At most one allocation each: the packet and the plaintext, which
+	// callers keep. Not an exact count: a compiler may do better.
+	if n := testing.AllocsPerRun(100, func() { client.Encrypt(plain) }); n > 1 {
 		t.Errorf("Encrypt: %v allocations", n)
 	}
 	start := server.DecryptIV
@@ -86,7 +87,7 @@ func TestAllocationsPerPacket(t *testing.T) {
 		if _, ok := server.Decrypt(packet); !ok {
 			t.Fatal("packet did not decrypt")
 		}
-	}); n != 1 {
+	}); n > 1 {
 		t.Errorf("Decrypt: %v allocations", n)
 	}
 	// None inside OCB2 itself.
