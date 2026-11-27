@@ -3,7 +3,9 @@ package mumbled
 import (
 	"fmt"
 	"net"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -61,7 +63,10 @@ func BenchmarkVoiceToChannel(b *testing.B) {
 // over UDP on real loopback sockets. The server's socket is opened as the
 // server opens it (dual stack, any address); the listeners' are udp4. Each
 // listener socket is read by a goroutine, so the kernel never pushes back.
+// One packet is sent first, and must reach every listener: deliver does
+// not report a failed send, and a benchmark of failed sends says nothing.
 func udpListeners(b *testing.B, n int) (*Server, *client) {
+	var received atomic.Int64
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{})
 	if err != nil {
 		b.Fatal(err)
@@ -93,12 +98,19 @@ func udpListeners(b *testing.B, n int) (*Server, *client) {
 					if _, _, err := l.ReadFromUDPAddrPort(buf); err != nil {
 						return
 					}
+					received.Add(1)
 				}
 			}()
 			b.Cleanup(func() { l.Close(); <-done })
 			c.udpVoice, c.udpAddr = true, l.LocalAddr().(*net.UDPAddr).AddrPort()
 		}
 		s.clients[session] = c
+	}
+	s.voice(s.clients[1], audio(1, make([]byte, 40)), false)
+	for wait := time.Now().Add(5 * time.Second); received.Load() < int64(n); time.Sleep(time.Millisecond) {
+		if time.Now().After(wait) {
+			b.Fatalf("%d of %d listeners got the packet", received.Load(), n)
+		}
 	}
 	return s, s.clients[1]
 }
