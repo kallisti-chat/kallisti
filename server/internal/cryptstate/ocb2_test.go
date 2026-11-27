@@ -18,7 +18,7 @@ func mustHex(s string) []byte {
 }
 
 func TestEmptyMessageVector(t *testing.T) {
-	crypted, tag := ocbEncrypt(newCipher(vectorKey), vectorKey, nil)
+	crypted, tag := ocbEncrypt(nil, newCipher(vectorKey), vectorKey, nil)
 	if len(crypted) != 0 || !bytes.Equal(tag[:], mustHex("BF3108130773AD5EC70EC69E7875A7B0")) {
 		t.Fatalf("got %x %x", crypted, tag)
 	}
@@ -29,7 +29,7 @@ func TestFortyByteVector(t *testing.T) {
 	for i := range plain {
 		plain[i] = byte(i)
 	}
-	crypted, tag := ocbEncrypt(newCipher(vectorKey), vectorKey, plain)
+	crypted, tag := ocbEncrypt(nil, newCipher(vectorKey), vectorKey, plain)
 	if !bytes.Equal(tag[:], mustHex("9DB0CDF880F73E3E10D4EB3217766688")) {
 		t.Fatalf("tag %x", tag)
 	}
@@ -56,7 +56,7 @@ func TestSameOutputAsTheDesktopBridge(t *testing.T) {
 		{[]byte{0x20, 1}, "8d1b", "191b2d"},
 		{plain, "1c6aab638e57bb35e0603afb75d5b725924e471a0181e483a746ed01bf0e8ea6b4747fbd60cba989", "58655a"},
 	} {
-		crypted, tag := ocbEncrypt(newCipher(key), nonce, c.plain)
+		crypted, tag := ocbEncrypt(nil, newCipher(key), nonce, c.plain)
 		if hex.EncodeToString(crypted) != c.crypted || hex.EncodeToString(tag[:3]) != c.tag {
 			t.Errorf("got %x %x", crypted, tag[:3])
 		}
@@ -70,7 +70,7 @@ func TestRoundTripsAllLengths(t *testing.T) {
 		for i := range plain {
 			plain[i] = byte(i*7 + 3)
 		}
-		crypted, tag := ocbEncrypt(newCipher(vectorKey), nonce, plain)
+		crypted, tag := ocbEncrypt(nil, newCipher(vectorKey), nonce, plain)
 		decrypted, dectag, ok := ocbDecrypt(newCipher(vectorKey), nonce, crypted)
 		if !ok || !bytes.Equal(decrypted, plain) || dectag != tag {
 			t.Fatalf("length %d", n)
@@ -82,7 +82,7 @@ func TestRefusesTheXEXStarAttackPattern(t *testing.T) {
 	nonce := [16]byte{7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}
 	plain := make([]byte, 32)
 	plain[15] = 128
-	crypted, tag := ocbEncrypt(newCipher(vectorKey), nonce, plain)
+	crypted, tag := ocbEncrypt(nil, newCipher(vectorKey), nonce, plain)
 	decrypted, dectag, ok := ocbDecrypt(newCipher(vectorKey), nonce, crypted)
 	if !ok || bytes.Equal(decrypted, plain) || dectag != tag {
 		t.Fatal("the critical block must be changed, and still decrypt")

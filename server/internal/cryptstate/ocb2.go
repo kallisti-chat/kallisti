@@ -8,6 +8,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
+	"slices"
 )
 
 const blockSize = 16
@@ -39,27 +40,41 @@ func (x block) double() block {
 
 func (x block) triple() block { return x.xor(x.double()) }
 
-func enc(c cipher.Block, x block) block {
-	b := x.bytes()
-	c.Encrypt(b[:], b[:])
-	return load(b[:])
+// aesBlock is the AES cipher with its own buffer for one block: a buffer
+// on the stack would escape through the cipher.Block interface, one
+// allocation per block. Not safe for concurrent use.
+type aesBlock struct {
+	c   cipher.Block
+	buf [blockSize]byte
 }
 
-func dec(c cipher.Block, x block) block {
-	b := x.bytes()
-	c.Decrypt(b[:], b[:])
-	return load(b[:])
+func (a *aesBlock) put(x block) []byte {
+	binary.BigEndian.PutUint64(a.buf[:], x.hi)
+	binary.BigEndian.PutUint64(a.buf[8:], x.lo)
+	return a.buf[:]
+}
+
+func (a *aesBlock) enc(x block) block {
+	b := a.put(x)
+	a.c.Encrypt(b, b)
+	return load(b)
+}
+
+func (a *aesBlock) dec(x block) block {
+	b := a.put(x)
+	a.c.Decrypt(b, b)
+	return load(b)
 }
 
 // The first byte in memory is the highest byte of the big-endian number.
 var firstByteBit = block{1 << 56, 0}
 
-func newCipher(key [16]byte) cipher.Block {
+func newCipher(key [16]byte) *aesBlock {
 	c, err := aes.NewCipher(key[:])
 	if err != nil {
 		panic(err) // a 16-byte key never fails
 	}
-	return c
+	return &aesBlock{c: c}
 }
 
 func allZero(b []byte) bool {
@@ -71,11 +86,12 @@ func allZero(b []byte) bool {
 	return true
 }
 
-// ocbEncrypt returns the ciphertext (same length) and the full tag.
-func ocbEncrypt(c cipher.Block, nonce [16]byte, plain []byte) ([]byte, [16]byte) {
-	delta := enc(c, load(nonce[:]))
+// ocbEncrypt appends the ciphertext (same length as plain) to dst, and
+// returns it and the full tag.
+func ocbEncrypt(dst []byte, c *aesBlock, nonce [16]byte, plain []byte) ([]byte, [16]byte) {
+	delta := c.enc(load(nonce[:]))
 	var checksum block
-	out := make([]byte, 0, len(plain))
+	out := slices.Grow(dst, len(plain))
 	rest := plain
 	for len(rest) > blockSize {
 		b := load(rest[:blockSize])
@@ -88,7 +104,7 @@ func ocbEncrypt(c cipher.Block, nonce [16]byte, plain []byte) ([]byte, [16]byte)
 		if flip {
 			tmp = tmp.xor(firstByteBit)
 		}
-		crypted := delta.xor(enc(c, tmp)).bytes()
+		crypted := delta.xor(c.enc(tmp)).bytes()
 		out = append(out, crypted[:]...)
 		checksum = checksum.xor(b)
 		if flip {
@@ -97,32 +113,32 @@ func ocbEncrypt(c cipher.Block, nonce [16]byte, plain []byte) ([]byte, [16]byte)
 		rest = rest[blockSize:]
 	}
 	delta = delta.double()
-	pad := enc(c, delta.xor(block{0, uint64(len(rest)) * 8})).bytes()
+	pad := c.enc(delta.xor(block{0, uint64(len(rest)) * 8})).bytes()
 	last := pad
 	copy(last[:], rest)
 	checksum = checksum.xor(load(last[:]))
 	crypted := load(pad[:]).xor(load(last[:])).bytes()
 	out = append(out, crypted[:len(rest)]...)
-	return out, enc(c, delta.triple().xor(checksum)).bytes()
+	return out, c.enc(delta.triple().xor(checksum)).bytes()
 }
 
 // ocbDecrypt returns the plaintext and the full tag (the caller compares
 // the tag). ok is false if the packet matches the XEX* attack pattern.
-func ocbDecrypt(c cipher.Block, nonce [16]byte, encrypted []byte) (plain []byte, tag [16]byte, ok bool) {
-	delta := enc(c, load(nonce[:]))
+func ocbDecrypt(c *aesBlock, nonce [16]byte, encrypted []byte) (plain []byte, tag [16]byte, ok bool) {
+	delta := c.enc(load(nonce[:]))
 	var checksum block
 	out := make([]byte, 0, len(encrypted))
 	rest := encrypted
 	for len(rest) > blockSize {
 		delta = delta.double()
-		p := delta.xor(dec(c, delta.xor(load(rest[:blockSize]))))
+		p := delta.xor(c.dec(delta.xor(load(rest[:blockSize]))))
 		pb := p.bytes()
 		out = append(out, pb[:]...)
 		checksum = checksum.xor(p)
 		rest = rest[blockSize:]
 	}
 	delta = delta.double()
-	pad := enc(c, delta.xor(block{0, uint64(len(rest)) * 8}))
+	pad := c.enc(delta.xor(block{0, uint64(len(rest)) * 8}))
 	var last [16]byte
 	copy(last[:], rest)
 	tmp := load(last[:]).xor(pad).bytes()
@@ -134,5 +150,5 @@ func ocbDecrypt(c cipher.Block, nonce [16]byte, encrypted []byte) (plain []byte,
 	if bytes.Equal(tmp[:blockSize-1], d[:blockSize-1]) {
 		return nil, tag, false
 	}
-	return out, enc(c, delta.triple().xor(checksum)).bytes(), true
+	return out, c.enc(delta.triple().xor(checksum)).bytes(), true
 }
