@@ -67,6 +67,55 @@ func TestMessageRulesAreForAdmins(t *testing.T) {
 	if r := restarted.rules; r.NewMinutes != 10 || !slices.Equal(r.Words, []string{"Spam"}) || len(r.Replacements) != 1 || r.Replacements[0].With[0] != "nice behind" {
 		t.Fatalf("not saved: %+v", r)
 	}
+	// Loaded rules are compiled too.
+	if restarted.compiled.Check(msgrules.Author{}, msgrules.Message{Text: "spam"}, time.Now(), time.Time{}) != msgrules.ErrWord ||
+		restarted.compiled.Replace("nice ass", func(int) int { return 0 }) != "nice behind" {
+		t.Fatal("loaded rules not compiled")
+	}
+}
+
+// New rules apply from the next message; the old ones no longer do.
+func TestMessageRulesChange(t *testing.T) {
+	db := testDB(t)
+	setAdminPassword(db, "admin")
+	s, addr := startServerAndListen(t, "127.0.0.1", Config{DB: db}, nil)
+	su := superUser(t, addr)
+	alice, _ := registered(t, addr, "alice")
+	check := func(text string) (string, error) {
+		t.Helper()
+		return s.CheckMessage(alice.session, msgrules.Message{Text: text})
+	}
+	if _, err := s.SetMessageRules(su.session, msgrules.Rules{Words: []string{"spam"}, Domains: []string{"junk.example"},
+		Replacements: []msgrules.Replacement{{Phrase: "darn", With: []string{"oh"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := check("spam"); err != msgrules.ErrWord {
+		t.Fatalf("spam: %v", err)
+	}
+	if _, err := check("junk.example"); err != msgrules.ErrDomain {
+		t.Fatalf("junk: %v", err)
+	}
+	if text, _ := check("darn eggs"); text != "oh eggs" {
+		t.Fatalf("replaced %q", text)
+	}
+	if _, err := s.SetMessageRules(su.session, msgrules.Rules{Words: []string{"eggs"}, Domains: []string{"bad.example"},
+		Replacements: []msgrules.Replacement{{Phrase: "heck", With: []string{"gosh"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{"spam", "junk.example", "darn"} {
+		if got, err := check(text); err != nil || got != text {
+			t.Fatalf("old rule %q: %q %v", text, got, err)
+		}
+	}
+	if _, err := check("eggs"); err != msgrules.ErrWord {
+		t.Fatalf("eggs: %v", err)
+	}
+	if _, err := check("www.bad.example"); err != msgrules.ErrDomain {
+		t.Fatalf("bad: %v", err)
+	}
+	if text, _ := check("heck"); text != "gosh" {
+		t.Fatalf("replaced %q", text)
+	}
 }
 
 func TestMessageRules(t *testing.T) {
