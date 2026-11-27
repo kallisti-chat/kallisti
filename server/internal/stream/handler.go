@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -101,8 +103,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	texts := rate.NewLimiter(textsPerSec, 2*textsPerSec)
 	sounds := rate.NewLimiter(soundsPerSec, soundsPerSec/2)
 	fpsLimiter := rate.NewLimiter(rate.Limit(fps), max(10, 2*fps))
+	// Binary frames are read into one buffer, reused: the hub copies what
+	// it queues and OnSound keeps nothing (see Hub.OnSound). Between
+	// frames it is at most maxKeptBuffer; a keyframe's larger one is let go
+	// at the start of the next turn, after this frame is fully handled.
+	var buf []byte
 	for {
-		typ, data, err := ws.Read(ctx)
+		buf = keptBuffer(buf)
+		typ, r, err := ws.Reader(ctx)
+		if err != nil {
+			return
+		}
+		var data []byte
+		if typ == websocket.MessageBinary {
+			buf, err = readMessage(r, buf)
+			data = buf
+		} else {
+			data, err = io.ReadAll(r)
+		}
 		if err != nil {
 			return
 		}
@@ -157,6 +175,41 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.Hub.SetPreview(ID(session, cmd.Camera), cmd.Image) // a bad one is dropped
 		case "keyframe": // a viewer's decoder needs one
 			h.Hub.RequestKey(session, cmd.Session)
+		}
+	}
+}
+
+// maxKeptBuffer is the most a streamer's read buffer holds between frames.
+// Delta frames fit and reuse it; a keyframe's buffer is used once.
+const maxKeptBuffer = 64 * 1024
+
+// keptBuffer is the buffer to read the next frame into: buf while its
+// capacity is at most maxKeptBuffer, else nil (it was grown for one big frame).
+func keptBuffer(buf []byte) []byte {
+	if cap(buf) > maxKeptBuffer {
+		return nil
+	}
+	return buf
+}
+
+// readMessage reads a message into buf, as io.ReadAll does, but reuses
+// buf so small frames make no garbage. It grows as the message needs, at
+// most the read limit (maxFrame + headerSize) and a byte; the caller drops
+// a buffer over maxKeptBuffer (keptBuffer).
+func readMessage(r io.Reader, buf []byte) ([]byte, error) {
+	buf = buf[:0]
+	for {
+		if len(buf) == cap(buf) {
+			// One byte past the limit is enough to see the message end.
+			buf = slices.Grow(buf, max(1, min(max(512, len(buf)), maxFrame+headerSize+1-len(buf))))
+		}
+		n, err := r.Read(buf[len(buf):cap(buf)])
+		buf = buf[:len(buf)+n]
+		if err == io.EOF {
+			return buf, nil
+		}
+		if err != nil {
+			return buf, err
 		}
 	}
 }

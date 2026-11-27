@@ -124,7 +124,9 @@ type Hub struct {
 	// OnPreview gets a stream's new thumbnail (outside the lock).
 	OnPreview func(Info)
 	// OnSound gets a stream's sound frames (Opus; timestamp in
-	// microseconds), outside the lock: for Mumble clients.
+	// microseconds), outside the lock: for Mumble clients. opus is only
+	// valid during the call (the handler reads the next frame into it):
+	// copy what is kept.
 	OnSound func(streamer uint32, opus []byte, timestamp uint64)
 	now     func() time.Time
 
@@ -337,7 +339,7 @@ func goodPreview(image string) bool {
 
 // Frame forwards a streamer's frame to the viewers of its screen share or
 // camera. A viewer that is full drops frames until the next keyframe (then
-// the picture is whole again).
+// the picture is whole again). Viewers get a copy: f stays the caller's.
 func (h *Hub) Frame(session uint32, f []byte) { h.forward(session, f, nil) }
 
 // forward sends a frame from the stream's source: its streamer's connection
