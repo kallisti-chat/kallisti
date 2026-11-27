@@ -28,11 +28,12 @@ func own(m store.Message, name string, user uint32) bool {
 
 // pings: the message pings the user (by name and id).
 func pings(m store.Message, direct bool, name string, user uint32) bool {
-	key := names.Key(name)
-	if own(m, name, user) {
-		return false
-	}
-	return direct || m.MentionAll == "everyone" || answers(m, key) || mentionsName(m.Text, name)
+	return !own(m, name, user) && pinged(m, direct, name)
+}
+
+// pinged is pings without the user's own messages: it needs no user id.
+func pinged(m store.Message, direct bool, name string) bool {
+	return direct || m.MentionAll == "everyone" || answers(m, names.Key(name)) || mentionsName(m.Text, name)
 }
 
 // answers: m replies to the user (by name key), pinging. Not to a
@@ -130,12 +131,14 @@ func (h *Hub) pushFor(c chat, m store.Message) {
 	online, where := h.voice.Online(), h.where(c)
 	note := push.Note{Channel: c.id, Parent: c.parent, Author: m.Author, URL: fmt.Sprintf("/channels/%d/%d", c.id, m.ID)}
 	for _, name := range subscribed {
-		user, ok := h.PushUser(name)
-		if !ok {
+		// What needs no lookup first: most names are neither pinged nor
+		// want all of the chat's messages.
+		ping := mayPing && pinged(m, c.direct, name)
+		if !ping && !slices.Contains(all, name) {
 			continue
 		}
-		ping := mayPing && pings(m, c.direct, name, user)
-		if !ping && (own(m, name, user) || !slices.Contains(all, name)) {
+		user, ok := h.PushUser(name)
+		if !ok || own(m, name, user) {
 			continue
 		}
 		_, on := online[user]
