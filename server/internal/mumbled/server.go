@@ -204,8 +204,10 @@ type Server struct {
 	// Snapshots of the connections (see watch.go).
 	watch watch
 	// Message rules, and limited users' last messages (see
-	// messagerules.go). Under mu.
+	// messagerules.go). Under mu. compiled: the rules ready for matching,
+	// set with them.
 	rules    msgrules.Rules
+	compiled *msgrules.Compiled
 	homes    homes.Rules // see homes.go
 	lastPost map[timeoutKey]time.Time
 	now      func() time.Time
@@ -315,6 +317,7 @@ func New(cfg Config) (*Server, error) {
 		byHost:   map[netip.Addr]map[*client]bool{},
 		streams:  map[uint32]*streamUser{},
 		rules:    rules,
+		compiled: msgrules.Compile(rules),
 		homes:    homeRules,
 		lastPost: map[timeoutKey]time.Time{},
 		apiUsers: map[uint32]*Registered{},

@@ -44,8 +44,11 @@ func (s *Server) SetMessageRules(actor uint32, r msgrules.Rules) (msgrules.Rules
 			return msgrules.Rules{}, err
 		}
 	}
+	// Compiled before taking mu: it is slow with long lists, and voice
+	// waits for mu.
+	c := msgrules.Compile(r)
 	s.mu.Lock()
-	s.rules = r
+	s.rules, s.compiled = r, c
 	s.mu.Unlock()
 	return r, nil
 }
@@ -64,10 +67,10 @@ func (s *Server) CheckMessage(session uint32, m msgrules.Message) (string, error
 }
 
 func (s *Server) checkMessageLocked(u *User, m msgrules.Message) (string, error) {
-	m.Text = msgrules.Replace(s.rules, m.Text, s.pick)
+	m.Text = s.compiled.Replace(m.Text, s.pick)
 	now, key := s.now(), timeoutKeyOf(u)
 	a := msgrules.Author{Staff: s.state.isStaff(u), Guest: !u.Registered || u.GuestAccount, Since: u.Since}
-	err := msgrules.Check(s.rules, a, m, now, s.lastPost[key])
+	err := s.compiled.Check(a, m, now, s.lastPost[key])
 	switch {
 	case errors.Is(err, msgrules.ErrWord) || errors.Is(err, msgrules.ErrDomain):
 		// For moderators: there is no channel for such notes.

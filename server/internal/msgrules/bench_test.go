@@ -33,18 +33,19 @@ const (
 
 // BenchmarkSend is a web message as the server checks it: the words
 // replaced, the text checked, then the post checked again without text.
+// The rules are compiled once, as the server does when they change.
 func BenchmarkSend(b *testing.B) {
 	for _, n := range []int{50, 500} {
-		r := benchRules(b, n)
+		r := Compile(benchRules(b, n))
 		for _, c := range []struct{ name, text string }{{"text", benchText}, {"links", benchLinks}} {
 			b.Run(fmt.Sprintf("entries=%d/%s", n, c.name), func(b *testing.B) {
 				b.ReportAllocs()
 				for b.Loop() {
-					text := Replace(r, c.text, func(int) int { return 0 })
-					if err := Check(r, Author{}, Message{Text: text, Post: true}, now, time.Time{}); err != nil {
+					text := r.Replace(c.text, func(int) int { return 0 })
+					if err := r.Check(Author{}, Message{Text: text, Post: true}, now, time.Time{}); err != nil {
 						b.Fatal(err)
 					}
-					if err := Check(r, Author{}, Message{Post: true}, now, time.Time{}); err != nil {
+					if err := r.Check(Author{}, Message{Post: true}, now, time.Time{}); err != nil {
 						b.Fatal(err)
 					}
 				}
@@ -56,11 +57,11 @@ func BenchmarkSend(b *testing.B) {
 // BenchmarkCheckEmpty is the second check of a web post: no text.
 func BenchmarkCheckEmpty(b *testing.B) {
 	for _, n := range []int{50, 500} {
-		r := benchRules(b, n)
+		r := Compile(benchRules(b, n))
 		b.Run(fmt.Sprintf("entries=%d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				if err := Check(r, Author{}, Message{Post: true}, now, time.Time{}); err != nil {
+				if err := r.Check(Author{}, Message{Post: true}, now, time.Time{}); err != nil {
 					b.Fatal(err)
 				}
 			}

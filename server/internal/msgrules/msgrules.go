@@ -72,18 +72,54 @@ func Limited(r Rules, a Author, now time.Time) bool {
 	return r.NewMinutes > 0 && !a.Staff && (a.Guest || now.Sub(a.Since) < time.Duration(r.NewMinutes)*time.Minute)
 }
 
+// Compiled are rules ready for matching: the words and phrases folded,
+// the domains in their ASCII form. That is most of the work of a check, so
+// the server compiles the rules when they change, not for each message.
+// Never changed after Compile: it may be shared.
+type Compiled struct {
+	newMinutes int
+	words      []entry
+	phrases    []entry
+	with       [][]string // of each phrase
+	domains    []string   // only those that are domains
+}
+
+// Compile makes the rules ready for matching.
+func Compile(r Rules) *Compiled {
+	c := &Compiled{
+		newMinutes: r.NewMinutes,
+		words:      entries(r.Words, func(s string) string { return s }),
+		phrases:    entries(r.Replacements, func(p Replacement) string { return p.Phrase }),
+	}
+	for _, p := range r.Replacements {
+		c.with = append(c.with, slices.Clone(p.With))
+	}
+	for _, d := range r.Domains {
+		if ascii, ok := domain(d); ok {
+			c.domains = append(c.domains, ascii)
+		}
+	}
+	return c
+}
+
 // Check says why a message is refused (nil: it is not). last: the author's
 // last message (zero: none), for the rate of limited authors.
 func Check(r Rules, a Author, m Message, now, last time.Time) error {
+	return Compile(r).Check(a, m, now, last)
+}
+
+// Check is Check with the compiled rules.
+func (c *Compiled) Check(a Author, m Message, now, last time.Time) error {
 	if a.Staff {
 		return nil
 	}
-	if blockedWord(r.Words, m.Text) {
+	if blockedWord(c.words, m.Text) {
 		return ErrWord
 	}
-	if blockedDomain(r.Domains, m.Text) {
+	if blockedDomain(c.domains, m.Text) {
 		return ErrDomain
 	}
+	r := Rules{NewMinutes: c.newMinutes}
 	if !Limited(r, a, now) {
 		return nil
 	}
@@ -207,8 +243,8 @@ func clean(s string) string {
 }
 
 // blockedWord: the text has a blocked word or phrase.
-func blockedWord(blocked []string, text string) bool {
-	return len(blocked) > 0 && len(find(entries(blocked, func(s string) string { return s }), text, false)) > 0
+func blockedWord(blocked []entry, text string) bool {
+	return len(blocked) > 0 && text != "" && len(find(blocked, text, false)) > 0
 }
 
 func entries[T any](list []T, phrase func(T) string) []entry {
@@ -226,17 +262,22 @@ func entries[T any](list []T, phrase func(T) string) []entry {
 // with separators (spaces . - _) between the words of a phrase: the
 // message's markup stays. For everyone, staff too.
 func Replace(r Rules, text string, pick func(int) int) string {
-	if len(r.Replacements) == 0 {
+	return Compile(r).Replace(text, pick)
+}
+
+// Replace is Replace with the compiled rules.
+func (c *Compiled) Replace(text string, pick func(int) int) string {
+	if len(c.phrases) == 0 || text == "" {
 		return text
 	}
 	keep := kept.FindAllStringIndex(text, -1)
 	var b strings.Builder
 	last := 0
-	for _, m := range find(entries(r.Replacements, func(p Replacement) string { return p.Phrase }), text, true) {
+	for _, m := range find(c.phrases, text, true) {
 		if slices.ContainsFunc(keep, func(k []int) bool { return m.start < k[1] && k[0] < m.end }) {
 			continue
 		}
-		with := r.Replacements[m.entry].With
+		with := c.with[m.entry]
 		b.WriteString(text[last:m.start])
 		b.WriteString(sameCase(text[m.start:m.end], with[pick(len(with))]))
 		last = m.end
@@ -309,8 +350,9 @@ func domain(s string) (string, bool) {
 
 // blockedDomain: a host in the text is a blocked domain or below one
 // (also percent-encoded, or not valid: browsers may still open it).
+// blocked: in their ASCII form (see domain).
 func blockedDomain(blocked []string, text string) bool {
-	if len(blocked) == 0 {
+	if len(blocked) == 0 || text == "" {
 		return false
 	}
 	decoded := percent.ReplaceAllStringFunc(text, func(p string) string {
@@ -319,8 +361,8 @@ func blockedDomain(blocked []string, text string) bool {
 	})
 	for _, h := range hostPattern.FindAllString(clean(text+" "+decoded), -1) {
 		host, _ := domain(h)
-		for _, b := range blocked {
-			if d, ok := domain(b); ok && (host == d || strings.HasSuffix(host, "."+d)) {
+		for _, d := range blocked {
+			if host == d || strings.HasSuffix(host, "."+d) {
 				return true
 			}
 		}
