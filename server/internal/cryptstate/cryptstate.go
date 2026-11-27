@@ -1,15 +1,15 @@
 package cryptstate
 
-import "crypto/cipher"
-
 // CryptState is one side of a UDP connection: packets have a 4-byte header
 // (the IV's low byte and the first 3 tag bytes), and each direction has a
 // 16-byte IV that counts up little-endian. Decrypt accepts packets that are
 // lost or up to 30 late, and refuses replays. Not safe for concurrent use.
 type CryptState struct {
-	cipher    cipher.Block
-	EncryptIV [16]byte
-	DecryptIV [16]byte
+	// One per direction, each with its own block buffer, so that Encrypt
+	// and Decrypt still share no state.
+	encrypter, decrypter *aesBlock
+	EncryptIV            [16]byte
+	DecryptIV            [16]byte
 	// Per low IV byte: the second IV byte of the last packet seen with it.
 	history [256]byte
 
@@ -19,7 +19,7 @@ type CryptState struct {
 // New makes a CryptState. On the server, the client nonce decrypts and the
 // server nonce encrypts.
 func New(key, encryptIV, decryptIV [16]byte) *CryptState {
-	return &CryptState{cipher: newCipher(key), EncryptIV: encryptIV, DecryptIV: decryptIV}
+	return &CryptState{encrypter: newCipher(key), decrypter: newCipher(key), EncryptIV: encryptIV, DecryptIV: decryptIV}
 }
 
 func increment(iv *[16]byte, from int) {
@@ -42,8 +42,10 @@ func decrement(iv *[16]byte, from int) {
 
 func (cs *CryptState) Encrypt(plain []byte) []byte {
 	increment(&cs.EncryptIV, 0)
-	crypted, tag := ocbEncrypt(cs.cipher, cs.EncryptIV, plain)
-	return append([]byte{cs.EncryptIV[0], tag[0], tag[1], tag[2]}, crypted...)
+	packet, tag := ocbEncrypt(make([]byte, 4, 4+len(plain)), cs.encrypter, cs.EncryptIV, plain)
+	packet[0] = cs.EncryptIV[0]
+	copy(packet[1:4], tag[:3])
+	return packet
 }
 
 func (cs *CryptState) Decrypt(packet []byte) ([]byte, bool) {
@@ -94,7 +96,7 @@ func (cs *CryptState) Decrypt(packet []byte) ([]byte, bool) {
 			return nil, false // replay
 		}
 	}
-	plain, tag, ok := ocbDecrypt(cs.cipher, cs.DecryptIV, packet[4:])
+	plain, tag, ok := ocbDecrypt(cs.decrypter, cs.DecryptIV, packet[4:])
 	if !ok || tag[0] != packet[1] || tag[1] != packet[2] || tag[2] != packet[3] {
 		cs.DecryptIV = saved
 		return nil, false
