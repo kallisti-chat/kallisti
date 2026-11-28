@@ -10,6 +10,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # A new Go or module CVE shows on main even in a week with no push.
+  schedule:
+    - cron: "17 6 * * 1"
 
 # Read only: checks need no write access. Fork pull requests get the log and
 # the exit code, nothing else.
