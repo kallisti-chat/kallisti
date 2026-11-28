@@ -219,7 +219,7 @@ func (s *Store) DeleteThread(id int64) ([]string, error) {
 		return nil, err
 	}
 	for _, table := range []string{"uploads", "polls", "poll_votes"} {
-		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE message_id IN (`+messages+`)`, id); err != nil {
+		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE message_id IN (`+messages+`)`, id); err != nil { // #nosec G202 -- table and messages: constants above
 			return nil, err
 		}
 	}

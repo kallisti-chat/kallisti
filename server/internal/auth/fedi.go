@@ -298,7 +298,7 @@ func (a *Service) setFediCookie(w http.ResponseWriter, r *http.Request, name, va
 	// Before __Host- names they lived at /api/fedi: over plain HTTP the
 	// browser would send such a stale one first.
 	for _, old := range []string{stateCookie, signupCookie} {
-		http.SetCookie(w, &http.Cookie{Name: old, Value: "", Path: fediPath, MaxAge: -1, HttpOnly: true})
+		http.SetCookie(w, &http.Cookie{Name: old, Value: "", Path: fediPath, MaxAge: -1, HttpOnly: true}) // #nosec G124 -- a removal of an old name: no value
 	}
 	a.setFlowCookie(w, r, name, value, life)
 }
@@ -310,7 +310,7 @@ func (a *Service) setFlowCookie(w http.ResponseWriter, r *http.Request, name, va
 		a.clearCookie(w, r, name)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: a.cookieName(r, name), Value: value, Path: "/", MaxAge: int(life.Seconds()), HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode})
+	http.SetCookie(w, &http.Cookie{Name: a.cookieName(r, name), Value: value, Path: "/", MaxAge: int(life.Seconds()), HttpOnly: true, Secure: a.secure(r), SameSite: http.SameSiteLaxMode}) // #nosec G124 -- Secure whenever over HTTPS (secure)
 }
 
 // serveFedi answers /api/fedi and below (POSTs are checked as JSON and

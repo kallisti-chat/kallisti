@@ -335,7 +335,7 @@ func (l *Library) info(id string) (Info, error) {
 		return Info{}, os.ErrNotExist
 	}
 	var info Info
-	b, err := os.ReadFile(filepath.Join(l.Dir, id, infoFile))
+	b, err := os.ReadFile(filepath.Join(l.Dir, id, infoFile)) // #nosec G304 G703 -- a validID (checked above)
 	if err == nil {
 		err = json.Unmarshal(b, &info)
 	}

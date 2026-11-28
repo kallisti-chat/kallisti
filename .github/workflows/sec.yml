@@ -1,0 +1,83 @@
+# Static security checks for the server's Go code: gosec (findings at medium
+# severity and medium confidence or higher fail the job) and govulncheck
+# (known vulnerabilities in the dependencies and the standard library that
+# the code calls).
+# Only server/ is scanned. Add deploy/preview/ here when it lands.
+name: sec
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Read only: checks need no write access. Fork pull requests get the log and
+# the exit code, nothing else.
+permissions:
+  contents: read
+
+# A newer push to the same pull request replaces the run in flight; runs on
+# main always finish.
+concurrency:
+  group: sec-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gosec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      # The gate. The gosec version, the flags and every exclusion with its
+      # reason are in server/gosec.sh, so a local run is the same.
+      - name: gosec
+        run: ./gosec.sh
+
+  # Code scanning upload, on main only. Runs the same scan, never fails on
+  # findings (the gosec job is the gate), and is the only job that may write
+  # security events. Pull requests, forks included, never reach it.
+  gosec-sarif:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: gosec (sarif)
+        run: ./gosec.sh -no-fail -fmt sarif -out gosec.sarif
+      - uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+        with:
+          sarif_file: server/gosec.sarif
+          category: gosec
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      # Pinned, and the same command as in the README.
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...

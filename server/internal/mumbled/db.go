@@ -578,7 +578,7 @@ func (d *DB) UserNames(ids []uint32) (map[uint32]string, error) {
 	for i, id := range ids {
 		args[i] = id
 	}
-	rows, err := d.db.Query(`SELECT id, name FROM mumble_users WHERE id IN (?`+strings.Repeat(",?", len(ids)-1)+`)`, args...)
+	rows, err := d.db.Query(`SELECT id, name FROM mumble_users WHERE id IN (?`+strings.Repeat(",?", len(ids)-1)+`)`, args...) // #nosec G202 -- only placeholders
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +596,7 @@ func (d *DB) UserNames(ids []uint32) (map[uint32]string, error) {
 
 func deleteACLs(tx *sql.Tx, channel uint32) error {
 	for _, table := range []string{"mumble_acl", "mumble_groups", "mumble_group_members"} {
-		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE channel_id = ?`, channel); err != nil {
+		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE channel_id = ?`, channel); err != nil { // #nosec G202 -- table: one of the fixed names above
 			return err
 		}
 	}

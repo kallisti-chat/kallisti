@@ -2,7 +2,7 @@ package mumbled
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- an ETag, not security
 	"encoding/hex"
 	"log/slog"
 	"net/http"
@@ -38,7 +38,7 @@ func (s *Server) Avatars() http.Handler {
 			NoAvatars.ServeHTTP(w, r)
 			return
 		}
-		sum := sha1.Sum(texture)
+		sum := sha1.Sum(texture) // #nosec G401 -- an ETag, not security
 		hash := hex.EncodeToString(sum[:])
 		h.Set("ETag", `"`+hash+`"`)
 		if r.URL.Query().Get("v") == hash {

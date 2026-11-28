@@ -57,7 +57,7 @@ func opusTags(title string) []byte {
 
 // createTrack writes the headers (mono until a stereo packet comes).
 func createTrack(path, name string, serial uint32) (*track, error) {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- the recording's dir and a safeName (fileFor)
 	if err != nil {
 		return nil, err
 	}

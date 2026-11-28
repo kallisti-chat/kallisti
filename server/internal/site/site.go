@@ -38,6 +38,13 @@ func New(bridge http.Handler, webDir string, brand func() Brand) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		clean := path.Clean("/" + r.URL.Path)
+		// path.Clean knows only "/". On Windows "\" separates too, so
+		// "..\" would get past it and filepath.Join would follow it out of
+		// webDir. No file of the web app has a backslash in its name.
+		if strings.Contains(clean, `\`) {
+			http.NotFound(w, r)
+			return
+		}
 		if strings.HasPrefix(clean, "/assets/") {
 			// Vite puts a content hash in asset names.
 			h.Set("Cache-Control", "public, max-age=31536000, immutable")
@@ -53,7 +60,7 @@ func New(bridge http.Handler, webDir string, brand func() Brand) http.Handler {
 		// Real files (favicon, ...) as they are; any other path is an app
 		// route and gets index.html.
 		if clean != "/" && clean != "/index.html" {
-			if info, err := os.Stat(filepath.Join(webDir, filepath.FromSlash(clean))); err == nil && !info.IsDir() {
+			if info, err := os.Stat(filepath.Join(webDir, filepath.FromSlash(clean))); err == nil && !info.IsDir() { // #nosec G703 -- clean is a rooted path.Clean without a backslash: no ".."
 				files.ServeHTTP(w, r)
 				return
 			}

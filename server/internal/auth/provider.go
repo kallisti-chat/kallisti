@@ -255,7 +255,7 @@ func (a *Service) authorize(w http.ResponseWriter, r *http.Request) {
 	if acc, ok := a.AccountFor(r); ok && !acc.Temporary && a.allow(r) {
 		if granted, _ := a.Store.HasOAuthGrant(acc.ID, q.redirect); granted && fedi.ValidUsername(acc.Name) {
 			if to, ok := a.codeFor(acc, q); ok {
-				http.Redirect(w, r, to, http.StatusFound)
+				http.Redirect(w, r, to, http.StatusFound) // #nosec G710 -- a validRedirect callback the user granted before
 				return
 			}
 		}

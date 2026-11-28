@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- Mumble's certificate hash (see certHash)
 	"encoding/hex"
 	"encoding/pem"
 	"log/slog"
@@ -51,6 +51,6 @@ func accountCertHash(acc store.Account) string {
 }
 
 func certHash(der []byte) string {
-	sum := sha1.Sum(der)
+	sum := sha1.Sum(der) // #nosec G401 -- Mumble's certificate hash, as Murmur's
 	return hex.EncodeToString(sum[:])
 }
