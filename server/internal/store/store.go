@@ -299,6 +299,9 @@ func Open(path string) (*Store, error) {
 			err = rdb.Ping()
 		}
 		if err != nil {
+			if rdb != nil {
+				rdb.Close()
+			}
 			db.Close()
 			return nil, fmt.Errorf("open for reading: %w", err)
 		}

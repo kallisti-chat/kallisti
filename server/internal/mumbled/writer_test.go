@@ -75,7 +75,9 @@ func BenchmarkWriterQueuedVoice(b *testing.B) {
 				srv, peer := path.pair(b)
 				c := &client{conn: keepOpen{srv}, out: make(chan []byte, 1), voice: make(chan []byte, n)}
 				got := make([]byte, n*len(frame))
-				read := make(chan error)
+				// Room for one: the reader's last error, after the
+				// connection is closed, has nobody waiting for it.
+				read := make(chan error, 1)
 				go func() {
 					for {
 						_, err := io.ReadFull(peer, got)
